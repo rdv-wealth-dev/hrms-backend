@@ -1,42 +1,25 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
- 
-# dependencies
-node_modules
-.pnp
-.pnp.js
- 
-# testing
-coverage
- 
-# production
-.next
-.swc
-_static
-out
-dist
-build
- 
-# environment variables
+node_modules/
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
- 
-# misc
+aesKeys.json
+*.html
+# OSX
+#
 .DS_Store
-.vercel
-.netlify
-.vscode
-tsconfig.tsbuildinfo
-.ncurc.js
+public/*
+ 
+# Sonar
+.scannerwork
+.scannerwork/*
+.sonar/*
+# logs
+app-error.log
+app-info.log
  
 #package-lock
 package-lock.json
  
+#
+project-code.txt
+export-project.py
+start-app.sh
  
