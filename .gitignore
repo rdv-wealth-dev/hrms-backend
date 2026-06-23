@@ -15,9 +15,6 @@ public/*
 app-error.log
 app-info.log
  
-#package-lock
-package-lock.json
- 
 #
 project-code.txt
 export-project.py
