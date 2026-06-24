@@ -8,6 +8,10 @@ export const env = {
     connectionStringName : process.env.MONGO_DB_NAME || "hrms_dev",
     jwtSecret : process.env.JWT_SECRET || "",
     jwtRefreshSecret : process.env.JWT_REFRESH_SECRET || "",
+    allowedOrigins:
+    process.env.ALLOWED_ORIGINS?.split(",") ?? [
+      "http://localhost:3000",
+    ],
 }
 
 // Validation below 
