@@ -1,29 +1,28 @@
-import express, {
-  Application,
-  Request,
-  Response
-} from "express";
+import express, {Application, Request, Response} from "express";
+import { applySecurityMiddleware } from "./core/middlewares/security.middleware";
+import { requestIdMiddleware } from "./core/middlewares/request-id.middleware";
+import { globalErrorHandler } from "./core/errors/error.middleware";
 
 const app: Application = express();
 
-app.use(express.json());
+app.use(requestIdMiddleware)
 
-app.use(express.urlencoded({
-    extended: true
-  }));
+// apply securityMiddleware
+applySecurityMiddleware(app)
 
-app.get("/",(_req: Request, res: Response)=>{
+
+app.get("/health",(_req: Request, res: Response) => {
   res.status(200).json({
-    success : true,
-    message : "Welcome to HRMS SaaS"
+    succeeded: true,
+    message : "HRMS Api Running",
+    data: {
+      status: "ok",
+      timeStamp: new Date().toISOString(),
+    }
   })
 });
 
-app.get("/health",(_req: Request, res: Response)=>{
-  res.status(200).json({
-    success: true,
-    message : "HRMS Api Running"
-  })
-});
+
+app.use(globalErrorHandler)
 
 export default app;
