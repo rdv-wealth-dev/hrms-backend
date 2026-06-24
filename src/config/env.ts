@@ -8,8 +8,6 @@ export const env = {
     connectionStringName : process.env.MONGO_DB_NAME || "hrms_dev",
     jwtSecret : process.env.JWT_SECRET || "",
     jwtRefreshSecret : process.env.JWT_REFRESH_SECRET || "",
-    redisHost : process.env.REDIS_HOST || "localhost",
-    redisPort : Number(process.env.REDIS_PORT) || 6379
 }
 
 // Validation below 
