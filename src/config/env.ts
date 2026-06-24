@@ -16,14 +16,14 @@ export const env = {
 
 // Validation below 
 
-// if(!env.connectionString){
-//     throw new Error(
-//         "MONGO_CONNECTION_STRING is missing in .env, kindly check!"
-//     )
-// }
+if(!env.connectionString){
+    throw new Error(
+        "MONGO_CONNECTION_STRING is missing in .env, kindly check!"
+    )
+}
 
-// if(!env.jwtSecret){
-//     throw new Error(
-//         "JWT_SECRET missing in .env, kindly check!"
-//     )
-// }
+if(!env.jwtSecret){
+    throw new Error(
+        "JWT_SECRET missing in .env, kindly check!"
+    )
+}
