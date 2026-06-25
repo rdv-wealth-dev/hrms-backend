@@ -67,11 +67,9 @@ export interface OrganizationDocument extends Document {
   updatedAt: Date;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // ORGANIZATION SCHEMA
 // Uses createPlatformSchema — organization IS the tenant
 // No tenantId on this collection — _id IS the tenantId
-// ─────────────────────────────────────────────────────────────────────────────
 
 const OrganizationSchema = createPlatformSchema<OrganizationDocument>({
 
