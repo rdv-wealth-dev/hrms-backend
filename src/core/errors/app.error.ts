@@ -1,4 +1,4 @@
-// ─── AppError ─────────────────────────────────────────────────────────────────
+// AppError
 export class AppError extends Error {
   public statusCode:    number;
   public isOperational: boolean;
@@ -17,7 +17,7 @@ export class AppError extends Error {
   }
 }
 
-// ─── Error factories ──────────────────────────────────────────────────────────
+// Error factories
 export const NotFoundError = (
   msg = "Resource not found"
 ) => new AppError(msg, 404);

@@ -4,31 +4,45 @@ import {
   OrgLevelDocument,
 } from "../../core/database/base.schema";
 
-// ─────────────────────────────────────────────────────────────────────────────
 // USER DOCUMENT INTERFACE
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface UserDocument extends OrgLevelDocument {
-  email:          string;
-  passwordHash:   string;
-  firstName:      string;
-  lastName:       string;
-  phone?:         string;
-  avatar?:        string;
-  role:           string;
-  isSuperAdmin:   boolean;
-  isActive:       boolean;
-  isEmailVerified:boolean;
-  lastLoginAt?:   Date;
-  branchIds:      mongoose.Types.ObjectId[];
-  permissions:    string[];
+  email:           string;
+  passwordHash:    string;
+  firstName:       string;
+  lastName:        string;
+  phone?:          string;
+  avatar?:         string;
+  role:            string;
+  isSuperAdmin:    boolean;
+  isActive:        boolean;
+  isEmailVerified: boolean;
+  lastLoginAt?:    Date;
+  branchIds:       mongoose.Types.ObjectId[];
+  permissions:     string[];
+
+  // ← declare the method here so TypeScript knows it exists
+  toSafeObject(): {
+    id:              unknown;
+    email:           string;
+    firstName:       string;
+    lastName:        string;
+    fullName:        string;
+    phone?:          string;
+    avatar?:         string;
+    role:            string;
+    isSuperAdmin:    boolean;
+    isActive:        boolean;
+    isEmailVerified: boolean;
+    branchIds:       mongoose.Types.ObjectId[];
+    permissions:     string[];
+    tenantId:        mongoose.Types.ObjectId;
+    lastLoginAt?:    Date;
+    createdAt:       Date;
+  };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // USER SCHEMA
-// Uses createOrgLevelSchema — users sit above branch level
-// One user can belong to multiple branches via branchIds array
-// ─────────────────────────────────────────────────────────────────────────────
 
 const UserSchema = createOrgLevelSchema<UserDocument>({
   email: {
@@ -41,7 +55,7 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
   passwordHash: {
     type:     String,
     required: true,
-    select:   false,   // never returned in queries unless explicitly selected
+    select:   false,  // never returned unless explicitly selected
   },
   firstName: {
     type:      String,
@@ -56,11 +70,11 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
     maxlength: 100,
   },
   phone: {
-    type:  String,
-    trim:  true,
+    type: String,
+    trim: true,
   },
   avatar: {
-    type: String,   // S3 URL
+    type: String,
   },
   role: {
     type:     String,
@@ -91,18 +105,11 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
   lastLoginAt: {
     type: Date,
   },
-
-  // Which branches this user has access to
-  // Empty array = no branch restriction (super admin)
-  // ["branchId1", "branchId2"] = scoped to those branches
   branchIds: {
     type:    [mongoose.Schema.Types.ObjectId],
     ref:     "Branch",
     default: [],
   },
-
-  // Cached permissions — loaded on login, stored in JWT
-  // Example: ["employee.read", "employee.create", "payroll.run"]
   permissions: {
     type:    [String],
     default: [],
@@ -110,23 +117,20 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
 });
 
 // INDEXES
-// tenantId always first in compound indexes
 
-UserSchema.index({ tenantId: 1, email: 1 },      { unique: true }); // email unique per tenant
+UserSchema.index({ tenantId: 1, email: 1 }, { unique: true });
 UserSchema.index({ tenantId: 1, role: 1 });
 UserSchema.index({ tenantId: 1, isActive: 1 });
 UserSchema.index({ tenantId: 1, isDeleted: 1 });
 
-// VIRTUAL — full name
+// VIRTUAL
 
 UserSchema.virtual("fullName").get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
 
-
 // METHODS
 
-// Safe user object — never expose passwordHash in responses
 UserSchema.methods.toSafeObject = function () {
   return {
     id:              this._id,
@@ -148,4 +152,5 @@ UserSchema.methods.toSafeObject = function () {
   };
 };
 
+// EXPORT
 export const UserModel = mongoose.model<UserDocument>("User", UserSchema);
