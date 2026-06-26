@@ -1,8 +1,10 @@
 import mongoose, { Schema, Document, SchemaOptions } from "mongoose";
 
+// INTERFACES
+
 export interface BaseDocument extends Document {
   tenantId:   mongoose.Types.ObjectId;
-  branchId:   mongoose.Types.ObjectId;   // always required — Head Office guarantees this
+  branchId:   mongoose.Types.ObjectId;
   createdBy?: mongoose.Types.ObjectId;
   updatedBy?: mongoose.Types.ObjectId;
   isDeleted:  boolean;
@@ -21,52 +23,26 @@ export interface OrgLevelDocument extends Document {
   updatedAt:  Date;
 }
 
+// BASE SCHEMA FIELDS
+
 export const baseSchemaFields = {
   tenantId: {
     type:     mongoose.Schema.Types.ObjectId,
-    ref:      "Organization",
+    // ref removed — no population needed at base level
+    // prevents ref validation issues during seeding
     required: true,
     index:    true,
   },
   branchId: {
     type:     mongoose.Schema.Types.ObjectId,
-    ref:      "Branch",
-    required: true,   // Head Office always created on registration — never null
-    index:    true,
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref:  "User",
-  },
-  updatedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref:  "User",
-  },
-  isDeleted: {
-    type:    Boolean,
-    default: false,
-    index:   true,
-  },
-  version: {
-    type:    Number,
-    default: 1,
-  },
-};
-
-export const baseSchemaFieldsNoBranch = {
-  tenantId: {
-    type:     mongoose.Schema.Types.ObjectId,
-    ref:      "Organization",
     required: true,
     index:    true,
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref:  "User",
   },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref:  "User",
   },
   isDeleted: {
     type:    Boolean,
@@ -79,16 +55,44 @@ export const baseSchemaFieldsNoBranch = {
   },
 };
 
+// For org-level collections — no branchId
+export const baseSchemaFieldsNoBranch = {
+  tenantId: {
+    type:     mongoose.Schema.Types.ObjectId,
+    // ref removed — prevents Mongoose ref validation
+    // during seeding when org may not be committed yet
+    required: true,
+    index:    true,
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+  },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+  },
+  isDeleted: {
+    type:    Boolean,
+    default: false,
+    index:   true,
+  },
+  version: {
+    type:    Number,
+    default: 1,
+  },
+};
+
+// BASE SCHEMA OPTIONS
 
 export const baseSchemaOptions: SchemaOptions = {
-  timestamps: true,   // auto createdAt + updatedAt
+  timestamps: true,
   versionKey: "__v",
 };
 
-
+// HOOKS — applied to every schema
 
 function applyBaseHooks(schema: Schema): void {
-  
+
+  // Auto-increment version on every update
   schema.pre("save", function (next) {
     if (!this.isNew) {
       this.version = (this.version as number) + 1;
@@ -96,8 +100,9 @@ function applyBaseHooks(schema: Schema): void {
     next();
   });
 
+  // Auto-filter soft deleted docs on every find
   schema.pre(/^find/, function (next) {
-    const query = this as mongoose.Query<unknown, unknown>;
+    const query      = this as mongoose.Query<unknown, unknown>;
     const conditions = query.getFilter();
     if (conditions.isDeleted === undefined) {
       query.where({ isDeleted: false });
@@ -106,70 +111,55 @@ function applyBaseHooks(schema: Schema): void {
   });
 }
 
+// SCHEMA FACTORIES
+
+// For branch-level collections
+// employees · attendance · leave · payroll · departments · designations
 export function createBaseSchema<T>(
-  fields: mongoose.SchemaDefinition<T>,
+  fields:  mongoose.SchemaDefinition<T>,
   options: mongoose.SchemaOptions = {}
 ): Schema {
   const schema = new Schema(
-    {
-      ...baseSchemaFields,
-      ...fields,
-    },
-    {
-      ...baseSchemaOptions,
-      ...options,
-    }
+    { ...baseSchemaFields, ...fields },
+    { ...baseSchemaOptions, ...options }
   );
-
   applyBaseHooks(schema);
   return schema;
 }
 
+// For org-level collections — no branchId
+// organizations · roles · users · audit_logs · leave_types · salary_components
 export function createOrgLevelSchema<T>(
-  fields: mongoose.SchemaDefinition<T>,
+  fields:  mongoose.SchemaDefinition<T>,
   options: mongoose.SchemaOptions = {}
 ): Schema {
   const schema = new Schema(
-    {
-      ...baseSchemaFieldsNoBranch,
-      ...fields,
-    },
-    {
-      ...baseSchemaOptions,
-      ...options,
-    }
+    { ...baseSchemaFieldsNoBranch, ...fields },
+    { ...baseSchemaOptions, ...options }
   );
-
   applyBaseHooks(schema);
   return schema;
 }
 
+// For platform-level collections — no tenantId, no branchId
+// permissions · subscription_plans
 export function createPlatformSchema<T>(
-  fields: mongoose.SchemaDefinition<T>,
+  fields:  mongoose.SchemaDefinition<T>,
   options: mongoose.SchemaOptions = {}
 ): Schema {
   const schema = new Schema(
     {
       ...fields,
-      isDeleted: {
-        type:    Boolean,
-        default: false,
-        index:   true,
-      },
-      version: {
-        type:    Number,
-        default: 1,
-      },
+      isDeleted: { type: Boolean, default: false, index: true },
+      version:   { type: Number,  default: 1 },
     },
-    {
-      ...baseSchemaOptions,
-      ...options,
-    }
+    { ...baseSchemaOptions, ...options }
   );
-
   applyBaseHooks(schema);
   return schema;
 }
+
+// RESPONSE BUILDERS
 
 export function buildPagedResponse<T>({
   data,
@@ -210,25 +200,15 @@ export function buildPagedResponse<T>({
 }
 
 export function buildSuccessResponse<T>(
-  data: T,
+  data:    T,
   message = "Success"
 ) {
-  return {
-    succeeded: true,
-    message,
-    errors:    [],
-    data,
-  };
+  return { succeeded: true, message, errors: [], data };
 }
 
 export function buildErrorResponse(
   message: string,
-  errors: string[] = []
+  errors:  string[] = []
 ) {
-  return {
-    succeeded: false,
-    message,
-    errors,
-    data:      null,
-  };
+  return { succeeded: false, message, errors, data: null };
 }

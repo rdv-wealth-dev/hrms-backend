@@ -1,6 +1,6 @@
 import { BaseRepository } from "../../repositories/base.repository";
 import { RoleDocument, RoleModel } from "./role.model";
-import { RequestContext }         from "../../core/interfaces/request-context.interface";
+import { RequestContext }  from "../../core/interfaces/request-context.interface";
 
 export class RoleRepository extends BaseRepository<RoleDocument> {
   constructor() {
