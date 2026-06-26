@@ -1,10 +1,5 @@
 import mongoose, { Document } from "mongoose";
-import {
-  createOrgLevelSchema,
-  OrgLevelDocument,
-} from "../../core/database/base.schema";
-
-// USER DOCUMENT INTERFACE
+import {createOrgLevelSchema,OrgLevelDocument} from "../../core/database/base.schema";
 
 export interface UserDocument extends OrgLevelDocument {
   email:           string;
@@ -19,9 +14,11 @@ export interface UserDocument extends OrgLevelDocument {
   isEmailVerified: boolean;
   lastLoginAt?:    Date;
   branchIds:       mongoose.Types.ObjectId[];
+
+  // Deprecated — permissions now loaded dynamically from roles collection
+  // Kept for backward compatibility only
   permissions:     string[];
 
-  // ← declare the method here so TypeScript knows it exists
   toSafeObject(): {
     id:              unknown;
     email:           string;
@@ -35,14 +32,11 @@ export interface UserDocument extends OrgLevelDocument {
     isActive:        boolean;
     isEmailVerified: boolean;
     branchIds:       mongoose.Types.ObjectId[];
-    permissions:     string[];
     tenantId:        mongoose.Types.ObjectId;
     lastLoginAt?:    Date;
     createdAt:       Date;
   };
 }
-
-// USER SCHEMA
 
 const UserSchema = createOrgLevelSchema<UserDocument>({
   email: {
@@ -55,7 +49,7 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
   passwordHash: {
     type:     String,
     required: true,
-    select:   false,  // never returned unless explicitly selected
+    select:   false,
   },
   firstName: {
     type:      String,
@@ -110,27 +104,26 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
     ref:     "Branch",
     default: [],
   },
+
+  // Deprecated — loaded from roles collection dynamically on login
   permissions: {
     type:    [String],
     default: [],
   },
 });
 
-// INDEXES
-
+// Indexes
 UserSchema.index({ tenantId: 1, email: 1 }, { unique: true });
 UserSchema.index({ tenantId: 1, role: 1 });
 UserSchema.index({ tenantId: 1, isActive: 1 });
 UserSchema.index({ tenantId: 1, isDeleted: 1 });
 
-// VIRTUAL
-
+// Virtual
 UserSchema.virtual("fullName").get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
 
-// METHODS
-
+// Methods
 UserSchema.methods.toSafeObject = function () {
   return {
     id:              this._id,
@@ -145,12 +138,10 @@ UserSchema.methods.toSafeObject = function () {
     isActive:        this.isActive,
     isEmailVerified: this.isEmailVerified,
     branchIds:       this.branchIds,
-    permissions:     this.permissions,
     tenantId:        this.tenantId,
     lastLoginAt:     this.lastLoginAt,
     createdAt:       this.createdAt,
   };
 };
 
-// EXPORT
 export const UserModel = mongoose.model<UserDocument>("User", UserSchema);

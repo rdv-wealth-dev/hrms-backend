@@ -6,6 +6,8 @@ import { UserRepository } from "../user/user.repository";
 import { OrganizationRepository } from "../organization/organization.repository";
 import { BranchRepository } from "../branch/branch.repository";
 import { UserModel } from "../user/user.model";
+import { RoleModel } from "../role/role.model";
+import { seedDefaultRoles } from "../role/role.seed";
 
 import { RegisterInput, LoginInput, RefreshTokenInput } from "./auth.dto";
 import { AppError }   from "../../core/errors/app.error";
@@ -18,8 +20,6 @@ const ACCESS_TOKEN_EXPIRY  = "15m";
 const REFRESH_TOKEN_EXPIRY = "7d";
 
 // HELPERS
-
-// "ABC Technologies Pvt Ltd" → "abc-technologies-pvt-ltd"
 function generateSlug(name: string): string {
   return name
     .toLowerCase()
@@ -51,19 +51,6 @@ function signRefreshToken(
   );
 }
 
-// SUPER ADMIN PERMISSIONS
-
-const SUPER_ADMIN_PERMISSIONS: string[] = [
-  "employee.read",    "employee.create",    "employee.update",    "employee.delete",
-  "attendance.read",  "attendance.create",  "attendance.update",
-  "leave.read",       "leave.create",       "leave.update",       "leave.approve",
-  "payroll.read",     "payroll.create",     "payroll.run",        "payroll.approve",
-  "branch.read",      "branch.create",      "branch.update",
-  "department.read",  "department.create",  "department.update",
-  "role.read",        "role.create",        "role.update",
-  "report.read",      "settings.read",      "settings.update",
-];
-
 // AUTH SERVICE
 
 export class AuthService {
@@ -80,14 +67,14 @@ export class AuthService {
       throw new AppError("Email already registered", 409);
     }
 
-    // 2. Generate slug — unique URL-safe company identifier
+    // 2. Generate slug
     let slug = generateSlug(input.companyName);
     const slugTaken = await this.orgRepo.slugExists(slug);
     if (slugTaken) {
       slug = `${slug}-${Date.now()}`;
     }
 
-    // 3. Create organization (tenant)
+    // 3. Create organization
     const organization = await this.orgRepo.create({
       companyName: input.companyName,
       slug,
@@ -128,10 +115,10 @@ export class AuthService {
 
     const tenantId = organization._id.toString();
 
-    // 4. Create Head Office branch automatically
+    // 4. Create Head Office branch
     const headOffice = await this.branchRepo.create({
       tenantId:     organization._id as any,
-      branchId:     organization._id as any, // self-reference — overridden in model
+      branchId:     organization._id as any,
       name:         "Head Office",
       code:         "HQ",
       isHeadOffice: true,
@@ -152,7 +139,23 @@ export class AuthService {
       BCRYPT_SALT_ROUNDS
     );
 
-    // 6. Create super admin user
+    // 6. Seed default roles for this tenant
+    // Returns map of slug → roleId
+    const roleMap = await seedDefaultRoles(
+      tenantId,
+      "system"   // createdBy system on registration
+    );
+
+    // 7. Get SUPER_ADMIN permissions from seeded role
+    const superAdminRole = await RoleModel.findOne({
+      tenantId,
+      slug:      "SUPER_ADMIN",
+      isDeleted: false,
+    }).select("permissions");
+
+    const superAdminPermissions = superAdminRole?.permissions ?? [];
+
+    // 8. Create super admin user
     const superAdmin = await new UserModel({
       tenantId:        organization._id,
       email:           input.email.toLowerCase(),
@@ -164,30 +167,30 @@ export class AuthService {
       isSuperAdmin:    true,
       isActive:        true,
       isEmailVerified: false,
-      branchIds:       [],         // empty = access to all branches
-      permissions:     SUPER_ADMIN_PERMISSIONS,
+      branchIds:       [],
+      permissions:     [],   // deprecated — loaded from roles now
     }).save();
 
-    // 7. Build JWT payload
+    // 9. Build JWT payload
     const jwtPayload = {
       tenantId:    tenantId,
       userId:      superAdmin._id.toString(),
       role:        "SUPER_ADMIN",
       branchIds:   [] as string[],
-      permissions: SUPER_ADMIN_PERMISSIONS,
+      permissions: superAdminPermissions,
     };
 
-    // 8. Sign tokens
+    // 10. Sign tokens
     const accessToken  = signAccessToken(jwtPayload);
     const refreshToken = signRefreshToken(
       superAdmin._id.toString(),
       tenantId
     );
 
-    // 9. Update last login timestamp
+    // 11. Update last login
     await this.userRepo.updateLastLogin(superAdmin._id.toString());
 
-    // 10. Return response
+    // 12. Return response
     return {
       accessToken,
       refreshToken,
@@ -199,7 +202,7 @@ export class AuthService {
         role:         superAdmin.role,
         isSuperAdmin: superAdmin.isSuperAdmin,
         branchIds:    superAdmin.branchIds,
-        permissions:  superAdmin.permissions,
+        permissions:  superAdminPermissions,
       },
       organization: {
         id:           organization._id,
@@ -216,14 +219,12 @@ export class AuthService {
     };
   }
 
-  //Login
+  // Login
   async login(input: LoginInput) {
 
-    // 1. Find user by email — passwordHash included
+    // 1. Find user by email
     const user = await this.userRepo.findByEmail(input.email);
-
     if (!user) {
-      // Generic message — never reveal if email exists or not
       throw new AppError("Invalid email or password", 401);
     }
 
@@ -235,36 +236,45 @@ export class AuthService {
       );
     }
 
-    // 3. Compare password with stored hash
+    // 3. Compare password
     const isPasswordValid = await bcrypt.compare(
       input.password,
       user.passwordHash
     );
-
     if (!isPasswordValid) {
       throw new AppError("Invalid email or password", 401);
     }
 
-    // 4. Build JWT payload
+    // 4. Load permissions dynamically from roles collection
+    const role = await RoleModel.findOne({
+      tenantId:  user.tenantId.toString(),
+      slug:      user.role,
+      isActive:  true,
+      isDeleted: false,
+    }).select("permissions");
+
+    const permissions = role?.permissions ?? [];
+
+    // 5. Build JWT payload
     const jwtPayload = {
       tenantId:    user.tenantId.toString(),
       userId:      user._id.toString(),
       role:        user.role,
       branchIds:   user.branchIds.map((b: any) => b.toString()),
-      permissions: user.permissions,
+      permissions, // ← dynamic from roles collection
     };
 
-    // 5. Sign tokens
+    // 6. Sign tokens
     const accessToken  = signAccessToken(jwtPayload);
     const refreshToken = signRefreshToken(
       user._id.toString(),
       user.tenantId.toString()
     );
 
-    // 6. Update last login timestamp
+    // 7. Update last login
     await this.userRepo.updateLastLogin(user._id.toString());
 
-    // 7. Return response
+    // 8. Return response
     return {
       accessToken,
       refreshToken,
@@ -276,22 +286,22 @@ export class AuthService {
         role:         user.role,
         isSuperAdmin: user.isSuperAdmin,
         branchIds:    user.branchIds,
-        permissions:  user.permissions,
+        permissions,
         tenantId:     user.tenantId,
       },
     };
   }
 
-  //Refresh token
+  // Refresh token
   async refreshToken(input: RefreshTokenInput) {
     try {
-      // 1. Verify refresh token signature + expiry
+      // 1. Verify refresh token
       const decoded = jwt.verify(
         input.refreshToken,
         process.env.JWT_REFRESH_SECRET as string
       ) as { userId: string; tenantId: string };
 
-      // 2. Find user — make sure still active
+      // 2. Find user
       const user = await UserModel.findOne({
         _id:       decoded.userId,
         tenantId:  decoded.tenantId,
@@ -303,16 +313,26 @@ export class AuthService {
         throw new AppError("User not found or deactivated", 401);
       }
 
-      // 3. Build new JWT payload
+      // 3. Load permissions dynamically
+      const role = await RoleModel.findOne({
+        tenantId:  user.tenantId.toString(),
+        slug:      user.role,
+        isActive:  true,
+        isDeleted: false,
+      }).select("permissions");
+
+      const permissions = role?.permissions ?? [];
+
+      // 4. Build JWT payload
       const jwtPayload = {
         tenantId:    user.tenantId.toString(),
         userId:      user._id.toString(),
         role:        user.role,
         branchIds:   user.branchIds.map((b: any) => b.toString()),
-        permissions: user.permissions,
+        permissions,
       };
 
-      // 4. Issue new tokens — rotation
+      // 5. Issue new tokens
       const newAccessToken  = signAccessToken(jwtPayload);
       const newRefreshToken = signRefreshToken(
         user._id.toString(),
@@ -330,11 +350,11 @@ export class AuthService {
     }
   }
 
-  //Get me
+  // Get me
   async getMe(userId: string) {
     const user = await UserModel
       .findOne({ _id: userId, isDeleted: false })
-      .select("-passwordHash");   // never return password hash
+      .select("-passwordHash");
 
     if (!user) {
       throw new AppError("User not found", 404);
