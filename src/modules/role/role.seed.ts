@@ -38,10 +38,10 @@ export const DEFAULT_ROLES = [
     description:  "Read-only access across all branches",
     isSystemRole: true,
     permissions: [
-      "employee.read",   "attendance.read",
-      "leave.read",      "payroll.read",
-      "branch.read",     "department.read",
-      "designation.read","report.read",
+      "employee.read",    "attendance.read",
+      "leave.read",       "payroll.read",
+      "branch.read",      "department.read",
+      "designation.read", "report.read",
     ],
   },
   {
@@ -84,57 +84,67 @@ export async function seedDefaultRoles(
   tenantId:  string,
   createdBy: string
 ): Promise<Map<string, string>> {
-  const roleMap = new Map<string, string>();
+  const roleMap    = new Map<string, string>();
+  const tenantOId  = new mongoose.Types.ObjectId(tenantId);
+  const now        = new Date();
 
   console.log("\n============================");
-  console.log("SEED ROLES CALLED");
-  console.log("tenantId:", tenantId);
-  console.log("============================\n");
+  console.log("SEED ROLES CALLED — tenantId:", tenantId);
+  console.log("============================");
 
-  const tenantObjectId = new mongoose.Types.ObjectId(tenantId);
+  try {
+    // Use raw MongoDB driver — bypasses all Mongoose hooks and validation
+    const collection = mongoose.connection.collection("roles");
 
-  for (const roleData of DEFAULT_ROLES) {
-    try {
-      console.log(`Seeding role: ${roleData.slug}`);
+    for (const roleData of DEFAULT_ROLES) {
+      try {
+        const doc = {
+          tenantId:     tenantOId,
+          name:         roleData.name,
+          slug:         roleData.slug,
+          description:  roleData.description,
+          isSystemRole: roleData.isSystemRole,
+          permissions:  roleData.permissions,
+          isActive:     true,
+          isDeleted:    false,
+          version:      1,
+          createdAt:    now,
+          updatedAt:    now,
+        };
 
-      const existing = await RoleModel.findOne({
-        tenantId:  tenantObjectId,
-        slug:      roleData.slug,
-        isDeleted: false,
-      });
+        // insertOne — skip if duplicate (unique index on tenantId+slug)
+        const result = await collection.insertOne(doc);
+        console.log(`✅ ${roleData.slug} inserted:`, result.insertedId.toString());
+        roleMap.set(roleData.slug, result.insertedId.toString());
 
-      if (existing) {
-        console.log(`  → already exists: ${existing._id}`);
-        roleMap.set(existing.slug, existing._id.toString());
-        continue;
+      } catch (err: any) {
+        if (err.code === 11000) {
+          // Duplicate — already exists, find and add to map
+          console.log(`⚠️  ${roleData.slug} already exists — skipping`);
+          const existing = await collection.findOne({ tenantId: tenantOId, slug: roleData.slug });
+          if (existing) {
+            roleMap.set(roleData.slug, existing._id.toString());
+          }
+        } else {
+          console.error(`❌ ${roleData.slug} failed:`, err.message);
+        }
       }
-
-      const saved = await RoleModel.create({
-        tenantId:     tenantObjectId,
-        name:         roleData.name,
-        slug:         roleData.slug,
-        description:  roleData.description,
-        isSystemRole: roleData.isSystemRole,
-        permissions:  roleData.permissions,
-        isActive:     true,
-        isDeleted:    false,
-        version:      1,
-      });
-
-      console.log(`  → saved: ${saved._id}`);
-      roleMap.set(saved.slug, saved._id.toString());
-
-    } catch (err: any) {
-      console.error(`  → ERROR on ${roleData.slug}:`, err.message);
     }
+
+    console.log("\n============================");
+    console.log("SEED COMPLETE — roles created:", roleMap.size);
+    console.log("============================\n");
+
+    logger.info({
+      message:  "Default roles seeded",
+      tenantId,
+      count:    roleMap.size,
+    });
+
+  } catch (error: any) {
+    console.error("SEED CRITICAL ERROR:", error.message);
+    throw error;
   }
-
-  console.log("\n============================");
-  console.log("SEED ROLES COMPLETE");
-  console.log("roleMap size:", roleMap.size);
-  console.log("============================\n");
-
-  logger.info({ message: "Default roles seeded", tenantId, count: roleMap.size });
 
   return roleMap;
 }

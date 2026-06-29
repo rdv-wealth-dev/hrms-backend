@@ -1,13 +1,14 @@
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import bcrypt         from "bcrypt";
+import jwt            from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
+import mongoose       from "mongoose";
 
-import { UserRepository } from "../user/user.repository";
+import { UserRepository }         from "../user/user.repository";
 import { OrganizationRepository } from "../organization/organization.repository";
-import { BranchRepository } from "../branch/branch.repository";
-import { UserModel } from "../user/user.model";
-import { RoleModel } from "../role/role.model";
-import { seedDefaultRoles } from "../role/role.seed";
+import { BranchRepository }       from "../branch/branch.repository";
+import { UserModel }              from "../user/user.model";
+import { RoleModel }              from "../role/role.model";
+import { seedDefaultRoles }       from "../role/role.seed";
 
 import { RegisterInput, LoginInput, RefreshTokenInput } from "./auth.dto";
 import { AppError }   from "../../core/errors/app.error";
@@ -20,6 +21,7 @@ const ACCESS_TOKEN_EXPIRY  = "15m";
 const REFRESH_TOKEN_EXPIRY = "7d";
 
 // HELPERS
+
 function generateSlug(name: string): string {
   return name
     .toLowerCase()
@@ -50,7 +52,6 @@ function signRefreshToken(
     { expiresIn: REFRESH_TOKEN_EXPIRY }
   );
 }
-
 // AUTH SERVICE
 
 export class AuthService {
@@ -113,12 +114,13 @@ export class AuthService {
       },
     });
 
-    const tenantId = organization._id.toString();
+    const tenantId        = organization._id.toString();
+    const tenantObjectId  = new mongoose.Types.ObjectId(tenantId);
 
     // 4. Create Head Office branch
     const headOffice = await this.branchRepo.create({
-      tenantId:     organization._id as any,
-      branchId:     organization._id as any,
+      tenantId:     tenantObjectId as any,
+      branchId:     tenantObjectId as any,
       name:         "Head Office",
       code:         "HQ",
       isHeadOffice: true,
@@ -140,15 +142,11 @@ export class AuthService {
     );
 
     // 6. Seed default roles for this tenant
-    // Returns map of slug → roleId
-    const roleMap = await seedDefaultRoles(
-      tenantId,
-      "system"   // createdBy system on registration
-    );
+    const roleMap = await seedDefaultRoles(tenantId, "system");
 
     // 7. Get SUPER_ADMIN permissions from seeded role
     const superAdminRole = await RoleModel.findOne({
-      tenantId,
+      tenantId:  tenantObjectId,   // ← ObjectId not string
       slug:      "SUPER_ADMIN",
       isDeleted: false,
     }).select("permissions");
@@ -157,7 +155,7 @@ export class AuthService {
 
     // 8. Create super admin user
     const superAdmin = await new UserModel({
-      tenantId:        organization._id,
+      tenantId:        tenantObjectId,
       email:           input.email.toLowerCase(),
       passwordHash,
       firstName:       input.firstName,
@@ -168,7 +166,7 @@ export class AuthService {
       isActive:        true,
       isEmailVerified: false,
       branchIds:       [],
-      permissions:     [],   // deprecated — loaded from roles now
+      permissions:     [],
     }).save();
 
     // 9. Build JWT payload
@@ -247,7 +245,7 @@ export class AuthService {
 
     // 4. Load permissions dynamically from roles collection
     const role = await RoleModel.findOne({
-      tenantId:  user.tenantId.toString(),
+      tenantId:  new mongoose.Types.ObjectId(user.tenantId.toString()),
       slug:      user.role,
       isActive:  true,
       isDeleted: false,
@@ -261,7 +259,7 @@ export class AuthService {
       userId:      user._id.toString(),
       role:        user.role,
       branchIds:   user.branchIds.map((b: any) => b.toString()),
-      permissions, // ← dynamic from roles collection
+      permissions,
     };
 
     // 6. Sign tokens
@@ -292,7 +290,7 @@ export class AuthService {
     };
   }
 
-  // Refresh token
+  //Refresh token
   async refreshToken(input: RefreshTokenInput) {
     try {
       // 1. Verify refresh token
@@ -303,8 +301,8 @@ export class AuthService {
 
       // 2. Find user
       const user = await UserModel.findOne({
-        _id:       decoded.userId,
-        tenantId:  decoded.tenantId,
+        _id:       new mongoose.Types.ObjectId(decoded.userId),
+        tenantId:  new mongoose.Types.ObjectId(decoded.tenantId),
         isActive:  true,
         isDeleted: false,
       });
@@ -315,7 +313,7 @@ export class AuthService {
 
       // 3. Load permissions dynamically
       const role = await RoleModel.findOne({
-        tenantId:  user.tenantId.toString(),
+        tenantId:  new mongoose.Types.ObjectId(user.tenantId.toString()),
         slug:      user.role,
         isActive:  true,
         isDeleted: false,
@@ -350,10 +348,13 @@ export class AuthService {
     }
   }
 
-  // Get me
+  //Get me
   async getMe(userId: string) {
     const user = await UserModel
-      .findOne({ _id: userId, isDeleted: false })
+      .findOne({
+        _id:       new mongoose.Types.ObjectId(userId),
+        isDeleted: false,
+      })
       .select("-passwordHash");
 
     if (!user) {
