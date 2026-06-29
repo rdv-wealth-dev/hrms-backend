@@ -1,14 +1,14 @@
-import bcrypt         from "bcrypt";
-import jwt            from "jsonwebtoken";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
-import mongoose       from "mongoose";
+import mongoose from "mongoose";
 
-import { UserRepository }         from "../user/user.repository";
+import { UserRepository } from "../user/user.repository";
 import { OrganizationRepository } from "../organization/organization.repository";
-import { BranchRepository }       from "../branch/branch.repository";
-import { UserModel }              from "../user/user.model";
-import { RoleModel }              from "../role/role.model";
-import { seedDefaultRoles }       from "../role/role.seed";
+import { BranchRepository } from "../branch/branch.repository";
+import { UserModel } from "../user/user.model";
+import { RoleModel } from "../role/role.model";
+import { seedDefaultRoles } from "../role/role.seed";
 
 import crypto from "crypto";
 import { emailService } from "../../service/email.service";
@@ -168,7 +168,7 @@ export class AuthService {
       isSuperAdmin:    true,
       isActive:        true,
       isEmailVerified: false,
-      branchIds:       [],
+      branchIds:       [headOffice._id],
       permissions:     [],
     }).save();
 
@@ -177,7 +177,7 @@ export class AuthService {
       tenantId:    tenantId,
       userId:      superAdmin._id.toString(),
       role:        "SUPER_ADMIN",
-      branchIds:   [] as string[],
+      branchIds:   superAdmin.branchIds.map((b: any) => b.toString()),
       permissions: superAdminPermissions,
     };
 
