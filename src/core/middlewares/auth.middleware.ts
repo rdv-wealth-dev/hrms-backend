@@ -1,8 +1,18 @@
 import { Request,Response,NextFunction } from "express";
 import jwt from "jsonwebtoken"
 import { JwtPayload } from "../interfaces/jwt-payload.interface";
+import { RequestContext } from "../interfaces/request-context.interface";
 import { AppError } from "../errors/app.error";
 import { env } from "../../config/env";
+
+declare global {
+  namespace Express {
+    interface Request {
+      context: RequestContext;
+      requestId: string;
+    }
+  }
+}
 
 // Verify jwt + inject req.context
 export const authenticate = async (
