@@ -177,15 +177,12 @@ const OrganizationSchema = createPlatformSchema<OrganizationDocument>({
   isActive: { type: Boolean, default: true },
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
 // INDEXES
-// ─────────────────────────────────────────────────────────────────────────────
-
-OrganizationSchema.index({ slug: 1 },                   { unique: true });
+OrganizationSchema.index({ slug: 1 }, { unique: true });
 OrganizationSchema.index({ "subscription.status": 1 });
 OrganizationSchema.index({ isActive: 1, isDeleted: 1 });
-OrganizationSchema.index({ gstin: 1 },                  { sparse: true });
-OrganizationSchema.index({ pan: 1 },                    { sparse: true });
+OrganizationSchema.index({ gstin: 1 }, { sparse: true });
+OrganizationSchema.index({ pan: 1 }, { sparse: true });
 
 export const OrganizationModel = mongoose.model<OrganizationDocument>(
   "Organization",
