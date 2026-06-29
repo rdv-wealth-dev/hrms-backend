@@ -1,5 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "../errors/app.error";
+import { RequestContext } from "../interfaces/request-context.interface";
+
+declare global {
+  namespace Express {
+    interface Request {
+      context: RequestContext;
+    }
+  }
+}
 
 // Check permission
 // Usage: router.get("/", authenticate, checkPermission("employee.read"), controller)
@@ -30,7 +39,7 @@ export const checkPermission = (requiredPermission: string) => {
     }
 };
 
-// ─── Check role ───────────────────────────────────────────────────────────────
+//Check role
 // Usage: router.post("/", authenticate, checkRole("HR_ADMIN"), controller)
 export const checkRole = (...allowedRoles: string[]) => {
   return (
@@ -54,7 +63,7 @@ export const checkRole = (...allowedRoles: string[]) => {
   };
 };
 
-// ─── Check branch access ──────────────────────────────────────────────────────
+// Check branch access
 // Verifies user has access to the branchId in req.params or req.body
 export const checkBranchAccess = (
   req:  Request,
