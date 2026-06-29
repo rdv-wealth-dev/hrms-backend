@@ -203,7 +203,6 @@ export class AuthService {
         role:         superAdmin.role,
         isSuperAdmin: superAdmin.isSuperAdmin,
         branchIds:    superAdmin.branchIds,
-        permissions:  superAdminPermissions,
       },
       organization: {
         id:           organization._id,
@@ -287,7 +286,6 @@ export class AuthService {
         role:         user.role,
         isSuperAdmin: user.isSuperAdmin,
         branchIds:    user.branchIds,
-        permissions,
         tenantId:     user.tenantId,
       },
     };
