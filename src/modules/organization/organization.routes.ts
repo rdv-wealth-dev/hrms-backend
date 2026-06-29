@@ -5,7 +5,7 @@ import { checkPermission } from "../../core/middlewares/rbac.middleware";
 import { validateBody }  from "../../core/validators/validate.middleware";
 import {UpdateOrganizationDto, UpdateModulesDto, UpdateStatutoryDto,} from "./organization.dto";
 
-const router     = Router();
+const router = Router();
 const controller = new OrganizationController();
 
 // All routes require authentication
