@@ -8,7 +8,7 @@ import branchRoutes from  "./modules/branch/branch.routes"
 
 const app: Application = express();
 
-app.use(requestIdMiddleware)
+// app.use(requestIdMiddleware)
 
 // apply securityMiddleware
 applySecurityMiddleware(app)
