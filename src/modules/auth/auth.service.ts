@@ -271,10 +271,14 @@ export class AuthService {
       user.tenantId.toString()
     );
 
-    // 7. Update last login
+    // 7. Fetch organization and head office branch
+    const org = await this.orgRepo.findById(user.tenantId.toString());
+    const headOffice = await this.branchRepo.findHeadOffice(user.tenantId.toString());
+
+    // 8. Update last login
     await this.userRepo.updateLastLogin(user._id.toString());
 
-    // 8. Return response
+    // 9. Return response
     return {
       accessToken,
       refreshToken,
@@ -287,6 +291,18 @@ export class AuthService {
         isSuperAdmin: user.isSuperAdmin,
         branchIds:    user.branchIds,
         tenantId:     user.tenantId,
+      },
+      organization: {
+        id:           org!._id,
+        companyName:  org!.companyName,
+        slug:         org!.slug,
+        subscription: org!.subscription,
+        modules:      org!.modules,
+      },
+      branch: {
+        id:   headOffice!._id,
+        name: headOffice!.name,
+        code: headOffice!.code,
       },
     };
   }
