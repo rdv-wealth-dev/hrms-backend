@@ -1,10 +1,9 @@
+import mongoose from "mongoose";
 import { BranchDocument, BranchModel } from "./branch.model";
 
 export class BranchRepository {
-  // Branch creation during registration has no context yet
-  // So direct model access is used here for registration flow only
 
-  //Create
+  //Create 
   async create(
     data: Partial<BranchDocument>
   ): Promise<BranchDocument> {
@@ -15,7 +14,7 @@ export class BranchRepository {
   //Find head office
   async findHeadOffice(tenantId: string): Promise<BranchDocument | null> {
     return BranchModel.findOne({
-      tenantId,
+      tenantId:     new mongoose.Types.ObjectId(tenantId),
       isHeadOffice: true,
       isDeleted:    false,
     });
@@ -24,7 +23,7 @@ export class BranchRepository {
   //Find by ID
   async findById(id: string): Promise<BranchDocument | null> {
     return BranchModel.findOne({
-      _id:       id,
+      _id:       new mongoose.Types.ObjectId(id),
       isDeleted: false,
     });
   }
@@ -32,19 +31,43 @@ export class BranchRepository {
   //Find all by tenant
   async findAllByTenant(tenantId: string): Promise<BranchDocument[]> {
     return BranchModel.find({
-      tenantId,
+      tenantId:  new mongoose.Types.ObjectId(tenantId),
       isDeleted: false,
       isActive:  true,
     }).sort({ isHeadOffice: -1, createdAt: 1 });
   }
 
-  // Check code exists within tenant
+  //Update by ID
+  async updateById(
+    id:   string,
+    data: Partial<BranchDocument> | Record<string, unknown>
+  ): Promise<BranchDocument | null> {
+    return BranchModel.findOneAndUpdate(
+      { _id: new mongoose.Types.ObjectId(id), isDeleted: false },
+      { ...data, updatedAt: new Date() },
+      { new: true }
+    );
+  }
+
+  //Soft delete
+  async softDeleteById(id: string): Promise<void> {
+    await BranchModel.findOneAndUpdate(
+      { _id: new mongoose.Types.ObjectId(id) },
+      { isDeleted: true, updatedAt: new Date() }
+    );
+  }
+
+  //Check code exists within tenant
   async codeExists(
     tenantId: string,
     code:     string
   ): Promise<boolean> {
     const doc = await BranchModel
-      .findOne({ tenantId, code, isDeleted: false })
+      .findOne({
+        tenantId:  new mongoose.Types.ObjectId(tenantId),
+        code:      code.toUpperCase(),
+        isDeleted: false,
+      })
       .select("_id")
       .lean();
     return doc !== null;
