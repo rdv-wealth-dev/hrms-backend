@@ -76,6 +76,22 @@ export class AuthController {
     }
   }
 
+  // POST /api/v1/auth/forgot-password
+  async forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await authService.forgotPassword(req.body);
+      res.status(200).json(buildSuccessResponse(result, result.message));
+    } catch (error) { next(error); }
+  }
+
+  // POST /api/v1/auth/reset-password
+  async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await authService.resetPassword(req.body);
+      res.status(200).json(buildSuccessResponse(result, "Password reset successful"));
+    } catch (error) { next(error); }
+  }
+
   // POST /api/v1/auth/logout
   async logout(
     _req: Request,

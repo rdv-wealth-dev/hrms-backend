@@ -10,7 +10,10 @@ import { UserModel }              from "../user/user.model";
 import { RoleModel }              from "../role/role.model";
 import { seedDefaultRoles }       from "../role/role.seed";
 
-import { RegisterInput, LoginInput, RefreshTokenInput } from "./auth.dto";
+import crypto from "crypto";
+import { emailService } from "../../service/email.service";
+import { env } from "../../config/env";
+import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput } from "./auth.dto";
 import { AppError }   from "../../core/errors/app.error";
 import { JwtPayload } from "../../core/interfaces/jwt-payload.interface";
 
@@ -362,5 +365,68 @@ export class AuthService {
     }
 
     return user.toSafeObject();
+  }
+
+  async forgotPassword(input: ForgotPasswordInput) {
+    const user = await UserModel.findOne({
+      email: input.email.toLowerCase(),
+      isDeleted: false,
+    });
+
+    if (!user) {
+      return { message: "If an account with that email exists, a reset link has been sent." };
+    }
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+    user.resetPasswordToken = hashedToken;
+    user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+
+    const resetUrl = `${env.frontendUrl}/reset-password?token=${rawToken}`;
+    await emailService.sendEmail(
+      user.email,
+      `${user.firstName} ${user.lastName}`,
+      "Reset your HRMs password",
+      `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2>Reset your password</h2>
+          <p>Click the button below to reset your password. This link expires in 15 minutes.</p>
+          <a href="${resetUrl}"
+             style="display: inline-block; padding: 12px 24px; background: #2886CE; color: white; text-decoration: none; border-radius: 4px;">
+            Reset Password
+          </a>
+          <p style="margin-top: 24px; color: #666; font-size: 12px;">
+            If you didn't request this, you can safely ignore this email.
+          </p>
+        </div>
+      `
+    );
+
+    return { message: "If an account with that email exists, a reset link has been sent." };
+  }
+
+  async resetPassword(input: ResetPasswordInput) {
+    const hashedToken = crypto.createHash("sha256").update(input.token).digest("hex");
+
+    const user = await UserModel.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: new Date() },
+      isDeleted: false,
+    });
+
+    if (!user) {
+      throw new AppError("Invalid or expired reset token", 400);
+    }
+
+    const passwordHash = await bcrypt.hash(input.password, BCRYPT_SALT_ROUNDS);
+
+    user.passwordHash = passwordHash;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    return { message: "Password reset successful. You can now login with your new password." };
   }
 }

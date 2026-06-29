@@ -28,9 +28,7 @@ export const validateBody = (schema: ZodSchema) => {
   };
 };
 
-
-
-// ─── Validate query params ────────────────────────────────────────────────────
+//Validate query params
 // Usage: router.get("/", validateQuery(ListEmployeeQuery), controller)
 export const validateQuery = (schema: ZodSchema) => {
   return (
@@ -54,7 +52,7 @@ export const validateQuery = (schema: ZodSchema) => {
   };
 };
 
-// ─── Validate route params ────────────────────────────────────────────────────
+//Validate route params
 // Usage: router.get("/:id", validateParams(IdParamDto), controller)
 export const validateParams = (schema: ZodSchema) => {
   return (

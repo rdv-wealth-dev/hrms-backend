@@ -7,6 +7,8 @@ import {
   RegisterDto,
   LoginDto,
   RefreshTokenDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
 } from "./auth.dto";
 
 const router     = Router();
@@ -34,6 +36,20 @@ router.post(
   "/refresh",
   validateBody(RefreshTokenDto),
   controller.refresh.bind(controller)
+);
+
+// POST /api/v1/auth/forgot-password
+router.post(
+  "/forgot-password",
+  validateBody(ForgotPasswordDto),
+  controller.forgotPassword.bind(controller)
+);
+
+// POST /api/v1/auth/reset-password
+router.post(
+  "/reset-password",
+  validateBody(ResetPasswordDto),
+  controller.resetPassword.bind(controller)
 );
 
 //Protected routes — auth required

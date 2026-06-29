@@ -2,7 +2,7 @@ import express, { Application } from "express";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import { env } from "../../config/env";
+
 
 // Auth rate limiter — exported separately
 // Applied directly on auth routes: router.post("/login", authLimiter, controller)
@@ -25,24 +25,8 @@ export function applySecurityMiddleware(app: Application): void {
   // Helmet — security headers
   app.use(helmet());
 
-  // CORS — allowlist only
-  app.use(
-    cors({
-      origin: (origin, callback) => {
-        const allowedOrigins = env.allowedOrigins
-
-        if (!origin || allowedOrigins.includes(origin)) {
-          callback(null, true);
-        } else {
-          callback(new Error("Not allowed by CORS"));
-        }
-      },
-      credentials:    true,
-      methods:        ["GET", "POST", "PUT", "PATCH", "DELETE"],
-      allowedHeaders: ["Content-Type", "Authorization", "x-request-id"],
-      exposedHeaders: ["x-request-id"],
-    })
-  );
+  // CORS — allow all origins (dev mode)
+  app.use(cors());
 
   // Body parser — size limits prevent LPDOS attacks
   app.use(express.json({ limit: "10kb" }));

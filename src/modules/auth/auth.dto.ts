@@ -55,3 +55,14 @@ export const ChangePasswordDto = z.object({
 );
 
 export type ChangePasswordInput = z.infer<typeof ChangePasswordDto>;
+
+export const ForgotPasswordDto = z.object({
+  email: emailSchema,
+});
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordDto>;
+
+export const ResetPasswordDto = z.object({
+  token: z.string().min(1, "Token is required"),
+  password: passwordSchema,
+});
+export type ResetPasswordInput = z.infer<typeof ResetPasswordDto>;

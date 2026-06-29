@@ -8,10 +8,11 @@ export const env = {
     connectionStringName : process.env.MONGO_DB_NAME || "hrms_dev",
     jwtSecret : process.env.JWT_SECRET || "",
     jwtRefreshSecret : process.env.JWT_REFRESH_SECRET || "",
-    allowedOrigins:
-    process.env.ALLOWED_ORIGINS?.split(",") ?? [
-      "http://localhost:3000",
-    ],
+    zeptomailApiKey : process.env.ZEPTOMAIL_API_KEY || "",
+    zeptomailFromEmail : process.env.ZEPTOMAIL_FROM_EMAIL || "hrms@redvisiontech.com",
+    zeptomailFromName : process.env.ZEPTOMAIL_FROM_NAME || "HRMs",
+    frontendUrl : process.env.FRONTEND_URL || "http://localhost:3000"
+
 }
 
 // Validation below 
