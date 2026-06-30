@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { AuthService }          from "./auth.service";
+import { AuthService } from "./auth.service";
 import { buildSuccessResponse } from "../../core/database/base.schema";
-import { AppError }             from "../../core/errors/app.error";
+import { AppError } from "../../core/errors/app.error";
 
 const authService = new AuthService();
 
