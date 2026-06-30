@@ -14,13 +14,13 @@ import crypto from "crypto";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
 import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput } from "./auth.dto";
-import { AppError }   from "../../core/errors/app.error";
+import { AppError, InvalidCredentialsError, AccountInactiveError, RefreshInvalidError, } from "../../core/errors/app.error";
 import { JwtPayload } from "../../core/interfaces/jwt-payload.interface";
 
 // CONSTANTS
 
 const BCRYPT_SALT_ROUNDS   = 12;
-const ACCESS_TOKEN_EXPIRY  = "15m";
+const ACCESS_TOKEN_EXPIRY  = "1d";
 const REFRESH_TOKEN_EXPIRY = "7d";
 
 // HELPERS
@@ -194,7 +194,7 @@ export class AuthService {
     // 12. Return response
     return {
       accessToken,
-      refreshToken,
+      // refreshToken,
       user: {
         id:           superAdmin._id,
         email:        superAdmin.email,
@@ -281,7 +281,7 @@ export class AuthService {
     // 9. Return response
     return {
       accessToken,
-      refreshToken,
+      // refreshToken,
       user: {
         id:           user._id,
         email:        user.email,

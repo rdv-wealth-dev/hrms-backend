@@ -1,5 +1,5 @@
 import { PermissionModel } from "./permission.model";
-import { logger }          from "../../config/logger";
+import { logger } from "../../config/logger";
 
 
 // ALL PERMISSIONS IN THE SYSTEM
