@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { ZodSchema, ZodError } from "zod";
-import { AppError } from "../errors/app.error";
+import { ValidationFailedError } from "../errors/app.error";
 
 // Validate request body
 // Usage: router.post("/", validateBody(CreateEmployeeDto), controller)
@@ -20,7 +20,7 @@ export const validateBody = (schema: ZodSchema) => {
         const errors = error.issues.map(
           (issue) => `${issue.path.join(".")}: ${issue.message}`
         );
-        next(new AppError("Validation failed", 400, errors));
+        next(ValidationFailedError("Validation failed", errors));
         return;
       }
       next(error);
@@ -44,7 +44,7 @@ export const validateQuery = (schema: ZodSchema) => {
         const errors = error.issues.map(
           (issue) => `${issue.path.join(".")}: ${issue.message}`
         );
-        next(new AppError("Invalid query parameters", 400, errors));
+        next(ValidationFailedError("Invalid query parameters", errors));
         return;
       }
       next(error);
@@ -68,7 +68,7 @@ export const validateParams = (schema: ZodSchema) => {
         const errors = error.issues.map(
           (issue) => `${issue.path.join(".")}: ${issue.message}`
         );
-        next(new AppError("Invalid route parameters", 400, errors));
+        next(ValidationFailedError("Invalid route parameters", errors));
         return;
       }
       next(error);
