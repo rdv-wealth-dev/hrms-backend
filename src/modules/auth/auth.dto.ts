@@ -20,9 +20,9 @@ export const RegisterDto = z.object({
   password:  passwordSchema,
   phone:     phoneSchema.optional(),
 
-  // Locale
-  countryCode: countryCodeSchema.optional().default("IN"),
-  timezone:    z.string().optional().default("Asia/Kolkata"),
+  // Locale — detected from browser and sent by frontend
+  countryCode: countryCodeSchema,
+  timezone:    z.string().min(1, "Timezone is required"),
 });
 
 export type RegisterInput = z.infer<typeof RegisterDto>;

@@ -83,8 +83,8 @@ export class AuthService {
       slug,
       industry:    input.industry,
       locale: {
-        countryCode:        input.countryCode ?? "IN",
-        timezone:           input.timezone    ?? "Asia/Kolkata",
+        countryCode:        input.countryCode,
+        timezone:           input.timezone,
         currencyCode:       "INR",
         dateFormat:         "DD/MM/YYYY",
         timeFormat:         "12h",
@@ -116,7 +116,7 @@ export class AuthService {
       },
     });
 
-    const tenantId        = organization._id.toString();
+    const tenantId  = organization._id.toString();
     const tenantObjectId  = new mongoose.Types.ObjectId(tenantId);
 
     // 4. Create Head Office branch
@@ -128,10 +128,10 @@ export class AuthService {
       isHeadOffice: true,
       isActive:     true,
       address: {
-        countryCode: input.countryCode ?? "IN",
+        countryCode: input.countryCode,
       },
       workPolicy: {
-        timezone:           input.timezone ?? "Asia/Kolkata",
+        timezone:           input.timezone,
         weeklyOffDays:      ["Saturday", "Sunday"],
         workingHoursPerDay: 8,
       },
