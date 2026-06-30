@@ -13,7 +13,7 @@ import { seedDefaultRoles } from "../role/role.seed";
 import crypto from "crypto";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
-import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput } from "./auth.dto";
+import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput, VerifyEmailInput } from "./auth.dto";
 import { AppError, InvalidCredentialsError, AccountInactiveError, RefreshInvalidError, } from "../../core/errors/app.error";
 import { JwtPayload } from "../../core/interfaces/jwt-payload.interface";
 
@@ -172,49 +172,43 @@ export class AuthService {
       permissions:     [],
     }).save();
 
-    // 9. Build JWT payload
-    const jwtPayload = {
-      tenantId:    tenantId,
-      userId:      superAdmin._id.toString(),
-      role:        "SUPER_ADMIN",
-      branchIds:   superAdmin.branchIds.map((b: any) => b.toString()),
-      permissions: superAdminPermissions,
-    };
+    // 9. Generate email verification token
+    const rawVerificationToken = crypto.randomBytes(32).toString("hex");
+    const hashedVerificationToken = crypto.createHash("sha256").update(rawVerificationToken).digest("hex");
 
-    // 10. Sign tokens
-    const accessToken  = signAccessToken(jwtPayload);
-    const refreshToken = signRefreshToken(
-      superAdmin._id.toString(),
-      tenantId
+    superAdmin.emailVerificationToken = hashedVerificationToken;
+    superAdmin.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    await superAdmin.save();
+
+    // 10. Send verification email
+    const verificationUrl = `${env.frontendUrl}/verify-email?token=${rawVerificationToken}`;
+
+    await emailService.sendEmail(
+      superAdmin.email,
+      `${superAdmin.firstName} ${superAdmin.lastName}`,
+      "Verify your HRMs email address",
+      `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2>Welcome to HRMs!</h2>
+          <p>Click the button below to verify your email address and activate your account. This link expires in 24 hours.</p>
+          <a href="${verificationUrl}"
+             style="display: inline-block; padding: 12px 24px; background: #2886CE; color: white; text-decoration: none; border-radius: 4px;">
+            Verify Email
+          </a>
+          <p style="margin-top: 24px; color: #666; font-size: 12px;">
+            If you didn't create an account, you can safely ignore this email.
+          </p>
+        </div>
+      `
     );
 
-    // 11. Update last login
-    await this.userRepo.updateLastLogin(superAdmin._id.toString());
-
-    // 12. Return response
+    // 11. Return response
     return {
-      accessToken,
-      // refreshToken,
-      user: {
-        id:           superAdmin._id,
-        email:        superAdmin.email,
-        firstName:    superAdmin.firstName,
-        lastName:     superAdmin.lastName,
-        role:         superAdmin.role,
-        isSuperAdmin: superAdmin.isSuperAdmin,
-        branchIds:    superAdmin.branchIds,
-      },
+      message: "Registration successful! Please check your email to verify your account before logging in.",
       organization: {
         id:           organization._id,
         companyName:  organization.companyName,
         slug:         organization.slug,
-        subscription: organization.subscription,
-        modules:      organization.modules,
-      },
-      branch: {
-        id:   headOffice._id,
-        name: headOffice.name,
-        code: headOffice.code,
       },
     };
   }
@@ -236,7 +230,15 @@ export class AuthService {
       );
     }
 
-    // 3. Compare password
+    // 3. Check email is verified
+    if (!user.isEmailVerified) {
+      throw new AppError(
+        "Please verify your email address before logging in. Check your inbox for the verification link.",
+        403
+      );
+    }
+
+    // 4. Compare password
     const isPasswordValid = await bcrypt.compare(
       input.password,
       user.passwordHash
@@ -245,7 +247,7 @@ export class AuthService {
       throw new AppError("Invalid email or password", 401);
     }
 
-    // 4. Load permissions dynamically from roles collection
+    // 5. Load permissions dynamically from roles collection
     const role = await RoleModel.findOne({
       tenantId:  new mongoose.Types.ObjectId(user.tenantId.toString()),
       slug:      user.role,
@@ -255,7 +257,7 @@ export class AuthService {
 
     const permissions = role?.permissions ?? [];
 
-    // 5. Build JWT payload
+    // 6. Build JWT payload
     const jwtPayload = {
       tenantId:    user.tenantId.toString(),
       userId:      user._id.toString(),
@@ -264,21 +266,21 @@ export class AuthService {
       permissions,
     };
 
-    // 6. Sign tokens
+    // 7. Sign tokens
     const accessToken  = signAccessToken(jwtPayload);
     const refreshToken = signRefreshToken(
       user._id.toString(),
       user.tenantId.toString()
     );
 
-    // 7. Fetch organization and head office branch
+    // 8. Fetch organization and head office branch
     const org = await this.orgRepo.findById(user.tenantId.toString());
     const headOffice = await this.branchRepo.findHeadOffice(user.tenantId.toString());
 
-    // 8. Update last login
+    // 9. Update last login
     await this.userRepo.updateLastLogin(user._id.toString());
 
-    // 9. Return response
+    // 10. Return response
     return {
       accessToken,
       // refreshToken,
@@ -379,6 +381,32 @@ export class AuthService {
     }
 
     return user.toSafeObject();
+  }
+
+  // Verify email
+  async verifyEmail(input: VerifyEmailInput) {
+    const hashedToken = crypto.createHash("sha256").update(input.token).digest("hex");
+
+    const user = await UserModel.findOne({
+      emailVerificationToken: hashedToken,
+      emailVerificationExpires: { $gt: new Date() },
+      isDeleted: false,
+    });
+
+    if (!user) {
+      throw new AppError("Invalid or expired verification token", 400);
+    }
+
+    if (user.isEmailVerified) {
+      return { message: "Email is already verified. You can log in now." };
+    }
+
+    user.isEmailVerified = true;
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save();
+
+    return { message: "Email verified successfully! You can now log in to your account." };
   }
 
   async forgotPassword(input: ForgotPasswordInput) {

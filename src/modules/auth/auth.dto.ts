@@ -66,3 +66,8 @@ export const ResetPasswordDto = z.object({
   password: passwordSchema,
 });
 export type ResetPasswordInput = z.infer<typeof ResetPasswordDto>;
+
+export const VerifyEmailDto = z.object({
+  token: z.string().min(1, "Verification token is required"),
+});
+export type VerifyEmailInput = z.infer<typeof VerifyEmailDto>;

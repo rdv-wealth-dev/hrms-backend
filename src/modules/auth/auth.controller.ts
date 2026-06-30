@@ -39,6 +39,22 @@ export class AuthController {
     }
   }
 
+  // POST /api/v1/auth/verify-email
+  async verifyEmail(
+    req:  Request,
+    res:  Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await authService.verifyEmail(req.body);
+      res.status(200).json(
+        buildSuccessResponse(result, "Email verification processed")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
   //POST /api/v1/auth/refresh
   async refresh(
     req:  Request,

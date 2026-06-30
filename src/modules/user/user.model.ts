@@ -20,6 +20,8 @@ export interface UserDocument extends OrgLevelDocument {
   permissions:     string[];
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
+  emailVerificationToken?: string;
+  emailVerificationExpires?: Date;
 
   toSafeObject(): {
     id:              unknown;
@@ -116,6 +118,12 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
     type: String,
   },
   resetPasswordExpires: {
+    type: Date,
+  },
+  emailVerificationToken: {
+    type: String,
+  },
+  emailVerificationExpires: {
     type: Date,
   },
 });

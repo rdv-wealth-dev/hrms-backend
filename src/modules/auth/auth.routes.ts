@@ -9,6 +9,7 @@ import {
   RefreshTokenDto,
   ForgotPasswordDto,
   ResetPasswordDto,
+  VerifyEmailDto,
 } from "./auth.dto";
 
 const router     = Router();
@@ -29,6 +30,13 @@ router.post(
   authLimiter,                        // max 10 attempts per 15 min
   validateBody(LoginDto),
   controller.login.bind(controller)
+);
+
+// POST /api/v1/auth/verify-email
+router.post(
+  "/verify-email",
+  validateBody(VerifyEmailDto),
+  controller.verifyEmail.bind(controller)
 );
 
 // POST /api/v1/auth/refresh
