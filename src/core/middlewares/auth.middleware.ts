@@ -1,57 +1,59 @@
-import { Request,Response,NextFunction } from "express";
-import jwt from "jsonwebtoken"
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 import { JwtPayload } from "../interfaces/jwt-payload.interface";
-import { RequestContext } from "../interfaces/request-context.interface";
-import { AppError } from "../errors/app.error";
-import { env } from "../../config/env";
+import { NoTokenError, TokenMalformedError, } from "../errors/app.error";
 
 declare global {
   namespace Express {
     interface Request {
-      context: RequestContext;
+      context:   import("../interfaces/request-context.interface").RequestContext;
       requestId: string;
     }
   }
 }
 
-// Verify jwt + inject req.context
 export const authenticate = async (
-    req : Request,
-    _res : Response,
-    next : NextFunction
+  req:  Request,
+  _res: Response,
+  next: NextFunction
 ): Promise<void> => {
-    try{
-        // extract token from Authentication header
-        const authHeader = req.headers.authorization;
+  try {
+    const authHeader = req.headers.authorization;
 
-        if(!authHeader || !authHeader.startsWith("Bearer")){
-            throw new AppError("No token provided", 401);
-        }
-        const token = authHeader.split(" ")[1];
-
-        if(!token){
-            throw new AppError("Invalid token format..!!",  401);
-        }
-
-        // verify token
-        const decoded = jwt.verify(
-            token,
-            env.jwtSecret as string,
-            
-
-        ) as JwtPayload;
-
-        // inject context - available in all controller + service
-        req.context = {
-            tenantId : decoded.tenantId,
-            userId : decoded.userId,
-            role : decoded.role,
-            branchIds : decoded.branchIds,
-            permissions : decoded.permissions,
-            requestId : req.requestId
-        };
-        next();
-    } catch(error){
-        next(error)
+    // No header at all
+    if (!authHeader) {
+      throw NoTokenError();
     }
-}
+
+    // Header present but not "Bearer <token>" shape
+    if (!authHeader.startsWith("Bearer ")) {
+      throw TokenMalformedError("Authorization header must use Bearer scheme");
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    if (!token) {
+      throw TokenMalformedError("Token missing after Bearer");
+    }
+
+    // jwt.verify throws JsonWebTokenError / TokenExpiredError —
+    // both are caught centrally in error.middleware.ts with correct errorCode
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET as string
+    ) as JwtPayload;
+
+    req.context = {
+      tenantId:    decoded.tenantId,
+      userId:      decoded.userId,
+      role:        decoded.role,
+      branchIds:   decoded.branchIds,
+      permissions: decoded.permissions,
+      requestId:   req.requestId,
+    };
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
