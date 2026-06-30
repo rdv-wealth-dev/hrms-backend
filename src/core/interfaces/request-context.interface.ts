@@ -3,6 +3,5 @@ export interface RequestContext {
   userId: string;
   role: string;
   branchIds: string[];
-  permissions: string[];
   requestId?: string;
 }

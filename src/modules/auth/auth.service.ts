@@ -7,7 +7,6 @@ import { UserRepository } from "../user/user.repository";
 import { OrganizationRepository } from "../organization/organization.repository";
 import { BranchRepository } from "../branch/branch.repository";
 import { UserModel } from "../user/user.model";
-import { RoleModel } from "../role/role.model";
 import { seedDefaultRoles } from "../role/role.seed";
 
 import crypto from "crypto";
@@ -145,18 +144,11 @@ export class AuthService {
     );
 
     // 6. Seed default roles for this tenant
-    const roleMap = await seedDefaultRoles(tenantId, "system");
+    // (Returns a map of slug -> roleId — no longer used for JWT, kept for
+    // possible future use such as assigning roleId references elsewhere)
+    await seedDefaultRoles(tenantId, "system");
 
-    // 7. Get SUPER_ADMIN permissions from seeded role
-    const superAdminRole = await RoleModel.findOne({
-      tenantId:  tenantObjectId,   // ← ObjectId not string
-      slug:      "SUPER_ADMIN",
-      isDeleted: false,
-    }).select("permissions");
-
-    const superAdminPermissions = superAdminRole?.permissions ?? [];
-
-    // 8. Create super admin user
+    // 7. Create super admin user
     const superAdmin = await new UserModel({
       tenantId:        tenantObjectId,
       email:           input.email.toLowerCase(),
@@ -172,7 +164,7 @@ export class AuthService {
       permissions:     [],
     }).save();
 
-    // 9. Generate email verification token
+    // 8. Generate email verification token
     const rawVerificationToken = crypto.randomBytes(32).toString("hex");
     const hashedVerificationToken = crypto.createHash("sha256").update(rawVerificationToken).digest("hex");
 
@@ -180,7 +172,7 @@ export class AuthService {
     superAdmin.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     await superAdmin.save();
 
-    // 10. Send verification email
+    // 9. Send verification email
     const verificationUrl = `${env.frontendUrl}/verify-email?token=${rawVerificationToken}`;
 
     await emailService.sendEmail(
@@ -202,7 +194,7 @@ export class AuthService {
       `
     );
 
-    // 11. Return response
+    // 10. Return response
     return {
       message: "Registration successful! Please check your email to verify your account before logging in.",
       organization: {
@@ -247,40 +239,33 @@ export class AuthService {
       throw new AppError("Invalid email or password", 401);
     }
 
-    // 5. Load permissions dynamically from roles collection
-    const role = await RoleModel.findOne({
-      tenantId:  new mongoose.Types.ObjectId(user.tenantId.toString()),
-      slug:      user.role,
-      isActive:  true,
-      isDeleted: false,
-    }).select("permissions");
-
-    const permissions = role?.permissions ?? [];
-
-    // 6. Build JWT payload
+    // 5. Build JWT payload — role slug only, no permissions array.
+    // Permission checks are resolved fresh per-request in rbac.middleware.ts
+    // by reading the roles collection directly. This keeps the token small
+    // and means role/permission edits take effect immediately instead of
+    // waiting for the token to expire.
     const jwtPayload = {
-      tenantId:    user.tenantId.toString(),
-      userId:      user._id.toString(),
-      role:        user.role,
-      branchIds:   user.branchIds.map((b: any) => b.toString()),
-      permissions,
+      tenantId:  user.tenantId.toString(),
+      userId:    user._id.toString(),
+      role:      user.role,
+      branchIds: user.branchIds.map((b: any) => b.toString()),
     };
 
-    // 7. Sign tokens
+    // 6. Sign tokens
     const accessToken  = signAccessToken(jwtPayload);
     const refreshToken = signRefreshToken(
       user._id.toString(),
       user.tenantId.toString()
     );
 
-    // 8. Fetch organization and head office branch
+    // 7. Fetch organization and head office branch
     const org = await this.orgRepo.findById(user.tenantId.toString());
     const headOffice = await this.branchRepo.findHeadOffice(user.tenantId.toString());
 
-    // 9. Update last login
+    // 8. Update last login
     await this.userRepo.updateLastLogin(user._id.toString());
 
-    // 10. Return response
+    // 9. Return response
     return {
       accessToken,
       // refreshToken,
@@ -330,26 +315,15 @@ export class AuthService {
         throw new AppError("User not found or deactivated", 401);
       }
 
-      // 3. Load permissions dynamically
-      const role = await RoleModel.findOne({
-        tenantId:  new mongoose.Types.ObjectId(user.tenantId.toString()),
-        slug:      user.role,
-        isActive:  true,
-        isDeleted: false,
-      }).select("permissions");
-
-      const permissions = role?.permissions ?? [];
-
-      // 4. Build JWT payload
+      // 3. Build JWT payload — same minimal shape as login()
       const jwtPayload = {
-        tenantId:    user.tenantId.toString(),
-        userId:      user._id.toString(),
-        role:        user.role,
-        branchIds:   user.branchIds.map((b: any) => b.toString()),
-        permissions,
+        tenantId:  user.tenantId.toString(),
+        userId:    user._id.toString(),
+        role:      user.role,
+        branchIds: user.branchIds.map((b: any) => b.toString()),
       };
 
-      // 5. Issue new tokens
+      // 4. Issue new tokens
       const newAccessToken  = signAccessToken(jwtPayload);
       const newRefreshToken = signRefreshToken(
         user._id.toString(),

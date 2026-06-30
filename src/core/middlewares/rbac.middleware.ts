@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { AppError } from "../errors/app.error";
+import mongoose from "mongoose";
+import { AppError, ForbiddenPermissionError } from "../errors/app.error";
 import { RequestContext } from "../interfaces/request-context.interface";
+import { RoleModel } from "../../modules/role/role.model";
 
 declare global {
   namespace Express {
@@ -12,34 +14,44 @@ declare global {
 
 // Check permission
 // Usage: router.get("/", authenticate, checkPermission("employee.read"), controller)
-
 export const checkPermission = (requiredPermission: string) => {
-    return (
-        req : Request,
-        _res : Response,
-        next : NextFunction
-    ): void => {
-        const { permissions, role } = req.context!;
+  return async (
+    req:  Request,
+    _res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const { role, tenantId } = req.context;
 
-        if(role === "SUPER_ADMIN"){
-            next()
-            return;
-        }
-
-        if(!permissions.includes(requiredPermission)){
-            next(
-                new AppError(
-                    `Access Denied. Required permission: ${requiredPermission}`,
-                    403
-                )
-            );
-            return;
-        }
+      if (role === "SUPER_ADMIN") {
         next();
+        return;
+      }
+
+      const roleDoc = await RoleModel.findOne({
+        tenantId:  new mongoose.Types.ObjectId(tenantId),
+        slug:      role,
+        isActive:  true,
+        isDeleted: false,
+      }).select("permissions");
+
+      const permissions = roleDoc?.permissions ?? [];
+
+      if (!permissions.includes(requiredPermission)) {
+        next(ForbiddenPermissionError(
+          `Access denied. Required permission: ${requiredPermission}`
+        ));
+        return;
+      }
+
+      next();
+    } catch (error) {
+      next(error);
     }
+  };
 };
 
-//Check role
+// Check role
 // Usage: router.post("/", authenticate, checkRole("HR_ADMIN"), controller)
 export const checkRole = (...allowedRoles: string[]) => {
   return (
@@ -47,7 +59,7 @@ export const checkRole = (...allowedRoles: string[]) => {
     _res: Response,
     next: NextFunction
   ): void => {
-    const { role } = req.context!;
+    const { role } = req.context;
 
     if (!allowedRoles.includes(role)) {
       next(
@@ -70,7 +82,7 @@ export const checkBranchAccess = (
   _res: Response,
   next: NextFunction
 ): void => {
-  const { branchIds, role } = req.context!;
+  const { branchIds, role } = req.context;
 
   // Super admin has access to all branches
   if (role === "SUPER_ADMIN" || !branchIds || branchIds.length === 0) {
@@ -79,17 +91,19 @@ export const checkBranchAccess = (
   }
 
   // Get branchId from params or body
- const requestedBranchId = String(
-  req.params.branchId ?? req.body.branchId ?? ""
-);
+  const requestedBranchId = String(
+    req.params.branchId ?? req.body.branchId ?? ""
+  );
 
-if (!requestedBranchId) {
+  if (!requestedBranchId) {
+    next();
+    return;
+  }
+
+  if (!branchIds.includes(requestedBranchId)) {
+    next(new AppError("Access denied to this branch", 403));
+    return;
+  }
+
   next();
-  return;
-}
-
-if (!branchIds.includes(requestedBranchId)) {
-  next(new AppError("Access denied to this branch", 403));
-  return;
-}
-}
+};

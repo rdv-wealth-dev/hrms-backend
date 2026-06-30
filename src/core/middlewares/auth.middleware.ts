@@ -48,7 +48,6 @@ export const authenticate = async (
       userId:      decoded.userId,
       role:        decoded.role,
       branchIds:   decoded.branchIds,
-      permissions: decoded.permissions,
       requestId:   req.requestId,
     };
 
