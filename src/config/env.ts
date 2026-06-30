@@ -11,7 +11,7 @@ export const env = {
     zeptomailApiKey : process.env.ZEPTOMAIL_API_KEY || "",
     zeptomailFromEmail : process.env.ZEPTOMAIL_FROM_EMAIL || "hrms@redvisiontech.com",
     zeptomailFromName : process.env.ZEPTOMAIL_FROM_NAME || "HRMs",
-    frontendUrl : process.env.FRONTEND_URL || "http://localhost:3000"
+    frontendUrl : process.env.FRONTEND_URL || "http://localhost:5173"
 
 }
 
