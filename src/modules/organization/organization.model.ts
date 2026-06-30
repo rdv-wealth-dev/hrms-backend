@@ -152,7 +152,7 @@ const OrganizationSchema = createPlatformSchema<OrganizationDocument>({
     trialEndsAt:  { type: Date },
     renewsAt:     { type: Date },
     maxEmployees: { type: Number, default: 10  },
-    maxBranches:  { type: Number, default: 1   },
+    maxBranches:  { type: Number, default: 2   },
   },
 
   // Embedded module flags — controls which modules are active

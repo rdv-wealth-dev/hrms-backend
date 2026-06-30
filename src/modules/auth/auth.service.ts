@@ -97,7 +97,7 @@ export class AuthService {
         status:       "trial",
         trialEndsAt:  new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         maxEmployees: 10,
-        maxBranches:  1,
+        maxBranches:  2,
       },
       modules: {
         attendance:  true,
