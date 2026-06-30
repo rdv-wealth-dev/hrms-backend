@@ -54,6 +54,22 @@ function signRefreshToken(
     { expiresIn: REFRESH_TOKEN_EXPIRY }
   );
 }
+const COUNTRY_CURRENCY_MAP: Record<string, string> = {
+  US: "USD", CA: "CAD", GB: "GBP", EU: "EUR",
+  IN: "INR", AE: "AED", SA: "SAR", QA: "QAR",
+  AU: "AUD", SG: "SGD", MY: "MYR", TH: "THB",
+  JP: "JPY", CN: "CNY", KR: "KRW", HK: "HKD",
+  DE: "EUR", FR: "EUR", IT: "EUR", ES: "EUR",
+  NL: "EUR", BE: "EUR", PT: "EUR", GR: "EUR",
+  IE: "EUR", AT: "EUR", FI: "EUR", SE: "SEK",
+  NO: "NOK", DK: "DKK", CH: "CHF", NZ: "NZD",
+  ZA: "ZAR", BR: "BRL", MX: "MXN", RU: "RUB",
+};
+
+function getCurrencyFromCountry(countryCode: string): string {
+  return COUNTRY_CURRENCY_MAP[countryCode] || "USD";
+}
+
 // AUTH SERVICE
 
 export class AuthService {
@@ -85,7 +101,7 @@ export class AuthService {
       locale: {
         countryCode:        input.countryCode,
         timezone:           input.timezone,
-        currencyCode:       "INR",
+        currencyCode:       getCurrencyFromCountry(input.countryCode),
         dateFormat:         "DD/MM/YYYY",
         timeFormat:         "12h",
         fiscalYearStart:    "April",
