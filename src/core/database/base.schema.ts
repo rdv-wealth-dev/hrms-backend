@@ -207,8 +207,15 @@ export function buildSuccessResponse<T>(
 }
 
 export function buildErrorResponse(
-  message: string,
-  errors:  string[] = []
+  message:   string,
+  errors:    string[] = [],
+  errorCode: string   = "SYSTEM_INTERNAL_ERROR"
 ) {
-  return { succeeded: false, message, errors, data: null };
+  return {
+    succeeded: false,
+    message,
+    errorCode,
+    errors,
+    data:      null,
+  };
 }
