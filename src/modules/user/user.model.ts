@@ -17,7 +17,7 @@ export interface UserDocument extends OrgLevelDocument {
 
   // Deprecated — permissions now loaded dynamically from roles collection
   // Kept for backward compatibility only
-  permissions:     string[];
+  // permissions:     string[];
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   emailVerificationToken?: string;
@@ -110,10 +110,10 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
   },
 
   // Deprecated — loaded from roles collection dynamically on login
-  permissions: {
-    type:    [String],
-    default: [],
-  },
+  // permissions: {
+  //   type:    [String],
+  //   default: [],
+  // },
   resetPasswordToken: {
     type: String,
   },

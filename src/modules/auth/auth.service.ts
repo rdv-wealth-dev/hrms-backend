@@ -177,7 +177,7 @@ export class AuthService {
       isActive:        true,
       isEmailVerified: false,
       branchIds:       [headOffice._id],
-      permissions:     [],
+      // permissions:     [],
     }).save();
 
     // 8. Generate email verification token
