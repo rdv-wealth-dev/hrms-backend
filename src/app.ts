@@ -7,6 +7,7 @@ import organizationRoutes from "./modules/organization/organization.routes"
 import branchRoutes from  "./modules/branch/branch.routes"
 import departmentRoutes from "./modules/department/department.routes";
 import designationRoutes from "./modules/designation/designation.routes";
+import employeeRoutes from "./modules/employee/employee.routes";
 
 const app: Application = express();
 
@@ -21,6 +22,7 @@ app.use("/api/v1/organizations", organizationRoutes);
 app.use("/api/v1/branches", branchRoutes);
 app.use("/api/v1/departments",  departmentRoutes);
 app.use("/api/v1/designations", designationRoutes);
+app.use("/api/v1/employees", employeeRoutes);
 
 app.get("/health",(_req: Request, res: Response) => {
   res.status(200).json({
