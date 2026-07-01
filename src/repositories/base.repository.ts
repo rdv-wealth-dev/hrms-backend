@@ -17,14 +17,12 @@ export interface PaginationOptions {
   pageSize:   number;
 }
 
-
 export interface FindOptions<T> {
   sort?:       Record<string, 1 | -1>;
   projection?: ProjectionType<T>;
   populate?:   string | string[];
   baseUrl?:    string;
 }
-
 
 export class BaseRepository<T extends Document> {
   constructor(protected readonly model: Model<T>) {}
