@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { randomUUID } from "crypto";
+import { v4 as uuidv4 } from "uuid";
 
 declare global {
   namespace Express {
@@ -10,16 +10,11 @@ declare global {
 }
 
 export const requestIdMiddleware = (
-  req: Request,
+  req:  Request,
   _res: Response,
   next: NextFunction
 ): void => {
-
-  req.requestId = (req.headers["x-request-id"] as string) ?? randomUUID();
-
-  // Send it back in response headers
-  // So Postman / frontend can trace the request
+  req.requestId = (req.headers["x-request-id"] as string) ?? uuidv4();
   _res.setHeader("x-request-id", req.requestId);
-
   next();
 };
