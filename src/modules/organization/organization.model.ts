@@ -178,7 +178,6 @@ const OrganizationSchema = createPlatformSchema<OrganizationDocument>({
 });
 
 // INDEXES
-OrganizationSchema.index({ slug: 1 }, { unique: true });
 OrganizationSchema.index({ "subscription.status": 1 });
 OrganizationSchema.index({ isActive: 1, isDeleted: 1 });
 OrganizationSchema.index({ gstin: 1 }, { sparse: true });
