@@ -73,7 +73,7 @@ export const DEFAULT_ROLES = [
     description:  "Access to own data only",
     isSystemRole: true,
     permissions: [
-      "employee.read",    "attendance.read",
+     "attendance.read",
       "attendance.create","leave.read",
       "leave.create",     "payroll.read",
     ],
