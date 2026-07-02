@@ -71,3 +71,15 @@ export const VerifyEmailDto = z.object({
   token: z.string().min(1, "Verification token is required"),
 });
 export type VerifyEmailInput = z.infer<typeof VerifyEmailDto>;
+
+// Activate Account
+
+export const ActivateAccountDto = z.object({
+  token : z.string().min(1, "Activation token is required"),
+  password : passwordSchema,
+}).refine(
+  (data) => data.password.length >= 8,
+  {message : "Password must be at least 8 characters long", path : ["password"]}
+);
+
+export type ActivateAccountInput = z.infer<typeof ActivateAccountDto>;
