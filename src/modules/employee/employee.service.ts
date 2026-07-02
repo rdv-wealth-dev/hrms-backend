@@ -12,6 +12,10 @@ import {
 import { AppError } from "../../core/errors/app.error";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
 import { buildPagedResponse } from "../../core/database/base.schema";
+import crypto from "crypto";
+import { UserModel } from "../user/user.model";
+import { emailService } from "../../service/email.service";
+import { env } from "../../config/env";
 
 // Helper — mask account number showing only last 4 digits
 function maskAccountNumber(acc: string): string {
@@ -35,6 +39,18 @@ export class EmployeeService {
         409
       );
     }
+     //Check if a user account already exists with this email in this tenant
+     const existingUser = await UserModel.findOne({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      email : input.email.toLowerCase(),
+      isDeleted: false,
+     });
+     if(existingUser){
+      throw new AppError(
+        `A user account with email "${input.email}" already exists`,
+        409
+      );
+     }
 
     // Generate atomic employee code
     const employeeCode = await getNextEmployeeCode(context.tenantId);
@@ -72,7 +88,106 @@ export class EmployeeService {
       isActive:         true,
     });
 
-    return employee;
+    // Generate account activation token
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto
+    .createHash("sha256")
+    .update(rawToken)
+    .digest("hex");
+
+    // Create user account for this employee
+    // Account will be inactive until employee activates it via email link
+    const userAccount = new UserModel({
+      tenantId : new mongoose.Types.ObjectId(context.tenantId),
+      email : input.email.toLowerCase(),
+      passwordHash : null,
+      firstName : input.firstName,
+      lastName : input.lastName,
+      role : "EMPLOYEE",
+      isSuperAdmin : false,
+      isActive : false,
+      isEmailVerified : false,
+      branchIds : [new mongoose.Types.ObjectId(input.branchId)],
+      employeeId : employee._id,
+      
+
+      accountActivationToken : hashedToken,
+      accountActivationExpires : new Date(
+        Date.now() + 72 * 60 * 60 * 1000 // 72 hours
+      )
+    });
+
+      await userAccount.save();
+
+    // send welcome email with activation link
+    const activationUrl = 
+    `${env.frontendUrl}/activate-account?token=${rawToken}`;
+
+    await emailService.sendEmail(
+    input.email,
+    `${input.firstName} ${input.lastName}`,
+    `Welcome to ${context.tenantId} HRMS — Activate your account`,
+    `
+      <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
+        <h2>Welcome to the team, ${input.firstName}!</h2>
+
+        <p>Your HRMS account has been created by your HR team.</p>
+
+        <table style="background:#f5f5f5; padding:16px; border-radius:8px; width:100%;">
+          <tr>
+            <td><strong>Employee ID</strong></td>
+            <td>${employeeCode}</td>
+          </tr>
+          <tr>
+            <td><strong>Email</strong></td>
+            <td>${input.email}</td>
+          </tr>
+          <tr>
+            <td><strong>Joining Date</strong></td>
+            <td>${input.joiningDate}</td>
+          </tr>
+        </table>
+
+        <p style="margin-top:24px;">
+          Click the button below to set your password and activate your account.
+          This link expires in <strong>72 hours</strong>.
+        </p>
+
+        <a href="${activationUrl}"
+           style="display:inline-block; padding:12px 28px; background:#2886CE;
+                  color:white; text-decoration:none; border-radius:4px;
+                  font-weight:bold; margin-top:8px;">
+          Activate My Account
+        </a>
+
+        <p style="margin-top:32px; color:#888; font-size:12px;">
+          If you were not expecting this email, please contact your HR team.
+          This link will expire on
+          ${new Date(Date.now() + 72 * 60 * 60 * 1000).toLocaleDateString()}.
+        </p>
+      </div>
+    `
+  );
+
+
+    return {
+    employee: {
+      id:           employee._id,
+      employeeCode: employee.employeeCode,
+      firstName:    employee.firstName,
+      lastName:     employee.lastName,
+      email:        employee.email,
+      status:       employee.status,
+      joiningDate:  employee.joiningDate,
+    },
+    userAccount: {
+      id:        userAccount._id,
+      email:     userAccount.email,
+      role:      userAccount.role,
+      isActive:  userAccount.isActive,
+      message:   "Activation email sent to employee's email address",
+    },
+  };
   }
 
   //List employees
