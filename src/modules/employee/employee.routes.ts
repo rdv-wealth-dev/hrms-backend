@@ -16,6 +16,11 @@ const controller = new EmployeeController();
 
 router.use(authenticate);
 
+router.get(
+  "/me",
+  controller.getMyProfile.bind(controller)
+)
+
 //Core employee CRUD
 router.get(
   "/",
