@@ -53,6 +53,22 @@ export class EmployeeController {
     }
   }
 
+  // GET /api/v1/employees/me
+  async getMyProfile(
+    req : Request,
+    res : Response,
+    next : NextFunction
+  ):Promise<void>{
+    try{
+      const result = await empService.getMyProfile(req.context);
+      res.status(200).json(
+        buildSuccessResponse(result, "Your profile fetched successfully")
+      );
+    }catch (error) {
+      next(error)
+    }
+  }
+
   // PATCH /api/v1/employees/:id
   async update(
     req:  Request<{ id: string }>,
