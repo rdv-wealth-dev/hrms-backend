@@ -40,6 +40,7 @@ export interface UserDocument extends OrgLevelDocument {
     isEmailVerified: boolean;
     branchIds:       mongoose.Types.ObjectId[];
     tenantId:        mongoose.Types.ObjectId;
+    employeeId:      mongoose.Types.ObjectId;
     lastLoginAt?:    Date;
     createdAt:       Date;
   };
@@ -143,10 +144,11 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
 });
 
 // Indexes
-UserSchema.index({ tenantId: 1, email: 1 }, { unique: true });
+UserSchema.index({ tenantId: 1, email: 1 },      { unique: true });
 UserSchema.index({ tenantId: 1, role: 1 });
 UserSchema.index({ tenantId: 1, isActive: 1 });
 UserSchema.index({ tenantId: 1, isDeleted: 1 });
+UserSchema.index({ tenantId: 1, employeeId: 1 });
 
 // Virtual
 UserSchema.virtual("fullName").get(function () {
@@ -169,6 +171,7 @@ UserSchema.methods.toSafeObject = function () {
     isEmailVerified: this.isEmailVerified,
     branchIds:       this.branchIds,
     tenantId:        this.tenantId,
+    employeeId:      this.employeeId,
     lastLoginAt:     this.lastLoginAt,
     createdAt:       this.createdAt,
   };
