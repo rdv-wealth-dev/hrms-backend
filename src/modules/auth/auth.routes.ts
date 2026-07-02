@@ -10,9 +10,10 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   VerifyEmailDto,
+  ActivateAccountDto,
 } from "./auth.dto";
 
-const router     = Router();
+const router = Router();
 const controller = new AuthController();
 
 //Public routes — no auth require
@@ -22,6 +23,13 @@ router.post(
   "/register",
   validateBody(RegisterDto),
   controller.register.bind(controller)
+);
+
+// POST /api/v1/auth/activate-account
+router.post(
+  "/activate-account",
+  validateBody(ActivateAccountDto),
+  controller.activateAccount.bind(controller)
 );
 
 // POST /api/v1/auth/login
