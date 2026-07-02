@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidPhoneNumber } from "libphonenumber-js";
 
 //MongoDB ObjectId
 export const objectIdSchema = z
@@ -29,11 +30,25 @@ export const idParamSchema = z.object({
   id: objectIdSchema,
 });
 
-// Phone number — must include country code; subscriber portion must be 10-15 digits
-// Total digits (without +): 11-18 (1-3 digit country code + 10-15 digit subscriber)
+// Phone number — subscriber portion only (no country code prefix)
 export const phoneSchema = z
   .string()
-  .regex(/^\+?\d{11,18}$/, "Phone must be 11-18 digits including country code");
+  .trim()
+  .min(1, "Phone is required")
+  .regex(/^\d+$/, "Phone must contain only digits");
+
+// Validate phone against country code using libphonenumber-js
+// Requires countryCode when phone is provided
+export function withPhoneValidation<T extends z.ZodObject<any>>(schema: T) {
+  return schema.refine(
+    (data: any) => {
+      if (!data.phone) return true;
+      if (!data.countryCode) return false;
+      return isValidPhoneNumber(data.phone, data.countryCode);
+    },
+    { message: "Invalid phone number for the selected country", path: ["phone"] }
+  );
+}
 
 // Email 
 export const emailSchema = z

@@ -5,10 +5,11 @@ import {
   phoneSchema,
   safeStringSchema,
   countryCodeSchema,
+  withPhoneValidation,
 } from "../../core/validators/common.validator";
 
 // Register DTO
-export const RegisterDto = z.object({
+export const RegisterDto = withPhoneValidation(z.object({
   // Company details
   companyName: safeStringSchema(2, 200),
   industry:    safeStringSchema(2, 100).optional(),
@@ -23,7 +24,7 @@ export const RegisterDto = z.object({
   // Locale — detected from browser and sent by frontend
   countryCode: countryCodeSchema,
   timezone:    z.string().min(1, "Timezone is required"),
-});
+}));
 
 export type RegisterInput = z.infer<typeof RegisterDto>;
 

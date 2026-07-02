@@ -6,15 +6,18 @@ import {
   phoneSchema,
   panSchema,
   dateSchema,
+  countryCodeSchema,
+  withPhoneValidation,
 } from "../../core/validators/common.validator";
 
 //Create Employee
-export const CreateEmployeeDto = z.object({
+export const CreateEmployeeDto = withPhoneValidation(z.object({
   // Identity
   firstName:     safeStringSchema(2, 100),
   lastName:      safeStringSchema(2, 100),
   email:         emailSchema,
   phone:         phoneSchema.optional(),
+  countryCode:   countryCodeSchema,
   dateOfBirth:   dateSchema.optional(),
   gender:        z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   bloodGroup:    z.enum(["A+","A-","B+","B-","O+","O-","AB+","AB-"]).optional(),
@@ -63,15 +66,16 @@ export const CreateEmployeeDto = z.object({
       email:        emailSchema.optional(),
     })
   ).optional().default([]),
-});
+}));
 
 export type CreateEmployeeInput = z.infer<typeof CreateEmployeeDto>;
 
 //Update Employee
-export const UpdateEmployeeDto = z.object({
+export const UpdateEmployeeDto = withPhoneValidation(z.object({
   firstName:        safeStringSchema(2, 100).optional(),
   lastName:         safeStringSchema(2, 100).optional(),
   phone:            phoneSchema.optional(),
+  countryCode:      countryCodeSchema.optional(),
   dateOfBirth:      dateSchema.optional(),
   gender:           z.enum(["MALE","FEMALE","OTHER"]).optional(),
   bloodGroup:       z.enum(["A+","A-","B+","B-","O+","O-","AB+","AB-"]).optional(),
@@ -111,7 +115,7 @@ export const UpdateEmployeeDto = z.object({
     })
   ).optional(),
   avatarUrl: z.string().url().optional(),
-});
+}));
 
 export type UpdateEmployeeInput = z.infer<typeof UpdateEmployeeDto>;
 
