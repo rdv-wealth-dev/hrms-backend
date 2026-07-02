@@ -12,7 +12,7 @@ import { seedDefaultRoles } from "../role/role.seed";
 import crypto from "crypto";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
-import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput, VerifyEmailInput } from "./auth.dto";
+import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput, VerifyEmailInput, ActivateAccountInput } from "./auth.dto";
 import { AppError, InvalidCredentialsError, AccountInactiveError, RefreshInvalidError, } from "../../core/errors/app.error";
 import { JwtPayload } from "../../core/interfaces/jwt-payload.interface";
 
@@ -460,5 +460,118 @@ export class AuthService {
     await user.save();
 
     return { message: "Password reset successful. You can now login with your new password." };
+  }
+
+  // Activate employee account - set password for the first time
+  async activateAccount(input : ActivateAccountInput) {
+    // hash the incoming raw token
+    const hashedToken = crypto
+    .createHash("sha256")
+    .update(input.token)
+    .digest("hex");
+
+    // find the user with matching token that hasn't expired
+
+    const user = await UserModel.findOne({
+      accountActivationToken: hashedToken,
+      accountActivationExpires: { $gt: new Date() },
+      isDeleted: false,
+    }).select("+accountActivationtoken");
+
+
+    if(!user){
+      throw new AppError(
+        "Invalid or expired activation link. Please contact your HR team to resend",
+        400
+      );
+    }
+
+    if(user.isActive){
+      throw new AppError(
+        "This account is already activated. You can log in now.",
+        400
+      );
+    }
+
+    // hash the new password
+    const passwordHash = await bcrypt.hash(input.password,12);
+
+    // Activate the account 
+    user.passwordHash = passwordHash;
+    user.isActive = true;
+    user.isEmailVerified = true;
+    user.accountActivationToken = undefined;
+    user.accountActivationExpires = undefined;
+    await user.save();
+
+    // Load the organization and branch for the login response
+    const org = await this.orgRepo.findById(user.tenantId.toString());
+    const headOffice = await this.branchRepo.findHeadOffice(user.tenantId.toString());
+
+    // Build JWT - same minimal shape as regular login
+
+    const jwtPayload = {
+      tenantId : user.tenantId.toString(),
+      userId : user._id.toString(),
+      role : user.role,
+      branchIds : user.branchIds.map((b: any) => b.toString()),
+    };
+
+    const accessToken = signAccessToken(jwtPayload);
+    const refreshToken = signRefreshToken(
+      user._id.toString(),
+      user.tenantId.toString()
+    );
+
+    // update last login
+
+    await this.userRepo.updateLastLogin(user._id.toString());
+
+    // send confirmation email 
+    await emailService.sendEmail(
+      user.email,
+      `${user.firstName} ${user.lastName}`,
+    "Your HRMS account is now active",
+    `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+        <h2>Account Activated!</h2>
+        <p>Hi ${user.firstName}, your HRMS account is now active.</p>
+        <p>You can log in at any time using your email address.</p>
+        <a href="${env.frontendUrl}/login"
+           style="display:inline-block; padding:12px 24px; background:#2886CE;
+                  color:white; text-decoration:none; border-radius:4px;">
+          Login to HRMS
+        </a>
+      </div>
+    `
+    );
+
+    return{
+      accessToken,
+      refreshToken,
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isSuperAdmin: user.isSuperAdmin,
+        branchIds: user.branchIds,
+        tenantId: user.tenantId,
+        employeeId: user.employeeId,
+      },
+      organization: org ? {
+        id: org._id,
+        companyName: org.companyName,
+        slug: org.slug,
+        modules: org.modules,
+      } : null,
+      branch: headOffice ? {
+        id: headOffice._id,
+        name: headOffice.name,
+        code: headOffice.code,
+      } : null,
+      message : "Account activated successfully! You can now log in with your credentials."
+    };
   }
 }
