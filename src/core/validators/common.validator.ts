@@ -29,10 +29,11 @@ export const idParamSchema = z.object({
   id: objectIdSchema,
 });
 
-// Phone number
+// Phone number — must include country code; subscriber portion must be 10-15 digits
+// Total digits (without +): 11-18 (1-3 digit country code + 10-15 digit subscriber)
 export const phoneSchema = z
   .string()
-  .regex(/^\+?[1-9]\d{9,14}$/, "Invalid phone number");
+  .regex(/^\+?\d{11,18}$/, "Phone must be 11-18 digits including country code");
 
 // Email 
 export const emailSchema = z
