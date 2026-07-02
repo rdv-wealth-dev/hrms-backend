@@ -16,6 +16,7 @@ import crypto from "crypto";
 import { UserModel } from "../user/user.model";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
+import { UserModel } from "../user/user.model";
 
 // Helper — mask account number showing only last 4 digits
 function maskAccountNumber(acc: string): string {
@@ -218,6 +219,8 @@ export class EmployeeService {
     });
   }
 
+
+
   //Get by ID
   async getEmployeeById(
     context: RequestContext,
@@ -279,6 +282,33 @@ export class EmployeeService {
 
     const updated = await this.empRepo.updateById(context, id, updateData);
     return updated;
+  }
+
+  async getMyProfile(context : RequestContext){
+    const user = await UserModel.findOne({
+      _id : new mongoose.Types.ObjectId(context.userId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted: false,
+    }).select("employeeId");
+
+    if(!user || !user.employeeId){
+      throw new AppError(
+        "No employee record is linked to this account",
+        404
+      );
+    }
+
+    const employee = await this.empRepo.findById(
+      context,
+      user.employeeId.toString(),
+      { populate : ["departmentId","designationId"]}
+    );
+
+    if(!employee){
+      throw new AppError("Employee record not found", 404);
+    }
+    return employee;
+
   }
 
   //Delete employee
