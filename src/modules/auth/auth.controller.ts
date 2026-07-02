@@ -34,7 +34,7 @@ export class AuthController {
       res.status(200).json(
         buildSuccessResponse(result, "Account activated successfully")
       );
-    }catch (error){
+    } catch (error) {
       next(error);
     }
   }

@@ -55,9 +55,8 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
     maxlength: 255,
   },
   passwordHash: {
-    type:     String,
-    required: true,
-    select:   false,
+    type:   String,
+    select: false,
   },
   firstName: {
     type:      String,
