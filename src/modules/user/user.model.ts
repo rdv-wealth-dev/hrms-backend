@@ -22,6 +22,9 @@ export interface UserDocument extends OrgLevelDocument {
   resetPasswordExpires?: Date;
   emailVerificationToken?: string;
   emailVerificationExpires?: Date;
+  accountActivationToken? : string;
+  accountActivationExpires? : Date;
+  employeeId? : mongoose.Types.ObjectId;
 
   toSafeObject(): {
     id:              unknown;
@@ -119,6 +122,17 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
   },
   resetPasswordExpires: {
     type: Date,
+  },
+  accountActivationToken: {
+    type : String,
+    select : false,
+  },
+  accountActivationExpires : {
+    type : Date,
+  },
+  employeeId : {
+    type : mongoose.Schema.Types.ObjectId,
+    default : null,
   },
   emailVerificationToken: {
     type: String,
