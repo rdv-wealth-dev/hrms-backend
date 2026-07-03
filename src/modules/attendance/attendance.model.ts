@@ -32,7 +32,7 @@ export interface AttendanceSession {
     lng? : number;
     ipAddress? : string;
     deviceInfo? : string;
-    withinGeofence? : boolean;          // null if geofencing not enabled for the branch
+    withinGeofence? : boolean | null;          // null if geofencing not enabled for the branch
 }
 
 export interface AttendanceDocument extends BaseDocument {
