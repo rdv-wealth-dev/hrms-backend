@@ -26,7 +26,7 @@ export enum SessionType {
 
 export interface AttendanceSession {
     type : SessionType;
-    timeStamp : Date;
+    timestamp : Date;
     source : PunchSource;
     lat? : number;
     lng? : number;
