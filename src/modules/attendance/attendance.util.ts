@@ -22,12 +22,10 @@ export function distanceInMeters(
     return R * c;
 }
 
-
 // Validates a mobile punch against the branch's geofence config.
 // Returns null (not applicable) if geofencing is disabled or branch has no
 // coordinates set — never blocks a punch just because geofencing wasn't
 // configured, only when it's explicitly enabled AND the point is outside.
-
 
 export function checkGeofence(
   branchGeo: { lat?: number; lng?: number; geofenceRadiusMeters?: number; geofenceEnabled?: boolean } | undefined,
