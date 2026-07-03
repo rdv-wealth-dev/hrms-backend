@@ -1,13 +1,13 @@
-import mongoose from "mongoose";
 import { BaseRepository } from "../../repositories/base.repository";
 import { RegularizationDocument, RegularizationModel } from "./regularization.model";
+import { RequestContext } from "../../core/interfaces/request-context.interface";
 
 export class RegularizationRepository extends BaseRepository<RegularizationDocument> {
   constructor() {
     super(RegularizationModel);
   }
 
-  async findPendingForBranch(context: import("../../core/interfaces/request-context.interface").RequestContext) {
+  async findPendingForBranch(context: RequestContext) {
     return this.findAll(
       context,
       { status: "PENDING" },
