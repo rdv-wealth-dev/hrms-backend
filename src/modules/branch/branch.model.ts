@@ -90,7 +90,7 @@ const BranchSchema = createBaseSchema<BranchDocument>(
     geo: {
       lat:                  { type: Number },
       lng:                  { type: Number },
-      geofenceRadiusMeters: { type: Number,  default: 200   },
+      geofenceRadiusMeters: { type: Number,  default: 100   },
       geofenceEnabled:      { type: Boolean, default: false },
     },
     workPolicy: {
