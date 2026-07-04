@@ -172,7 +172,7 @@ export class AuthService {
       firstName:       input.firstName,
       lastName:        input.lastName,
       phone:           input.phone,
-      role:            "SUPER_ADMIN",
+      role:            "ORG_ADMIN",
       isSuperAdmin:    true,
       isActive:        true,
       isEmailVerified: false,

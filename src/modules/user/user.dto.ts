@@ -9,7 +9,7 @@ export const AssignRoleDto = z.object({
         "MANAGER",
         "PRODUCT_MANAGER",
         "EMPLOYEE",
-        // SUPER_ADMIN deliberately excluded — promoting to super admin
+        // ORG_ADMIN deliberately excluded — promoting to org admin
     // should never happen through a simple API call; that's an
     // ownership-transfer action, not a role assignment
     ]),

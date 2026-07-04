@@ -81,7 +81,7 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
     type:     String,
     required: true,
     enum: [
-      "SUPER_ADMIN",
+      "ORG_ADMIN",
       "HR_ADMIN",
       "BRANCH_ADMIN",
       "LEADERSHIP",

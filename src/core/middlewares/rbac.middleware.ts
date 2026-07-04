@@ -23,7 +23,7 @@ export const checkPermission = (requiredPermission: string) => {
     try {
       const { role, tenantId } = req.context;
 
-      if (role === "SUPER_ADMIN") {
+      if (role === "ORG_ADMIN") {
         next();
         return;
       }
@@ -84,8 +84,8 @@ export const checkBranchAccess = (
 ): void => {
   const { branchIds, role } = req.context;
 
-  // Super admin has access to all branches
-  if (role === "SUPER_ADMIN" || !branchIds || branchIds.length === 0) {
+  // Org admin has access to all branches
+  if (role === "ORG_ADMIN" || !branchIds || branchIds.length === 0) {
     next();
     return;
   }

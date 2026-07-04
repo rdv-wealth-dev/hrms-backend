@@ -4,8 +4,8 @@ import { logger }    from "../../config/logger";
 
 export const DEFAULT_ROLES = [
   {
-    name:         "Super Admin",
-    slug:         "SUPER_ADMIN",
+    name:         "Org Admin",
+    slug:         "ORG_ADMIN",
     description:  "Full access to everything",
     isSystemRole: true,
     permissions: [
@@ -23,13 +23,18 @@ export const DEFAULT_ROLES = [
   {
     name:         "HR Admin",
     slug:         "HR_ADMIN",
-    description:  "Manages employees, attendance, leave within their branch",
+    description:  "Full operational access — manages all HR functions across the organisation",
     isSystemRole: true,
     permissions: [
-      "employee.read",   "employee.create",   "employee.update",
-      "attendance.read", "attendance.create", "attendance.update",
-      "leave.read",      "leave.create",      "leave.update",      "leave.approve",
-      "department.read", "designation.read",  "report.read",
+      "employee.read",    "employee.create",    "employee.update",    "employee.delete",
+      "attendance.read",  "attendance.create",  "attendance.update",
+      "leave.read",       "leave.create",       "leave.update",       "leave.approve",
+      "payroll.read",     "payroll.create",     "payroll.run",        "payroll.approve",
+      "branch.read",      "branch.create",      "branch.update",
+      "department.read",  "department.create",  "department.update",
+      "designation.read", "designation.create", "designation.update",
+      "role.read",        "role.create",        "role.update",
+      "report.read",      "settings.read",      "settings.update",
     ],
   },
   {
