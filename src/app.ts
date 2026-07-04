@@ -9,6 +9,7 @@ import departmentRoutes from "./modules/department/department.routes";
 import designationRoutes from "./modules/designation/designation.routes";
 import employeeRoutes from "./modules/employee/employee.routes";
 import attendanceRoutes from "./modules/attendance/attendance.routes"
+import userRoutes from "./modules/user/user.routes"
 
 const app: Application = express();
 
@@ -17,14 +18,14 @@ app.use(requestIdMiddleware)
 // apply securityMiddleware
 applySecurityMiddleware(app)
 
-
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/organizations", organizationRoutes);
 app.use("/api/v1/branches", branchRoutes);
 app.use("/api/v1/departments",  departmentRoutes);
 app.use("/api/v1/designations", designationRoutes);
 app.use("/api/v1/employees", employeeRoutes);
-app.use("/api/v1/attendance", attendanceRoutes)
+app.use("/api/v1/attendance", attendanceRoutes);
+app.use("/api/v1/users", userRoutes);
 
 app.get("/health",(_req: Request, res: Response) => {
   res.status(200).json({
