@@ -7,6 +7,7 @@ export const AssignRoleDto = z.object({
         "BRANCH_ADMIN",
         "LEADERSHIP",
         "MANAGER",
+        "TEAM_LEADER",
         "PRODUCT_MANAGER",
         "EMPLOYEE",
         // ORG_ADMIN deliberately excluded — promoting to org admin

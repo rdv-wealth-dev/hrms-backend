@@ -87,6 +87,7 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
       "LEADERSHIP",
       "MANAGER",
       "PRODUCT_MANAGER",
+      "TEAM_LEADER",
       "EMPLOYEE",
     ],
     default: "EMPLOYEE",
