@@ -4,6 +4,8 @@ import { CreateShiftInput, UpdateShiftInput } from "./attendance.dto";
 import { AppError } from "../../core/errors/app.error";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
 import { ShiftModel } from "./shift.model";
+import { EmployeeModel } from "../employee/employee.model";
+import { AssignShiftInput } from "./shift-assignment.dto";
 
 export class ShiftService {
   private shiftRepo = new ShiftRepository();
@@ -35,6 +37,53 @@ export class ShiftService {
       isDefault:  input.isDefault,
       isActive:   true,
     });
+  }
+
+  async bulkAssignShift(context: RequestContext, input: AssignShiftInput) {
+    const shift = await this.shiftRepo.findById(context, input.shiftId);
+    if (!shift) throw new AppError(
+      "Shift not found",
+      404
+    );
+    const result = await EmployeeModel.updateMany(
+      {
+        _id : { $in: input.employeeIds.map(id => new mongoose.Types.ObjectId(id))},
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        isDeleted: false,
+      },
+        {shiftId : shift._id}
+    );
+    return {
+      message : `Shift  "${shift.name}" assigned to ${result.modifiedCount} employee(s)`,
+      modifiedCount : result.modifiedCount,
+    };
+  }
+
+  async getEmployeeShiftAssignments(context: RequestContext){
+    const employees = await EmployeeModel.find({
+      tenantId : new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted : false,
+      isActive : true,
+    })
+    .populate("shiftId", "name code startTime endTime")
+    .populate("departmentId", "name")
+    .populate("branchId", "name")
+    .select("employeeCode firstName lastName shiftId departmentId branchId")
+    .lean();
+
+    const defaultShift = await this.shiftRepo.findDefault(context);
+
+    // Employees without an explicit shiftId fall back to the tenant default
+    return employees.map((emp: any) => ({
+      employeeId:   emp._id,
+      employeeCode: emp.employeeCode,
+      name:         `${emp.firstName} ${emp.lastName}`,
+      department:   emp.departmentId?.name ?? "-",
+      branch:       emp.branchId?.name ?? "-",
+      shift:        emp.shiftId ?? defaultShift,
+      isOverride:   !!emp.shiftId,
+    }));
+
   }
 
   async listShifts(context: RequestContext) {
