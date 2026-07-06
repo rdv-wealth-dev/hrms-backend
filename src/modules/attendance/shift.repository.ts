@@ -21,7 +21,7 @@ export class ShiftRepository extends BaseRepository<ShiftDocument>{
             tenantId: new mongoose.Types.ObjectId(context.tenantId),
             isDefault : true,
             isActive : true,
-            isDeleted : true
+            isDeleted : false
         });
     }
 
