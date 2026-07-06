@@ -5,23 +5,23 @@ import { AppError } from "../../core/errors/app.error";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
 
 export class UserService {
-    
+
     async assignRole(
         context: RequestContext,
         targetUserId: string,
         input: AssignRoleInput
     ) {
         const targetUser = await UserModel.findOne({
-            _id : new mongoose.Types.ObjectId(targetUserId),
-            tenantId : new mongoose.Types.ObjectId(context.tenantId),
-            isDeleted : false,
+            _id: new mongoose.Types.ObjectId(targetUserId),
+            tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            isDeleted: false,
         });
-        if(!targetUser){
+        if (!targetUser) {
             throw new AppError("User not found", 404);
         }
 
-        // Never allow demoting/reassigning the super admin through this route
-        if (targetUser.isOrgAdmin){
+        // Never allow demoting/reassigning the org admin through this route
+        if (targetUser.isOrgAdmin) {
             throw new AppError(
                 "Cannot change role of an Org Admin account through this endpoint",
                 403
@@ -37,7 +37,7 @@ export class UserService {
         }
 
         targetUser.role = input.role;
-        if (input.branchIds){
+        if (input.branchIds) {
             targetUser.branchIds = input.branchIds.map(
                 (id) => new mongoose.Types.ObjectId(id)
             );
@@ -45,28 +45,28 @@ export class UserService {
 
         await targetUser.save();
         return {
-            id:        targetUser._id,
-            email:     targetUser.email,
-            role:      targetUser.role,
+            id: targetUser._id,
+            email: targetUser.email,
+            role: targetUser.role,
             branchIds: targetUser.branchIds,
         };
     }
 
     async listUsers(context: RequestContext) {
         return UserModel.find({
-            tenantId :new mongoose.Types.ObjectId(context.tenantId),
-            isDeleted : false,
+            tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            isDeleted: false,
         }).select("-passwordHash");
     }
 
     async getUserById(context: RequestContext, id: string) {
-    const user = await UserModel.findOne({
-      _id:       new mongoose.Types.ObjectId(id),
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-      isDeleted: false,
-    }).select("-passwordHash -accountActivationToken -resetPasswordToken -emailVerificationToken");
+        const user = await UserModel.findOne({
+            _id: new mongoose.Types.ObjectId(id),
+            tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            isDeleted: false,
+        }).select("-passwordHash -accountActivationToken -resetPasswordToken -emailVerificationToken");
 
-    if (!user) throw new AppError("User not found", 404);
-    return user;
-  }
+        if (!user) throw new AppError("User not found", 404);
+        return user;
+    }
 }

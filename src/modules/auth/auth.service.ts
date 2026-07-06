@@ -164,8 +164,8 @@ export class AuthService {
     // possible future use such as assigning roleId references elsewhere)
     await seedDefaultRoles(tenantId, "system");
 
-    // 7. Create super admin user
-    const superAdmin = await new UserModel({
+    // 7. Create org admin user
+    const orgAdmin = await new UserModel({
       tenantId:        tenantObjectId,
       email:           input.email.toLowerCase(),
       passwordHash,
@@ -184,16 +184,16 @@ export class AuthService {
     const rawVerificationToken = crypto.randomBytes(32).toString("hex");
     const hashedVerificationToken = crypto.createHash("sha256").update(rawVerificationToken).digest("hex");
 
-    superAdmin.emailVerificationToken = hashedVerificationToken;
-    superAdmin.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-    await superAdmin.save();
+    orgAdmin.emailVerificationToken = hashedVerificationToken;
+    orgAdmin.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    await orgAdmin.save();
 
     // 9. Send verification email
     const verificationUrl = `${env.frontendUrl}/verify-email?token=${rawVerificationToken}`;
 
     await emailService.sendEmail(
-      superAdmin.email,
-      `${superAdmin.firstName} ${superAdmin.lastName}`,
+      orgAdmin.email,
+      `${orgAdmin.firstName} ${orgAdmin.lastName}`,
       "Verify your HRMs email address",
       `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
