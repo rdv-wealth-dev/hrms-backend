@@ -16,6 +16,12 @@ router.get(
     controller.listUsers.bind(controller)
 );
 
+router.get(
+    "/:id",
+    checkPermission("role.read"),
+    controller.getBy
+)
+
 router.patch(
     "/:id/role",
     checkPermission("role.update"),

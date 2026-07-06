@@ -58,4 +58,15 @@ export class UserService {
             isDeleted : false,
         }).select("-passwordHash");
     }
+
+    async getUserById(context: RequestContext, id: string) {
+    const user = await UserModel.findOne({
+      _id:       new mongoose.Types.ObjectId(id),
+      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted: false,
+    }).select("-passwordHash -accountActivationToken -resetPasswordToken -emailVerificationToken");
+
+    if (!user) throw new AppError("User not found", 404);
+    return user;
+  }
 }
