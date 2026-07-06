@@ -21,6 +21,14 @@ export class UserController {
         }
     }
 
+    async getById(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await userService.getUserById(req.context, req.params.id);
+      res.status(200).json(buildSuccessResponse(result, "User fetched successfully"));
+    } catch (error) { next(error); }
+  }
+
+
     async assignRole(
         req : Request<{ id : string}>,
         res : Response,
