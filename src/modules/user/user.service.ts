@@ -21,7 +21,7 @@ export class UserService {
         }
 
         // Never allow demoting/reassigning the super admin through this route
-        if (targetUser.isSuperAdmin){
+        if (targetUser.isOrgAdmin){
             throw new AppError(
                 "Cannot change role of an Org Admin account through this endpoint",
                 403

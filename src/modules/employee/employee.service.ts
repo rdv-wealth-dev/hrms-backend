@@ -104,7 +104,7 @@ export class EmployeeService {
       firstName : input.firstName,
       lastName : input.lastName,
       role : "EMPLOYEE",
-      isSuperAdmin : false,
+      isOrgAdmin : false,
       isActive : false,
       isEmailVerified : false,
       branchIds : [new mongoose.Types.ObjectId(input.branchId)],

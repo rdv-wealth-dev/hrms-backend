@@ -9,7 +9,7 @@ export interface UserDocument extends OrgLevelDocument {
   phone?:          string;
   avatar?:         string;
   role:            string;
-  isSuperAdmin:    boolean;
+  isOrgAdmin:    boolean;
   isActive:        boolean;
   isEmailVerified: boolean;
   lastLoginAt?:    Date;
@@ -35,7 +35,7 @@ export interface UserDocument extends OrgLevelDocument {
     phone?:          string;
     avatar?:         string;
     role:            string;
-    isSuperAdmin:    boolean;
+    isOrgAdmin:    boolean;
     isActive:        boolean;
     isEmailVerified: boolean;
     branchIds:       mongoose.Types.ObjectId[];
@@ -92,7 +92,7 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
     ],
     default: "EMPLOYEE",
   },
-  isSuperAdmin: {
+  isOrgAdmin: {
     type:    Boolean,
     default: false,
   },
@@ -166,7 +166,7 @@ UserSchema.methods.toSafeObject = function () {
     phone:           this.phone,
     avatar:          this.avatar,
     role:            this.role,
-    isSuperAdmin:    this.isSuperAdmin,
+    isOrgAdmin:    this.isOrgAdmin,
     isActive:        this.isActive,
     isEmailVerified: this.isEmailVerified,
     branchIds:       this.branchIds,
