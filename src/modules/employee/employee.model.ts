@@ -90,6 +90,7 @@ export interface EmployeeDocument extends BaseDocument {
   probationEndDate?: Date;
   exitDate?:     Date;
   exitReason?:   string;
+  shiftId? : mongoose.Types.ObjectId;
 
   // Address — embedded
   currentAddress?:   EmployeeAddress;
@@ -186,6 +187,10 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
       type:    mongoose.Schema.Types.ObjectId,
       default: null,
     },
+    shiftId: {
+      type:    mongoose.Schema.Types.ObjectId,
+      default: null,   // null = use tenant's default shift
+},
     employeeType: {
       type:    String,
       enum:    Object.values(EmployeeType),
