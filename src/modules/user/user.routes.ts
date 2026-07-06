@@ -19,7 +19,7 @@ router.get(
 router.get(
     "/:id",
     checkPermission("role.read"),
-    controller.getBy
+    controller.getById.bind(controller)
 )
 
 router.patch(
