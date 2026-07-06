@@ -13,6 +13,8 @@ import {
 } from "./attendance.util"
 import { UserModel } from "../user/user.model";
 import { BranchModel } from "../branch/branch.model";
+import { EmployeeModel } from "../employee/employee.model";
+
 
 export class AttendanceService {
   private attRepo   = new AttendanceRepository();
@@ -45,7 +47,10 @@ export class AttendanceService {
     const today = normalizeToMidnight(new Date());
 
     // Resolve shift — fall back to tenant default if employee has none assigned yet
-    const shift = await this.shiftRepo.findDefault(context);
+    const employeeDoc = await EmployeeModel.findById(employeeId).select("shiftId");
+    const shift = employeeDoc?.shiftId
+      ? await this.shiftRepo.findById(context, employeeDoc.shiftId.toString())
+      : await this.shiftRepo.findDefault(context);
     if (!shift) {
       throw new AppError(
         "No default shift configured for this organization. Contact HR.",
