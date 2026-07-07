@@ -25,32 +25,32 @@ export enum ApprovalLevelStatus {
 }
 
 export interface ApprovalStep {
-  level:       number;              // 1, 2, 3
-  approverRole: string;             // "MANAGER", "HR_ADMIN", "SUPER_ADMIN" — who's expected to act
-  approverId?: mongoose.Types.ObjectId;  // actual user who acted, once acted
-  status:      ApprovalLevelStatus;
-  comments?:   string;
-  actedAt?:    Date;
+  level:        number;              // 1, 2, 3
+  approverRole: string;              // "MANAGER", "HR_ADMIN", "SUPER_ADMIN" — who's expected to act
+  approverId?:  mongoose.Types.ObjectId;  // actual user who acted, once acted
+  status:       ApprovalLevelStatus;
+  comments?:    string;
+  actedAt?:     Date;
 }
 
 export interface LeaveRequestDocument extends BaseDocument {
-  employeeId:       mongoose.Types.ObjectId;
-  leaveTypeId:      mongoose.Types.ObjectId;
-  fromDate:         Date;
-  toDate:           Date;
-  fromSession:      LeaveSessionType;
-  toSession:        LeaveSessionType;
-  totalDays:        number;         // final days after sandwich policy applied
-  baseDays:         number;         // days before sandwich policy applied
-  isSandwiched:     boolean;
-  reason:           string;
-  status:           LeaveRequestStatus;
-  currentApprovalLevel: number;     // which level is next to act
-  approvals:        ApprovalStep[]; // full multi-level chain
-  appliedAt:        Date;
-  cancelledAt?:      Date;
-  cancelReason?:    string;
-  attachmentS3Key?: string;         // supporting document, e.g. medical certificate
+  employeeId:           mongoose.Types.ObjectId;
+  leaveTypeId:          mongoose.Types.ObjectId;
+  fromDate:             Date;
+  toDate:               Date;
+  fromSession:          LeaveSessionType;
+  toSession:            LeaveSessionType;
+  totalDays:            number;         // final days after sandwich policy applied
+  baseDays:             number;         // days before sandwich policy applied
+  isSandwiched:         boolean;
+  reason:               string;
+  status:               LeaveRequestStatus;
+  currentApprovalLevel: number;         // which level is next to act
+  approvals:            ApprovalStep[]; // full multi-level chain
+  appliedAt:            Date;
+  cancelledAt?:         Date;
+  cancelReason?:        string;
+  attachmentS3Key?:     string;         // supporting document, e.g. medical certificate
 }
 
 const ApprovalStepSchema = new mongoose.Schema(
@@ -132,9 +132,9 @@ const LeaveRequestSchema = createBaseSchema<LeaveRequestDocument>(
       type:    Date,
       default: Date.now,
     },
-    cancelledAt:      { type: Date },
-    cancelReason:      { type: String, trim: true },
-    attachmentS3Key:   { type: String, trim: true },
+    cancelledAt:     { type: Date },
+    cancelReason:    { type: String, trim: true },
+    attachmentS3Key: { type: String, trim: true },
   },
   { collection: "leave_requests" }
 );
