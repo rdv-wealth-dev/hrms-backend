@@ -1,27 +1,29 @@
 import mongoose from "mongoose";
-import { createBaseSchema, BaseDocument } from "../../core/database/base.schema";
+import {
+  createBaseSchema,
+  BaseDocument,
+} from "../../core/database/base.schema";
 
 export enum CompOffSourceType {
-    PUBLIC_HOLIDAY = "PUBLIC_HOLIDAY",
-    WEEKLY_OFF = "WEEKLY_OFF",
+  PUBLIC_HOLIDAY = "PUBLIC_HOLIDAY",
+  WEEKLY_OFF     = "WEEKLY_OFF",
 }
 
 export enum CompOffStatus {
-    AVAILABLE = "AVAILABLE",
-    USED = "USED",
-    EXPIRED = "EXPIRED",
+  AVAILABLE = "AVAILABLE",
+  USED      = "USED",
+  EXPIRED   = "EXPIRED",
 }
 
 export interface CompOffDocument extends BaseDocument {
-    employeeId:   mongoose.Types.ObjectId;
-    workDate:     Date;             // the holiday/weekoff date they actually worked
-    sourceType:   CompOffSourceType;
-    creditedDate: Date;
-    expiryDate:   Date;             // configurable per tenant — comp-off lapses after N days
-    status:       CompOffStatus;
-    usedInLeaveRequestId?: mongoose.Types.ObjectId;  // linked once redeemed
+  employeeId:            mongoose.Types.ObjectId;
+  workDate:              Date;             // the holiday/weekoff date they actually worked
+  sourceType:            CompOffSourceType;
+  creditedDate:          Date;
+  expiryDate:            Date;             // configurable per tenant — comp-off lapses after N days
+  status:                CompOffStatus;
+  usedInLeaveRequestId?: mongoose.Types.ObjectId;  // linked once redeemed
 }
-
 
 const CompOffSchema = createBaseSchema<CompOffDocument>(
   {
