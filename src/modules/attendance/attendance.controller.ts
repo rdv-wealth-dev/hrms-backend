@@ -100,7 +100,7 @@ export class AttendanceController {
         try {
             const query = AttendanceReportQueryDto.parse(req.query);
             const filters:  Record<string, unknown> = {
-                attendaceDate : {
+                attendanceDate : {
                     $gte : new Date(query.fromDate),
                     $lte : new Date(query.toDate),
                 },
