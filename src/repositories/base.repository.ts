@@ -11,7 +11,6 @@ import { RequestContext } from "../core/interfaces/request-context.interface";
 import { buildPagedResponse } from "../core/database/base.schema";
 
 
-
 export interface PaginationOptions {
   pageNumber: number;
   pageSize:   number;
