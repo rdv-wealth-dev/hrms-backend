@@ -12,6 +12,7 @@ export class UserRepository extends BaseRepository<UserDocument> {
   async findByEmail(email: string): Promise<UserDocument | null> {
     return UserModel
       .findOne({ email: email.toLowerCase(), isDeleted: false })
+      .sort({ isActive: -1 })  // prefer active accounts if same email exists in multiple tenants
       .select("+passwordHash")  // explicitly include passwordHash for comparison
       .lean() as Promise<UserDocument | null>;
   }
