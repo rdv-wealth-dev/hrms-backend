@@ -160,7 +160,9 @@ export function calculateWorkedMinutes(sessions: AttendanceSession[]): number {
 export function calculateAttendanceStatus(
   shift:         ShiftDocument,
   firstCheckIn:  Date | null,
-  workedMinutes: number
+  workedMinutes: number,
+  graceUsed?:    number,
+  graceLimit?:   number
 ): AttendanceStatus {
 
   if (!firstCheckIn) {
@@ -171,13 +173,15 @@ export function calculateAttendanceStatus(
     return AttendanceStatus.HALF_DAY;
   }
 
-  // Parse shift start time "09:00" into today's Date for comparison
+  // If grace limit is set and exhausted, zero tolerance
+  const hasGraceLeft = !graceLimit || (graceUsed ?? 0) < graceLimit;
+  const effectiveGraceMinutes = hasGraceLeft ? shift.gracePeriodMinutes : 0;
+
   const [shiftHour, shiftMin] = shift.startTime.split(":").map(Number);
   const shiftStart = new Date(firstCheckIn);
   shiftStart.setHours(shiftHour, shiftMin, 0, 0);
 
-  const graceMs = shift.gracePeriodMinutes * 60000;
-  const lateThreshold = new Date(shiftStart.getTime() + graceMs);
+  const lateThreshold = new Date(shiftStart.getTime() + effectiveGraceMinutes * 60000);
 
   if (firstCheckIn > lateThreshold) {
     return AttendanceStatus.LATE;

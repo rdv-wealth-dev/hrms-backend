@@ -14,11 +14,13 @@ import {
 import { UserModel } from "../user/user.model";
 import { BranchModel } from "../branch/branch.model";
 import { EmployeeModel } from "../employee/employee.model";
+import { GraceUsageRepository } from "./grace-usage.repository";
 
 
 export class AttendanceService {
-  private attRepo   = new AttendanceRepository();
-  private shiftRepo = new ShiftRepository();
+  private attRepo       = new AttendanceRepository();
+  private shiftRepo     = new ShiftRepository();
+  private graceRepo     = new GraceUsageRepository();
 
   // Resolve the calling user's own employeeId
   private async resolveOwnEmployeeId(context: RequestContext): Promise<string> {
@@ -118,12 +120,37 @@ export class AttendanceService {
 
     attendance.workedMinutes = calculateWorkedMinutes(attendance.sessions);
 
+    // Grace usage tracking — only if shift has a per-month limit
+    let graceUsed = 0;
+    if (input.type === SessionType.CHECK_IN && (shift.graceLimitPerMonth ?? 0) > 0) {
+      const now = new Date();
+      const usage = await this.graceRepo.getOrCreate(
+        context, employeeId, now.getFullYear(), now.getMonth() + 1
+      );
+      graceUsed = usage.used;
+    }
+
     // Recompute status on every punch — always reflects current state
     attendance.status = calculateAttendanceStatus(
       shift,
       attendance.firstCheckIn ?? null,
-      attendance.workedMinutes
+      attendance.workedMinutes,
+      graceUsed,
+      shift.graceLimitPerMonth
     );
+
+    // If check-in was within grace period, increment the monthly counter
+    if (input.type === SessionType.CHECK_IN && attendance.status === AttendanceStatus.PRESENT) {
+      const now = new Date();
+      const [shiftHour, shiftMin] = shift.startTime.split(":").map(Number);
+      const shiftStart = new Date();
+      shiftStart.setHours(shiftHour, shiftMin, 0, 0);
+      if (attendance.firstCheckIn && attendance.firstCheckIn > shiftStart) {
+        await this.graceRepo.increment(
+          context, employeeId, now.getFullYear(), now.getMonth() + 1
+        );
+      }
+    }
 
     await this.attRepo.save(attendance);
     return attendance;

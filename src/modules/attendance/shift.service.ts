@@ -31,6 +31,7 @@ export class ShiftService {
       startTime:  input.startTime,
       endTime:    input.endTime,
       gracePeriodMinutes: input.gracePeriodMinutes,
+      graceLimitPerMonth: input.graceLimitPerMonth,
       halfDayThresholdMinutes: input.halfDayThresholdMinutes,
       fullDayMinutes: input.fullDayMinutes,
       breakDurationMinutes: input.breakDurationMinutes,

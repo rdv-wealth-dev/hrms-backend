@@ -6,7 +6,8 @@ export interface ShiftDocument extends BaseDocument {
   code:                string;   // "GEN", "NIGHT"
   startTime:           string;   // "09:00" — 24h format
   endTime:             string;   // "18:00"
-  gracePeriodMinutes:  number;   // late arrival tolerance before status = LATE
+  gracePeriodMinutes:    number;   // late arrival tolerance before status = LATE (per occurrence)
+  graceLimitPerMonth:    number;   // max times grace can be used per month (0 = unlimited)
   halfDayThresholdMinutes: number; // worked minutes below this = HALF_DAY
   fullDayMinutes:      number;   // expected worked minutes for a full day
   breakDurationMinutes: number;  // standard break allowance, informational
@@ -45,6 +46,11 @@ const ShiftSchema = createBaseSchema<ShiftDocument>(
             default : 15,
             min : 0,
             max : 120,
+        },
+        graceLimitPerMonth : {
+            type : Number,
+            default : 0,
+            min : 0,
         },
         halfDayThresholdMinutes : {
             type : Number,

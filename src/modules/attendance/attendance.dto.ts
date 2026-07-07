@@ -49,6 +49,7 @@ export const CreateShiftDto = z.object({
     startTime               : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format"),
     endTime                 : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format"),
     gracePeriodMinutes      : z.number().min(0).max(120).optional().default(15),
+    graceLimitPerMonth      : z.number().min(0).optional().default(0),
     halfDayThresholdMinutes : z.number().min(0).optional().default(240),
     fullDayMinutes          : z.number().min(0).optional().default(480),
     breakDurationMinutes    : z.number().min(0).optional().default(60),
