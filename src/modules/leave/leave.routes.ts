@@ -11,10 +11,13 @@ import {
   ReviewLeaveRequestDto,
   CancelLeaveRequestDto,
 } from "./leave.dto";
+import { HolidayController } from "./holiday.controller";
+import { CreateHolidayDto, UpdateHolidayDto } from "./leave.dto";
 
 const router = Router();
 const typeCtrl = new LeaveTypeController();
 const requestCtrl = new LeaveRequestController();
+const holidayCtrl = new HolidayController();
 
 router.use(authenticate);
 
@@ -88,6 +91,53 @@ router.delete(
   "/types/:id",
   checkPermission("leave.update"),
   typeCtrl.delete.bind(typeCtrl)
+);
+
+
+//Holidays
+router.get(
+  "/holidays",
+  checkPermission("leave.read"),
+  holidayCtrl.list.bind(holidayCtrl)
+);
+
+router.post(
+  "/holidays",
+  checkPermission("leave.create"),
+  validateBody(CreateHolidayDto),
+  holidayCtrl.create.bind(holidayCtrl)
+);
+
+router.get(
+  "/holidays/:id",
+  checkPermission("leave.read"),
+  holidayCtrl.getById.bind(holidayCtrl)
+);
+
+router.patch(
+  "/holidays/:id",
+  checkPermission("leave.update"),
+  validateBody(UpdateHolidayDto),
+  holidayCtrl.update.bind(holidayCtrl)
+);
+
+router.delete(
+  "/holidays/:id",
+  checkPermission("leave.update"),
+  holidayCtrl.delete.bind(holidayCtrl)
+);
+
+
+//Comp-off
+router.post(
+  "/comp-off",
+  checkPermission("leave.create"),
+  holidayCtrl.creditCompOff.bind(holidayCtrl)
+);
+
+router.get(
+  "/comp-off/me",
+  holidayCtrl.getMyCompOffs.bind(holidayCtrl)
 );
 
 export default router;
