@@ -12,9 +12,9 @@ import {
   CancelLeaveRequestDto,
 } from "./leave.dto";
 
-const router      = Router();
-const typeCtrl     = new LeaveTypeController();
-const requestCtrl  = new LeaveRequestController();
+const router = Router();
+const typeCtrl = new LeaveTypeController();
+const requestCtrl = new LeaveRequestController();
 
 router.use(authenticate);
 
@@ -26,8 +26,8 @@ router.post(
   requestCtrl.create.bind(requestCtrl)
 );
 
-router.get("/requests/me",  requestCtrl.getMyRequests.bind(requestCtrl));
-router.get("/balances/me",  requestCtrl.getMyBalances.bind(requestCtrl));
+router.get("/requests/me", requestCtrl.getMyRequests.bind(requestCtrl));
+router.get("/balances/me", requestCtrl.getMyBalances.bind(requestCtrl));
 
 router.patch(
   "/requests/:id/cancel",

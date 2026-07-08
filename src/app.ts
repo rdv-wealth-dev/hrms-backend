@@ -10,6 +10,7 @@ import designationRoutes from "./modules/designation/designation.routes";
 import employeeRoutes from "./modules/employee/employee.routes";
 import attendanceRoutes from "./modules/attendance/attendance.routes"
 import userRoutes from "./modules/user/user.routes"
+import leaveRoutes from "./modules/leave/leave.routes"
 
 const app: Application = express();
 
@@ -26,6 +27,7 @@ app.use("/api/v1/designations", designationRoutes);
 app.use("/api/v1/employees", employeeRoutes);
 app.use("/api/v1/attendance", attendanceRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/leave", leaveRoutes);
 
 app.get("/health",(_req: Request, res: Response) => {
   res.status(200).json({
