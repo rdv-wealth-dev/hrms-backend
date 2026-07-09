@@ -1,6 +1,5 @@
 import { BaseRepository } from "../../repositories/base.repository";
 import { UserDocument, UserModel } from "./user.model";
-import { FilterQuery } from "mongoose";
 
 export class UserRepository extends BaseRepository<UserDocument> {
   constructor() {
