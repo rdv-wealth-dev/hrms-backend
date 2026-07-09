@@ -16,7 +16,6 @@ import crypto from "crypto";
 import { UserModel } from "../user/user.model";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
-import { UserModel } from "../user/user.model";
 
 // Helper — mask account number showing only last 4 digits
 function maskAccountNumber(acc: string): string {
@@ -446,7 +445,6 @@ export class EmployeeService {
     }
     return user.employeeId.toString();
   }
-
 
   async getDocuments(
     context: RequestContext,
