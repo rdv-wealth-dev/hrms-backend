@@ -8,8 +8,8 @@ const empService = new EmployeeService();
 export class EmployeeController {
   // POST /api/v1/employees
   async create(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -17,30 +17,30 @@ export class EmployeeController {
       res.status(201).json(
         buildSuccessResponse(result, "Employee created successfully")
       );
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 
   // GET /api/v1/employees
   async list(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
       const query = ListEmployeesQueryDto.parse(req.query);
       const result = await empService.listEmployees(req.context, query);
       res.status(200).json(result);
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 
   // GET /api/v1/employees/:id
   async getById(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -48,31 +48,58 @@ export class EmployeeController {
       res.status(200).json(
         buildSuccessResponse(result, "Employee fetched successfully")
       );
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 
   // GET /api/v1/employees/me
   async getMyProfile(
-    req : Request,
-    res : Response,
-    next : NextFunction
-  ):Promise<void>{
-    try{
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
       const result = await empService.getMyProfile(req.context);
       res.status(200).json(
         buildSuccessResponse(result, "Your profile fetched successfully")
       );
-    }catch (error) {
+    } catch (error) {
       next(error)
+    }
+  }
+
+  async getMyBankAccounts(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.getMyBankAccounts(req.context);
+      res.status(200).json(
+        buildSuccessResponse(result, "Your bank accounts fetched"));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMyDocuments(req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.getMyDocuments(req.context);
+      res.status(200).json(
+        buildSuccessResponse(result, "Your documents fetched"));
+    } catch (error) {
+      next(error);
     }
   }
 
   // PATCH /api/v1/employees/:id
   async update(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -82,15 +109,15 @@ export class EmployeeController {
       res.status(200).json(
         buildSuccessResponse(result, "Employee updated successfully")
       );
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 
   // PATCH /api/v1/employees/:id/status
   async updateStatus(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -100,15 +127,15 @@ export class EmployeeController {
       res.status(200).json(
         buildSuccessResponse(result, "Employee status updated")
       );
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 
   // DELETE /api/v1/employees/:id
   async delete(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -118,15 +145,15 @@ export class EmployeeController {
       res.status(200).json(
         buildSuccessResponse(result, "Employee deleted successfully")
       );
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 
   // POST /api/v1/employees/:id/bank-accounts
   async addBankAccount(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -136,15 +163,15 @@ export class EmployeeController {
       res.status(201).json(
         buildSuccessResponse(result, "Bank account added successfully")
       );
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 
   // GET /api/v1/employees/:id/bank-accounts
   async getBankAccounts(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -154,15 +181,15 @@ export class EmployeeController {
       res.status(200).json(
         buildSuccessResponse(result, "Bank accounts fetched successfully")
       );
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 
   // DELETE /api/v1/employees/:id/bank-accounts/:bankId
   async deleteBankAccount(
-    req:  Request<{ id: string; bankId: string }>,
-    res:  Response,
+    req: Request<{ id: string; bankId: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -172,15 +199,15 @@ export class EmployeeController {
       res.status(200).json(
         buildSuccessResponse(result, "Bank account removed")
       );
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 
   // POST /api/v1/employees/:id/documents
   async addDocument(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -190,15 +217,15 @@ export class EmployeeController {
       res.status(201).json(
         buildSuccessResponse(result, "Document added successfully")
       );
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 
   // GET /api/v1/employees/:id/documents
   async getDocuments(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -208,15 +235,15 @@ export class EmployeeController {
       res.status(200).json(
         buildSuccessResponse(result, "Documents fetched successfully")
       );
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 
   // DELETE /api/v1/employees/:id/documents/:docId
   async deleteDocument(
-    req:  Request<{ id: string; docId: string }>,
-    res:  Response,
+    req: Request<{ id: string; docId: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -226,8 +253,8 @@ export class EmployeeController {
       res.status(200).json(
         buildSuccessResponse(result, "Document removed")
       );
-    } catch (error) { 
-        next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 }
