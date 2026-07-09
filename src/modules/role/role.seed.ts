@@ -10,7 +10,7 @@ export const DEFAULT_ROLES = [
     isSystemRole: true,
     permissions: [
       "employee.read",    "employee.create",    "employee.update",    "employee.delete",
-      "attendance.read",  "attendance.create",  "attendance.update",
+      "attendance.read",  "attendance.create",  "attendance.update",  "attendance.approve",
       "leave.read",       "leave.create",       "leave.update",       "leave.approve",
       "payroll.read",     "payroll.create",     "payroll.run",        "payroll.approve",
       "branch.read",      "branch.create",      "branch.update",
@@ -27,7 +27,7 @@ export const DEFAULT_ROLES = [
     isSystemRole: true,
     permissions: [
       "employee.read",    "employee.create",    "employee.update",    "employee.delete",
-      "attendance.read",  "attendance.create",  "attendance.update",
+      "attendance.read",  "attendance.create",  "attendance.update",  "attendance.approve",
       "leave.read",       "leave.create",       "leave.update",       "leave.approve",
       "payroll.read",     "payroll.create",     "payroll.run",        "payroll.approve",
       "branch.read",      "branch.create",      "branch.update",
@@ -136,8 +136,12 @@ export async function seedDefaultRoles(
 
       } catch (err: any) {
         if (err.code === 11000) {
-          // Duplicate — already exists, find and add to map
-          console.log(`⚠️  ${roleData.slug} already exists — skipping`);
+          // Duplicate — already exists, update permissions to ensure code updates are reflected
+          console.log(`⚠️  ${roleData.slug} already exists — updating permissions`);
+          await collection.updateOne(
+            { tenantId: tenantOId, slug: roleData.slug },
+            { $set: { permissions: roleData.permissions, updatedAt: now } }
+          );
           const existing = await collection.findOne({ tenantId: tenantOId, slug: roleData.slug });
           if (existing) {
             roleMap.set(roleData.slug, existing._id.toString());

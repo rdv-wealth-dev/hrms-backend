@@ -16,6 +16,7 @@ export const ALL_PERMISSIONS = [
   { module: "attendance",  action: "read",     resource: "attendance.read",   description: "View attendance records"     },
   { module: "attendance",  action: "create",   resource: "attendance.create", description: "Mark attendance"             },
   { module: "attendance",  action: "update",   resource: "attendance.update", description: "Edit attendance records"     },
+  { module: "attendance",  action: "approve",  resource: "attendance.approve",  description: "Approve or reject regularization requests" },
 
   // Leave
   { module: "leave",       action: "read",     resource: "leave.read",        description: "View leave requests"         },
