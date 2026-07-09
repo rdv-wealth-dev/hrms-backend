@@ -2,15 +2,16 @@ import express, {Application, Request, Response} from "express";
 import { applySecurityMiddleware } from "./core/middlewares/security.middleware";
 import { requestIdMiddleware } from "./core/middlewares/request-id.middleware";
 import { globalErrorHandler } from "./core/errors/error.middleware";
-import authRoutes from "./modules/auth/auth.routes"
+import authRoutes from "./modules/auth/auth.routes";
 import organizationRoutes from "./modules/organization/organization.routes"
 import branchRoutes from  "./modules/branch/branch.routes"
 import departmentRoutes from "./modules/department/department.routes";
 import designationRoutes from "./modules/designation/designation.routes";
 import employeeRoutes from "./modules/employee/employee.routes";
-import attendanceRoutes from "./modules/attendance/attendance.routes"
-import userRoutes from "./modules/user/user.routes"
-import leaveRoutes from "./modules/leave/leave.routes"
+import attendanceRoutes from "./modules/attendance/attendance.routes";
+import userRoutes from "./modules/user/user.routes";
+import leaveRoutes from "./modules/leave/leave.routes";
+import profileRoutes from "./modules/profile/profile.routes";
 
 const app: Application = express();
 
@@ -28,6 +29,7 @@ app.use("/api/v1/employees", employeeRoutes);
 app.use("/api/v1/attendance", attendanceRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/leave", leaveRoutes);
+app.use("/api/v1/profile", profileRoutes);
 
 app.get("/health",(_req: Request, res: Response) => {
   res.status(200).json({
