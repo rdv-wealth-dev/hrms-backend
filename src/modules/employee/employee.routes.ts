@@ -81,6 +81,11 @@ router.delete(
   controller.deleteBankAccount.bind(controller)
 );
 
+router.get(
+  "/me/bank-accounts",
+  controller.getMyBankAccounts.bind(controller)
+);
+
 //Documents
 router.get(
   "/:id/documents",
@@ -99,6 +104,10 @@ router.delete(
   "/:id/documents/:docId",
   checkPermission("employee.update"),
   controller.deleteDocument.bind(controller)
+);
+router.get(
+  "/me/documents",
+  controller.getMyDocuments.bind(controller)
 );
 
 export default router;
