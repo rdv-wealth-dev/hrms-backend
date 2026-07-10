@@ -164,8 +164,8 @@ export class AuthService {
     // possible future use such as assigning roleId references elsewhere)
     await seedDefaultRoles(tenantId, "system");
 
-    // 7. Create org admin user
-    const orgAdmin = await new UserModel({
+    // 7. Create super admin user
+    const superAdmin = await new UserModel({
       tenantId:        tenantObjectId,
       email:           input.email.toLowerCase(),
       passwordHash,
@@ -184,16 +184,16 @@ export class AuthService {
     const rawVerificationToken = crypto.randomBytes(32).toString("hex");
     const hashedVerificationToken = crypto.createHash("sha256").update(rawVerificationToken).digest("hex");
 
-    orgAdmin.emailVerificationToken = hashedVerificationToken;
-    orgAdmin.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-    await orgAdmin.save();
+    superAdmin.emailVerificationToken = hashedVerificationToken;
+    superAdmin.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    await superAdmin.save();
 
     // 9. Send verification email
     const verificationUrl = `${env.frontendUrl}/verify-email?token=${rawVerificationToken}`;
 
     await emailService.sendEmail(
-      orgAdmin.email,
-      `${orgAdmin.firstName} ${orgAdmin.lastName}`,
+      superAdmin.email,
+      `${superAdmin.firstName} ${superAdmin.lastName}`,
       "Verify your HRMs email address",
       `
         <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
@@ -392,8 +392,14 @@ export class AuthService {
     }
 
     user.isEmailVerified = true;
-    user.emailVerificationToken = undefined;
-    user.emailVerificationExpires = undefined;
+    // Note: we intentionally do NOT clear emailVerificationToken/Expires here.
+    // If this same request fires twice in quick succession — React StrictMode's
+    // double-effect in dev, an email client's link-scanning security bot, or a
+    // user double-clicking the link — the second call must find this same user
+    // again and hit the `user.isEmailVerified` early-return above, returning a
+    // friendly "already verified" message instead of a false "invalid or
+    // expired token" error. The token still expires naturally via
+    // emailVerificationExpires, so this stays safe.
     await user.save();
 
     return { message: "Email verified successfully! You can now log in to your account." };

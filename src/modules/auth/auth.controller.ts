@@ -66,6 +66,7 @@ export class AuthController {
       res.status(200).json(
         buildSuccessResponse(result, "Email verification processed")
       );
+      console.log("sadsfasdasdas")
     } catch (error) {
       next(error);
     }

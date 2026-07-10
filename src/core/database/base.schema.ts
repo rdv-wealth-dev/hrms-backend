@@ -205,13 +205,13 @@ export function buildSuccessResponse<T>(
 ) {
   return { succeeded: true, message, errors: [], data };
 }
-
 export function buildErrorResponse(
   message:   string,
   errors:    string[] = [],
   errorCode: string   = "SYSTEM_INTERNAL_ERROR"
 ) {
   return {
+    // console.log(data)
     succeeded: false,
     message,
     errorCode,
