@@ -34,6 +34,21 @@ export class RegularizationService {
       throw new AppError("You can only regularize your own attendance", 403);
     }
 
+    // Prevent duplicate — only one pending request per attendance record
+    const existing = await RegularizationModel.findOne({
+      tenantId:     new mongoose.Types.ObjectId(context.tenantId),
+      employeeId:   new mongoose.Types.ObjectId(employeeId),
+      attendanceId: attendance._id,
+      status:       RegularizationStatus.PENDING,
+      isDeleted:    false,
+    });
+    if (existing) {
+      throw new AppError(
+        "You already have a pending request for this attendance record",
+        409
+      );
+    }
+
     return this.regRepo.create(context, {
       tenantId:      new mongoose.Types.ObjectId(context.tenantId) as any,
       branchId:      attendance.branchId as any,
