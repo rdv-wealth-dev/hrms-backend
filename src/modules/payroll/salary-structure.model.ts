@@ -10,7 +10,7 @@ import { createBaseSchema, BaseDocument } from "../../core/database/base.schema"
 export interface SalaryLineItem {
     componentId : mongoose.Types.ObjectId;
     componentCode : string;     // denormalized for fast payslip rendering
-    amount : Number;        // resolved monthly amount for this component
+    amount : number;        // resolved monthly amount for this component
 }
 
 export interface SalaryStructureDocument extends BaseDocument {
