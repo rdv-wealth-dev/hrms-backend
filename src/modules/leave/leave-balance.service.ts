@@ -63,6 +63,22 @@ export class LeaveBalanceService {
   }
 
   async getMyBalances(context: RequestContext, employeeId: string, year: number) {
+    // Fetch all active, non-expired leave types for this tenant
+    const leaveTypesPage = await this.leaveTypeRepo.findAll(
+      context,
+      { isActive: true, effectiveTo: null },
+      { pageNumber: 1, pageSize: 100 }
+    );
+
+    // Lazily initialize a balance record for any leave type the employee
+    // doesn't have one yet (e.g. a new policy added after onboarding)
+    await Promise.all(
+      leaveTypesPage.data.map((lt: any) =>
+        this.getOrCreateBalance(context, employeeId, lt._id.toString(), year)
+      )
+    );
+
+    // Return the full up-to-date list
     return this.balanceRepo.findAllForEmployee(context, employeeId, year);
   }
 
