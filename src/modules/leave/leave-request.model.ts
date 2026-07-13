@@ -26,7 +26,7 @@ export enum ApprovalLevelStatus {
 
 export interface ApprovalStep {
   level:        number;              // 1, 2, 3
-  approverRole: string;              // "MANAGER", "HR_ADMIN", "SUPER_ADMIN" — who's expected to act
+  approverRole: string;              // "MANAGER", "HR_ADMIN", "ORG_ADMIN" — who's expected to act
   approverId?:  mongoose.Types.ObjectId;  // actual user who acted, once acted
   status:       ApprovalLevelStatus;
   comments?:    string;
