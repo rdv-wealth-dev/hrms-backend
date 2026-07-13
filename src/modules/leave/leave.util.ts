@@ -143,8 +143,8 @@ export function buildApprovalChain(approvalLevels: number): Array<{
   status: string;
 }> {
   const roleByLevel: Record<number, string> = {
-    1: "MANAGER",
-    2: "HR_ADMIN",
+    1: "HR_ADMIN",
+    2: "ORG_ADMIN",
     3: "ORG_ADMIN",
   };
 
