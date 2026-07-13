@@ -127,7 +127,11 @@ export class LeaveRequestService {
       await this.balanceService.confirmUsage(context, employeeId, input.leaveTypeId, year, totalDays);
     }
 
-    return request;
+    const populated = await LeaveRequestModel.findById(request._id)
+      .populate("employeeId", "employeeCode firstName lastName")
+      .populate("leaveTypeId", "name code isPaid");
+
+    return populated;
   }
 
   //Self-service — my requests
@@ -174,7 +178,7 @@ export class LeaveRequestService {
       );
     }
 
-    return request;
+    return this.reqRepo.findById(context, id);
   }
 
   //Admin/Manager — pending queue for their role
@@ -195,7 +199,7 @@ export class LeaveRequestService {
     );
     if (!currentStep) throw new AppError("Approval chain misconfigured", 500);
 
-    if (currentStep.approverRole !== context.role && context.role !== "SUPER_ADMIN" && context.role !== "ORG_ADMIN") {
+    if (currentStep.approverRole !== context.role && context.role !== "ORG_ADMIN") {
       throw new AppError(
         `Only a ${currentStep.approverRole} can act on this approval level`,
         403
@@ -228,7 +232,7 @@ export class LeaveRequestService {
     }
 
     await this.reqRepo.save(request);
-    return request;
+    return this.reqRepo.findById(context, id);
   }
 
   //Approved leave → mark attendance ON_LEAVE for the date range
