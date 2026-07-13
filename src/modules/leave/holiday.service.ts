@@ -10,7 +10,7 @@ export class HolidayService {
 
   async createHoliday(context: RequestContext, input: CreateHolidayInput) {
     const normalizedDate = new Date(input.date);
-    normalizedDate.setHours(0, 0, 0, 0);
+    normalizedDate.setUTCHours(0, 0, 0, 0);
 
     let conflict;
     if (input.branchId) {
@@ -66,7 +66,7 @@ export class HolidayService {
     if (!holiday) throw new AppError("Holiday not found", 404);
 
     const checkDate = input.date ? new Date(input.date) : holiday.date;
-    checkDate.setHours(0, 0, 0, 0);
+    checkDate.setUTCHours(0, 0, 0, 0);
 
     const checkBranchId = input.branchId !== undefined ? input.branchId : holiday.branchId?.toString();
 
