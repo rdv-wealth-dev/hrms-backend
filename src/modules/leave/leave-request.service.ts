@@ -195,7 +195,7 @@ export class LeaveRequestService {
     );
     if (!currentStep) throw new AppError("Approval chain misconfigured", 500);
 
-    if (currentStep.approverRole !== context.role && context.role !== "SUPER_ADMIN") {
+    if (currentStep.approverRole !== context.role && context.role !== "SUPER_ADMIN" && context.role !== "ORG_ADMIN") {
       throw new AppError(
         `Only a ${currentStep.approverRole} can act on this approval level`,
         403
