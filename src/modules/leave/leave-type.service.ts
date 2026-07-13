@@ -34,7 +34,7 @@ export class LeaveTypeService {
 
     async listLeaveTypes(context: RequestContext) {
         return this.leaveTypeRepo.findAll(
-            context, { isActive: true }, { pageNumber: 1, pageSize: 50 }
+            context, { isActive: true, effectiveTo: null }, { pageNumber: 1, pageSize: 50 }
         );
     }
 
@@ -44,30 +44,49 @@ export class LeaveTypeService {
         return type;
     }
 
-    async updateLeaveType(context: RequestContext, id: string, input: UpdateLeaveTypeInput) {
-        const type = await this.leaveTypeRepo.findById(context, id);
-        if (!type) throw new AppError("Leave type not found", 404);
-
-        if (input.code && input.code !== type.code) {
-            const existing = await this.leaveTypeRepo.findByCode(context, input.code);
-            if (existing) throw new AppError(`Leave type code "${input.code}" already exists`, 409);
-        }
-
-        const updateData: Record<string, unknown> = { ...input };
-        if (input.branchOverrides) {
-            updateData.branchOverrides = input.branchOverrides.map(o => ({
-                branchId: new mongoose.Types.ObjectId(o.branchId),
-                annualQuota: o.annualQuota,
-            }));
-        }
-
-        return this.leaveTypeRepo.updateById(context, id, updateData);
-    }
-
     async deleteLeaveType(context: RequestContext, id: string) {
         const type = await this.leaveTypeRepo.findById(context, id);
         if (!type) throw new AppError("Leave type not found", 404);
         await this.leaveTypeRepo.softDeleteById(context, id);
         return { message: "Leave type deleted successfully" };
     }
+
+
+    async updateLeaveType(context: RequestContext, id: string, input: UpdateLeaveTypeInput) {
+        const current = await this.leaveTypeRepo.findById(context, id);
+        if (!current) throw new AppError("Leave type not found", 404);
+
+        if (input.code && input.code !== current.code) {
+            const existing = await this.leaveTypeRepo.findByCode(context, input.code);
+            if (existing) throw new AppError(`Leave type code "${input.code}" already exists`, 409);
+        }
+
+        // Close out the current version — it stops being active from today
+        const now = new Date();
+        current.effectiveTo = now;
+        await this.leaveTypeRepo.save(current as any);
+
+        // Create the new version with merged fields, pointing back at what it replaces
+        const merged = {
+            ...current.toObject(),
+            ...input,
+            _id: undefined,
+            effectiveFrom: now,
+            effectiveTo: null,
+            supersedes: current._id,
+            createdAt: undefined,
+            updatedAt: undefined,
+        };
+
+        if (input.branchOverrides) {
+            merged.branchOverrides = input.branchOverrides.map(o => ({
+                branchId: new mongoose.Types.ObjectId(o.branchId),
+                annualQuota: o.annualQuota,
+            }));
+        }
+
+        return this.leaveTypeRepo.create(context, merged);
+    }
+
+
 }

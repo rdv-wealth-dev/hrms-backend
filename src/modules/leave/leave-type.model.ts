@@ -36,6 +36,9 @@ export interface LeaveTypeDocument extends BaseDocument {
   probationEligible:     boolean;  // can employees still on probation use this type?
   applySandwichPolicy:   boolean;  // deduct holidays/weekoffs sandwiched between leave days
   isActive:              boolean;
+  effectiveFrom: Date;
+  effectiveTo: Date;
+  supersedes?: mongoose.Types.ObjectId;
 }
 
 const BranchOverrideSchema = new mongoose.Schema(
@@ -141,6 +144,18 @@ const LeaveTypeSchema = createBaseSchema<LeaveTypeDocument>(
     isActive: {
       type:    Boolean,
       default: true,
+    },
+    effectiveFrom: {
+      type: Date,
+      default: () => new Date(),
+    },
+    effectiveTo: {
+      type: Date,
+      default: null,
+    },
+    supersedes: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
     },
   },
   { collection: "leave_types" }

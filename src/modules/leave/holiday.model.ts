@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { createBaseSchema, BaseDocument, } from "../../core/database/base.schema";
+import { createOrgLevelSchema, OrgLevelDocument } from "../../core/database/base.schema";
 
 export enum HolidayType {
     NATIONAL = "NATIONAL",
@@ -7,15 +7,16 @@ export enum HolidayType {
     REGIONAL = "REGIONAL",
 }
 
-export interface HolidayDocument extends BaseDocument {
+export interface HolidayDocument extends OrgLevelDocument {
     name: string;         // "Diwali", "Republic Day"
     date: Date;           // normalized to midnight
     type: HolidayType;
     isOptional: boolean;    // if true, employee must opt-in to take this off
     description?: string;
+    branchId?: mongoose.Types.ObjectId; // optional — org-wide if omitted
 }
 
-const HolidaySchema = createBaseSchema<HolidayDocument>(
+const HolidaySchema = createOrgLevelSchema<HolidayDocument>(
     {
         name: {
             type: String,
@@ -39,6 +40,9 @@ const HolidaySchema = createBaseSchema<HolidayDocument>(
         description: {
             type: String,
             trim: true,
+        },
+        branchId: {
+            type: mongoose.Schema.Types.ObjectId,
         },
     },
     { collection: "holidays" }
