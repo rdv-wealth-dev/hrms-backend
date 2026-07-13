@@ -13,7 +13,12 @@ export class LeaveTypeRepository extends BaseRepository<LeaveTypeDocument> {
         return LeaveTypeModel.findOne({
             tenantId : new mongoose.Types.ObjectId(context.tenantId),
             code : code.toUpperCase(),
+            effectiveTo : null,     // only match the currently active version
             isDeleted : false,
         })
+    }
+
+    async save(doc: LeaveTypeDocument): Promise<LeaveTypeDocument> {
+        return doc.save();
     }
 }
