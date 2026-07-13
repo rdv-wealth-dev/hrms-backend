@@ -17,7 +17,9 @@ export class LeaveRequestRepository {
       _id: new mongoose.Types.ObjectId(id),
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
-    });
+    })
+      .populate("employeeId", "employeeCode firstName lastName")
+      .populate("leaveTypeId", "name code isPaid");
   }
 
   async findForEmployee(
@@ -40,6 +42,7 @@ export class LeaveRequestRepository {
         .sort({ appliedAt: -1 })
         .skip(skip)
         .limit(safe)
+        .populate("employeeId", "employeeCode firstName lastName")
         .populate("leaveTypeId", "name code isPaid")
         .lean(),
       LeaveRequestModel.countDocuments(query),
