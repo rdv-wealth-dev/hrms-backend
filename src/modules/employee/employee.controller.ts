@@ -267,7 +267,9 @@ export class EmployeeController {
   ): Promise<void> {
   try {
     const result = await empService.requestDocumentUploadUrl(req.context, req.params.id, req.body);
-    res.status(200).json(buildSuccessResponse(result, "Upload URL generated"));
+    res.status(200).json(
+      buildSuccessResponse(result, "Upload URL generated")
+    );
   } catch (error) {
      next(error); 
     }
@@ -281,7 +283,9 @@ async getDownloadUrl(
   ): Promise<void> {
   try {
     const result = await empService.getDocumentDownloadUrl(req.context, req.params.id, req.params.docId);
-    res.status(200).json(buildSuccessResponse(result, "Download URL generated"));
+    res.status(200).json(
+      buildSuccessResponse(result, "Download URL generated")
+    );
   } catch (error) { 
     next(error); 
   }

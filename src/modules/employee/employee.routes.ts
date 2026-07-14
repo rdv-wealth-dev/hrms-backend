@@ -9,6 +9,7 @@ import {
   UpdateEmployeeStatusDto,
   AddBankAccountDto,
   AddDocumentDto,
+  RequestUploadUrlDto
 } from "./employee.dto";
 
 const router = Router();
@@ -108,6 +109,19 @@ router.delete(
 router.get(
   "/me/documents",
   controller.getMyDocuments.bind(controller)
+);
+
+router.post(
+  "/:id/documents/upload-url",
+  checkPermission("employee.update"),
+  validateBody(RequestUploadUrlDto),
+  controller.requestUploadUrl.bind(controller)
+);
+
+router.get(
+  "/:id/documents/:docId/download-url",
+  checkPermission("employee.read"),
+  controller.getDownloadUrl.bind(controller)
 );
 
 export default router;
