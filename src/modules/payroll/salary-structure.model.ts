@@ -16,8 +16,8 @@ export interface SalaryLineItem {
 export interface SalaryStructureDocument extends BaseDocument {
     employeeId:      mongoose.Types.ObjectId;
     effectiveFrom:   Date;
-    effectiveTo?:    Date;      // null = currently active
-    supersedes?:     mongoose.Types.ObjectId;
+    effectiveTo?:    Date | null;      // null = currently active
+    supersedes?:     mongoose.Types.ObjectId | null;
     ctcAnnual:       number;    // total annual CTC this structure represents
     lineItems:       SalaryLineItem[];
     grossMonthly:    number;    // sum of EARNING components
