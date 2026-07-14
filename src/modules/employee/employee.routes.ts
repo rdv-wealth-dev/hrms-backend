@@ -63,7 +63,52 @@ router.delete(
   controller.delete.bind(controller)
 );
 
-//Bank accounts
+// ── Self-service routes (no permission needed, must be BEFORE /:id) ──
+
+router.get(
+  "/me/bank-accounts",
+  controller.getMyBankAccounts.bind(controller)
+);
+
+router.get(
+  "/me/documents",
+  controller.getMyDocuments.bind(controller)
+);
+
+router.post(
+  "/me/documents/upload-url", 
+  validateBody(RequestUploadUrlDto), 
+  controller.requestMyUploadUrl.bind(controller)
+);
+
+router.post(
+  "/me/documents",            
+  validateBody(AddDocumentDto),      
+  controller.addMyDocument.bind(controller)
+);
+
+router.get(
+  "/me/documents/:docId/download-url",
+  controller.getMyDownloadUrl.bind(controller)
+);
+
+// ── Admin: document verification (static paths before /:id) ──
+
+router.get(
+  "/documents/pending", 
+  checkPermission("employee.update"), 
+  controller.getPendingDocuments.bind(controller)
+);
+
+router.patch(
+  "/documents/:docId/verify", 
+  checkPermission("employee.update"), 
+  validateBody(VerifyDocumentDto), 
+  controller.verifyDocument.bind(controller)
+);
+
+// ── Admin: bank accounts (require permissions) ──
+
 router.get(
   "/:id/bank-accounts",
   checkPermission("employee.read"),
@@ -83,12 +128,8 @@ router.delete(
   controller.deleteBankAccount.bind(controller)
 );
 
-router.get(
-  "/me/bank-accounts",
-  controller.getMyBankAccounts.bind(controller)
-);
+// ── Admin: documents (require permissions) ──
 
-//Documents
 router.get(
   "/:id/documents",
   checkPermission("employee.read"),
@@ -107,10 +148,6 @@ router.delete(
   checkPermission("employee.update"),
   controller.deleteDocument.bind(controller)
 );
-router.get(
-  "/me/documents",
-  controller.getMyDocuments.bind(controller)
-);
 
 router.post(
   "/:id/documents/upload-url",
@@ -123,32 +160,6 @@ router.get(
   "/:id/documents/:docId/download-url",
   checkPermission("employee.read"),
   controller.getDownloadUrl.bind(controller)
-);
-
-router.post(
-  "/me/documents/upload-url", 
-  validateBody(RequestUploadUrlDto), 
-  controller.requestMyUploadUrl.bind(controller)
-);
-
-router.post(
-  "/me/documents",            
-  validateBody(AddDocumentDto),      
-  controller.addMyDocument.bind(controller)
-);
-
-
-router.get(
-  "/documents/pending", 
-  checkPermission("employee.update"), 
-  controller.getPendingDocuments.bind(controller)
-);
-
-router.patch(
-  "/documents/:docId/verify", 
-  checkPermission("employee.update"), 
-  validateBody(VerifyDocumentDto), 
-  controller.verifyDocument.bind(controller)
 );
 
 export default router;

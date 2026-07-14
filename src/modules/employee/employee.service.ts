@@ -271,8 +271,10 @@ export class EmployeeService {
     return this.addDocument(context, employeeId, input);
   }
 
-
-
+  async getMyDownloadUrl(context: RequestContext, docId: string) {
+    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
+    return this.getDocumentDownloadUrl(context, employeeId, docId);
+  }
 
   //Get by ID
   async getEmployeeById(

@@ -350,6 +350,21 @@ export class EmployeeController {
     }
   }
 
+  async getMyDownloadUrl(
+    req: Request<{ docId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.getMyDownloadUrl(req.context, req.params.docId);
+      res.status(200).json(
+        buildSuccessResponse(result, "Download URL generated")
+      );
+    } catch (e) {
+      next(e);
+    }
+  }
+
 }
 
 
