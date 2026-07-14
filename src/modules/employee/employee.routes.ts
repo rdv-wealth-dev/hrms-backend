@@ -9,7 +9,8 @@ import {
   UpdateEmployeeStatusDto,
   AddBankAccountDto,
   AddDocumentDto,
-  RequestUploadUrlDto
+  RequestUploadUrlDto,
+  VerifyDocumentDto
 } from "./employee.dto";
 
 const router = Router();
@@ -60,6 +61,20 @@ router.delete(
   "/:id",
   checkPermission("employee.delete"),
   controller.delete.bind(controller)
+);
+
+// Admin — document verification (must be before /:id routes)
+router.get(
+  "/documents/pending",
+  checkPermission("employee.update"),
+  controller.getPendingDocuments.bind(controller)
+);
+
+router.patch(
+  "/documents/:docId/verify",
+  checkPermission("employee.update"),
+  validateBody(VerifyDocumentDto),
+  controller.verifyDocument.bind(controller)
 );
 
 //Bank accounts

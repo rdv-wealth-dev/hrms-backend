@@ -291,6 +291,36 @@ export class EmployeeController {
     }
   }
 
+  async getPendingDocuments(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.getPendingDocuments(req.context);
+      res.status(200).json(
+        buildSuccessResponse(result, "Pending documents fetched")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyDocument(
+    req: Request<{ docId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.verifyDocument(req.context, req.params.docId, req.body);
+      res.status(200).json(
+        buildSuccessResponse(result, "Document verified")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async requestMyUploadUrl(
     req: Request,
     res: Response,
