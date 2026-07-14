@@ -8,6 +8,7 @@ import {
   AddBankAccountInput,
   AddDocumentInput,
   ListEmployeesQuery,
+  RequestUploadUrlInput,
 } from "./employee.dto";
 import { AppError } from "../../core/errors/app.error";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
@@ -16,6 +17,7 @@ import crypto from "crypto";
 import { UserModel } from "../user/user.model";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
+import { s3Service } from "../../service/s3.service";
 
 // Helper — mask account number showing only last 4 digits
 function maskAccountNumber(acc: string): string {
@@ -217,6 +219,47 @@ export class EmployeeService {
       totalRecords: result.totalRecords,
     });
   }
+  
+
+  // Step 1 — HR/employee requests a pre-signed URL before uploading anything
+  async requestDocumentUploadUrl(
+    context : RequestContext,
+    employeeId : string,
+    input : RequestUploadUrlInput
+  ) {
+    const employee = await this.empRepo.findById(context, employeeId);
+    if (!employee) throw new AppError("Employee not found", 404);
+
+    const s3Key = s3Service.buildDocumentKey(context.tenantId, employeeId, input.fileName);
+    const { uploadUrl, expiresIn } = await s3Service.getUploadUrl(s3Key, input.mimeType);
+
+    return {
+      uploadUrl,
+      expiresIn,
+      s3Key,            // client must send this back in step 2 after uploading
+      documentType : input.documentType,
+      fileName : input.fileName
+    };
+  }
+
+  // Step 3 — get a fresh viewing URL for an already-uploaded document
+  async getDocumentDownloadUrl(
+    context : RequestContext,
+    employeeId : string,
+    docId : string
+  ) {
+    const employee = await this.empRepo.findById(context, employeeId);
+    if(!employee) throw new AppError("Employee not found", 404);
+
+    const documents = await this.empRepo.getDocuments(context, employeeId);
+    const doc = documents.find(d => d._id.toString() === docId);
+    if (!doc) throw new AppError("Document not found", 404);
+
+    const downloadUrl = await s3Service.getDownloadUrl(doc.s3Key);
+    return { downloadUrl, fileName: doc.fileName, expiresIn: 900 };
+
+  }
+
 
 
 
