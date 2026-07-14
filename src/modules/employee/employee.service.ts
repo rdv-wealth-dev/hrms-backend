@@ -260,6 +260,16 @@ export class EmployeeService {
 
   }
 
+  async requestMyUploadUrl(context: RequestContext, input: RequestUploadUrlInput) {
+  const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
+  return this.requestDocumentUploadUrl(context, employeeId, input);
+  }
+
+  async addMyDocument(context: RequestContext, input: AddDocumentInput) {
+  const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
+  return this.addDocument(context, employeeId, input);
+  }
+
 
 
 
