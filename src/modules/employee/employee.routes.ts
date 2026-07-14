@@ -124,4 +124,16 @@ router.get(
   controller.getDownloadUrl.bind(controller)
 );
 
+router.post(
+  "/me/documents/upload-url", 
+  validateBody(RequestUploadUrlDto), 
+  controller.requestMyUploadUrl.bind(controller)
+);
+
+router.post(
+  "/me/documents",            
+  validateBody(AddDocumentDto),      
+  controller.addMyDocument.bind(controller)
+);
+
 export default router;
