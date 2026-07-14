@@ -257,4 +257,37 @@ export class EmployeeController {
       next(error);
     }
   }
+
+  // documents 
+
+  async requestUploadUrl(
+  req: Request<{ id: string }>, 
+  res: Response, 
+  next: NextFunction
+  ): Promise<void> {
+  try {
+    const result = await empService.requestDocumentUploadUrl(req.context, req.params.id, req.body);
+    res.status(200).json(buildSuccessResponse(result, "Upload URL generated"));
+  } catch (error) {
+     next(error); 
+    }
 }
+
+
+async getDownloadUrl(
+  req: Request<{ id: string; docId: string }>, 
+  res: Response, 
+  next: NextFunction
+  ): Promise<void> {
+  try {
+    const result = await empService.getDocumentDownloadUrl(req.context, req.params.id, req.params.docId);
+    res.status(200).json(buildSuccessResponse(result, "Download URL generated"));
+  } catch (error) { 
+    next(error); 
+  }
+}
+
+}
+
+
+
