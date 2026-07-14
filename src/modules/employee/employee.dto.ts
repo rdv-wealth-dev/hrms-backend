@@ -178,3 +178,9 @@ export const RequestUploadUrlDto = z.object({
 });
 
 export type RequestUploadUrlInput = z.infer<typeof RequestUploadUrlDto>;
+
+export const VerifyDocumentDto = z.object({
+  isVerified: z.boolean(),
+  remarks:    z.string().trim().max(500).optional(),
+});
+export type VerifyDocumentInput = z.infer<typeof VerifyDocumentDto>;
