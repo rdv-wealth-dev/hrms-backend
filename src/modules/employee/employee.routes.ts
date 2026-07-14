@@ -63,20 +63,6 @@ router.delete(
   controller.delete.bind(controller)
 );
 
-// Admin — document verification (must be before /:id routes)
-router.get(
-  "/documents/pending",
-  checkPermission("employee.update"),
-  controller.getPendingDocuments.bind(controller)
-);
-
-router.patch(
-  "/documents/:docId/verify",
-  checkPermission("employee.update"),
-  validateBody(VerifyDocumentDto),
-  controller.verifyDocument.bind(controller)
-);
-
 //Bank accounts
 router.get(
   "/:id/bank-accounts",
@@ -149,6 +135,20 @@ router.post(
   "/me/documents",            
   validateBody(AddDocumentDto),      
   controller.addMyDocument.bind(controller)
+);
+
+
+router.get(
+  "/documents/pending", 
+  checkPermission("employee.update"), 
+  controller.getPendingDocuments.bind(controller)
+);
+
+router.patch(
+  "/documents/:docId/verify", 
+  checkPermission("employee.update"), 
+  validateBody(VerifyDocumentDto), 
+  controller.verifyDocument.bind(controller)
 );
 
 export default router;
