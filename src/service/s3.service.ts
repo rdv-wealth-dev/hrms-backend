@@ -14,10 +14,10 @@ export class S3Service {
     // top of application-level tenant checks — even a leaked key reveals
     // nothing usable without S3 credentials, and stays organized per tenant.
 
-    buildDocumentKey(tenantId: string, employeeId: string, fileName: string): string {
+    buildDocumentKey(tenantId: string, employeeId: string, documentType: string, fileName: string): string {
         const safeFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
         const unique = crypto.randomBytes(8).toString("hex");
-        return `tenants/${tenantId}/employees/${employeeId}/documents/${unique}-${safeFileName}`;
+        return `tenants/${tenantId}/employees/${employeeId}/documents/${documentType.toLowerCase()}/${unique}-${safeFileName}`;
     }
 
     //Pre-signed PUT URL — client uploads directly to S3, server never sees bytes
