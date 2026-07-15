@@ -44,7 +44,7 @@ export class PayrollRunService {
     });
   }
 
-  // ─── The core orchestration — generates a payslip per active employee ──────
+  //The core orchestration — generates a payslip per active employee
   async generatePayslips(context: RequestContext, runId: string) {
     const run = await this.runRepo.findById(context, runId);
     if (!run) throw new AppError("Payroll run not found", 404);
