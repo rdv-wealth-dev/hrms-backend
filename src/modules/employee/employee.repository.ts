@@ -46,12 +46,26 @@ export class EmployeeRepository
     }
 
     if (keyword) {
-      (tenantFilter as any).$or = [
+      const orConditions: Record<string, unknown>[] = [
         { firstName: { $regex: keyword, $options: "i" } },
         { lastName: { $regex: keyword, $options: "i" } },
         { email: { $regex: keyword, $options: "i" } },
         { employeeCode: { $regex: keyword, $options: "i" } },
       ];
+
+      const parts = keyword.trim().split(/\s+/);
+      if (parts.length > 1) {
+        orConditions.push({
+          firstName: { $regex: parts[0], $options: "i" },
+          lastName: { $regex: parts.slice(1).join(" "), $options: "i" },
+        });
+        orConditions.push({
+          lastName: { $regex: parts[0], $options: "i" },
+          firstName: { $regex: parts.slice(1).join(" "), $options: "i" },
+        });
+      }
+
+      (tenantFilter as any).$or = orConditions;
     }
 
     const skip = (page - 1) * pageSize;
