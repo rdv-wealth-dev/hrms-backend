@@ -12,6 +12,7 @@ import attendanceRoutes from "./modules/attendance/attendance.routes";
 import userRoutes from "./modules/user/user.routes";
 import leaveRoutes from "./modules/leave/leave.routes";
 import profileRoutes from "./modules/profile/profile.routes";
+import payrollRoutes from "./modules/payroll/payroll.routes";
 
 const app: Application = express();
 
@@ -30,6 +31,7 @@ app.use("/api/v1/attendance", attendanceRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/leave", leaveRoutes);
 app.use("/api/v1/profile", profileRoutes);
+app.use("/api/v1/payroll", payrollRoutes);
 
 app.get("/health",(_req: Request, res: Response) => {
   res.status(200).json({
