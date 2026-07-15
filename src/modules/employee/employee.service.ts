@@ -231,7 +231,7 @@ export class EmployeeService {
     const employee = await this.empRepo.findById(context, employeeId);
     if (!employee) throw new AppError("Employee not found", 404);
 
-    const s3Key = s3Service.buildDocumentKey(context.tenantId, employeeId, input.fileName);
+    const s3Key = s3Service.buildDocumentKey(context.tenantId, employeeId, input.documentType, input.fileName);
     const { uploadUrl, expiresIn } = await s3Service.getUploadUrl(s3Key, input.mimeType);
 
     return {
