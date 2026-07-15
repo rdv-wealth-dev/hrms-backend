@@ -16,6 +16,7 @@ import { RequestContext } from "../../core/interfaces/request-context.interface"
 import { buildPagedResponse } from "../../core/database/base.schema";
 import crypto from "crypto";
 import { UserModel } from "../user/user.model";
+import { OrganizationModel } from "../organization/organization.model";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
 import { s3Service } from "../../service/s3.service";
@@ -231,7 +232,10 @@ export class EmployeeService {
     const employee = await this.empRepo.findById(context, employeeId);
     if (!employee) throw new AppError("Employee not found", 404);
 
-    const s3Key = s3Service.buildDocumentKey(context.tenantId, employeeId, input.documentType, input.fileName);
+    const org = await OrganizationModel.findById(context.tenantId).select("slug");
+    const slug = org?.slug ?? context.tenantId;
+
+    const s3Key = s3Service.buildDocumentKey(slug, employeeId, input.documentType, input.fileName);
     const { uploadUrl, expiresIn } = await s3Service.getUploadUrl(s3Key, input.mimeType);
 
     return {
