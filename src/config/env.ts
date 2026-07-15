@@ -11,7 +11,11 @@ export const env = {
     zeptomailApiKey : process.env.ZEPTOMAIL_API_KEY || "",
     zeptomailFromEmail : process.env.ZEPTOMAIL_FROM_EMAIL || "hrms@redvisiontech.com",
     zeptomailFromName : process.env.ZEPTOMAIL_FROM_NAME || "HRMs",
-    frontendUrl : process.env.FRONTEND_URL || "http://localhost:5173"
+    frontendUrl : process.env.FRONTEND_URL || "http://localhost:5173",
+    awsRegion: process.env.AWS_REGION || "ap-south-1",
+    awsAccessKeyId : process.env.AWS_ACCESS_KEY_ID || "",
+    awsSecretKey : process.env.AWS_SECRET_ACCESS_KEY || "",
+    awsS3Bucket : process.env.AWS_S3_BUCKET_NAME || "",
 
 }
 

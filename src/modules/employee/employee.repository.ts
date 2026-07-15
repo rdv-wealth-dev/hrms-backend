@@ -14,25 +14,25 @@ export class EmployeeRepository
   //Find by email within tenant
   async findByEmail(
     context: RequestContext,
-    email:   string
+    email: string
   ): Promise<EmployeeDocument | null> {
     return EmployeeModel.findOne({
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-      email:     email.toLowerCase(),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      email: email.toLowerCase(),
       isDeleted: false,
     });
   }
 
   //Search employees
   async search(
-    context:  RequestContext,
-    keyword:  string,
-    filters:  Record<string, unknown> = {},
-    page:     number = 1,
+    context: RequestContext,
+    keyword: string,
+    filters: Record<string, unknown> = {},
+    page: number = 1,
     pageSize: number = 10
   ) {
     const tenantFilter: Record<string, unknown> = {
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
       ...filters,
     };
@@ -47,22 +47,22 @@ export class EmployeeRepository
 
     if (keyword) {
       (tenantFilter as any).$or = [
-        { firstName:    { $regex: keyword, $options: "i" } },
-        { lastName:     { $regex: keyword, $options: "i" } },
-        { email:        { $regex: keyword, $options: "i" } },
+        { firstName: { $regex: keyword, $options: "i" } },
+        { lastName: { $regex: keyword, $options: "i" } },
+        { email: { $regex: keyword, $options: "i" } },
         { employeeCode: { $regex: keyword, $options: "i" } },
       ];
     }
 
-    const skip  = (page - 1) * pageSize;
-    const safe  = Math.min(pageSize, 100);
+    const skip = (page - 1) * pageSize;
+    const safe = Math.min(pageSize, 100);
 
     const [data, totalRecords] = await Promise.all([
       EmployeeModel.find(tenantFilter)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(safe)
-        .populate("departmentId",  "name code")
+        .populate("departmentId", "name code")
         .populate("designationId", "name code")
         .lean(),
       EmployeeModel.countDocuments(tenantFilter),
@@ -79,18 +79,18 @@ export class EmployeeRepository
   }
 
   async getBankAccounts(
-    context:    RequestContext,
+    context: RequestContext,
     employeeId: string
   ): Promise<EmployeeBankAccountDocument[]> {
     return EmployeeBankAccountModel.find({
-      tenantId:   new mongoose.Types.ObjectId(context.tenantId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       employeeId: new mongoose.Types.ObjectId(employeeId),
-      isDeleted:  false,
+      isDeleted: false,
     }).sort({ isPrimary: -1, createdAt: -1 });
   }
 
   async updateBankAccount(
-    id:   string,
+    id: string,
     data: Partial<EmployeeBankAccountDocument>
   ): Promise<EmployeeBankAccountDocument | null> {
     return EmployeeBankAccountModel.findByIdAndUpdate(
@@ -115,13 +115,13 @@ export class EmployeeRepository
   }
 
   async getDocuments(
-    context:    RequestContext,
+    context: RequestContext,
     employeeId: string
   ): Promise<EmployeeDocumentRecord[]> {
     return EmployeeDocumentModel.find({
-      tenantId:   new mongoose.Types.ObjectId(context.tenantId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       employeeId: new mongoose.Types.ObjectId(employeeId),
-      isDeleted:  false,
+      isDeleted: false,
     }).sort({ createdAt: -1 });
   }
 
@@ -129,6 +129,22 @@ export class EmployeeRepository
     await EmployeeDocumentModel.findByIdAndUpdate(
       id,
       { isDeleted: true }
+    );
+  }
+
+  async getPendingDocuments(context: RequestContext) {
+    return EmployeeDocumentModel.find({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      isVerified: false,
+      isDeleted: false,
+    }).populate("employeeId", "employeeCode firstName lastName").sort({ createdAt: 1 });
+  }
+
+  async verifyDocument(id: string, isVerified: boolean, verifiedBy: string) {
+    return EmployeeDocumentModel.findByIdAndUpdate(
+      id,
+      { isVerified, updatedBy: new mongoose.Types.ObjectId(verifiedBy) },
+      { new: true }
     );
   }
 }

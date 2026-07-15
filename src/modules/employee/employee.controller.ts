@@ -257,4 +257,115 @@ export class EmployeeController {
       next(error);
     }
   }
+
+  // documents 
+
+  async requestUploadUrl(
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.requestDocumentUploadUrl(req.context, req.params.id, req.body);
+      res.status(200).json(
+        buildSuccessResponse(result, "Upload URL generated")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+
+  async getDownloadUrl(
+    req: Request<{ id: string; docId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.getDocumentDownloadUrl(req.context, req.params.id, req.params.docId);
+      res.status(200).json(
+        buildSuccessResponse(result, "Download URL generated")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getPendingDocuments(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.getPendingDocuments(req.context);
+      res.status(200).json(
+        buildSuccessResponse(result, "Pending documents fetched")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async verifyDocument(
+    req: Request<{ docId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.verifyDocument(req.context, req.params.docId, req.body);
+      res.status(200).json(
+        buildSuccessResponse(result, "Document verified")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async requestMyUploadUrl(
+    req: Request,
+    res: Response,
+    next: NextFunction)
+    : Promise<void> {
+    try {
+      const result = await empService.requestMyUploadUrl(req.context, req.body);
+      res.status(200).json(
+        buildSuccessResponse(result, "Upload URL generated")
+      );
+    } catch (e) {
+      next(e);
+    }
+  }
+  async addMyDocument(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.addMyDocument(req.context, req.body);
+      res.status(201).json(
+        buildSuccessResponse(result, "Document uploaded")
+      );
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  async getMyDownloadUrl(
+    req: Request<{ docId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.getMyDownloadUrl(req.context, req.params.docId);
+      res.status(200).json(
+        buildSuccessResponse(result, "Download URL generated")
+      );
+    } catch (e) {
+      next(e);
+    }
+  }
+
 }
+
+
+

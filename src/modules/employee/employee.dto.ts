@@ -167,3 +167,20 @@ export const ListEmployeesQueryDto = z.object({
 });
 
 export type ListEmployeesQuery = z.infer<typeof ListEmployeesQueryDto>;
+
+export const RequestUploadUrlDto = z.object({
+  fileName: z.string().trim().min(1).max(255),
+  mimeType: z.string().trim().min(1).max(100),
+  documentType: z.enum([
+    "PAN","AADHAAR","PASSPORT","DRIVING_LICENSE",
+    "OFFER_LETTER","RESUME","DEGREE","EXPERIENCE","OTHER"
+  ]),
+});
+
+export type RequestUploadUrlInput = z.infer<typeof RequestUploadUrlDto>;
+
+export const VerifyDocumentDto = z.object({
+  isVerified: z.boolean(),
+  remarks:    z.string().trim().max(500).optional(),
+});
+export type VerifyDocumentInput = z.infer<typeof VerifyDocumentDto>;
