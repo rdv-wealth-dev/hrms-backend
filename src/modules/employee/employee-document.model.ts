@@ -29,6 +29,7 @@ const EmployeeDocumentSchema = createBaseSchema<EmployeeDocumentRecord>(
   {
     employeeId: {
       type:     mongoose.Schema.Types.ObjectId,
+      ref:      "Employee",
       required: true,
       index:    true,
     },
