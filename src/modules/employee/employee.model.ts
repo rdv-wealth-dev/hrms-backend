@@ -175,20 +175,24 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
     // Organisation
     departmentId: {
       type:     mongoose.Schema.Types.ObjectId,
+      ref:      "Department",
       required: true,
       index:    true,
     },
     designationId: {
       type:     mongoose.Schema.Types.ObjectId,
+      ref:      "Designation",
       required: true,
       index:    true,
     },
     managerId: {
       type:    mongoose.Schema.Types.ObjectId,
+      ref:     "Employee",
       default: null,
     },
     shiftId: {
       type:    mongoose.Schema.Types.ObjectId,
+      ref:     "Shift",
       default: null,   // null = use tenant's default shift
 },
     employeeType: {

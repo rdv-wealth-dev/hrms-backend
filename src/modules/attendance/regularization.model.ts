@@ -24,11 +24,13 @@ const RegularizationSchema = createBaseSchema<RegularizationDocument>(
     {
         employeeId : {
             type : mongoose.Schema.Types.ObjectId,
+            ref : "Employee",
             required : true,
             index : true,
         },
         attendanceId : {
             type : mongoose.Schema.Types.ObjectId,
+            ref : "Attendance",
             required : true,
         },
         attendanceDate : {

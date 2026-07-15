@@ -89,11 +89,13 @@ const AttendanceSchema = createBaseSchema<AttendanceDocument>(
     {
         employeeId : {
             type : mongoose.Schema.Types.ObjectId,
+            ref : "Employee",
             required : true,
             index : true,
         },
         shiftId : {
             type : mongoose.Schema.Types.ObjectId,
+            ref : "Shift",
             required : true,
         },
         attendanceDate : {

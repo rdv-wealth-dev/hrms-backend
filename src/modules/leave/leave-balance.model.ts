@@ -17,11 +17,13 @@ const LeaveBalanceSchema = createBaseSchema<LeaveBalanceDocument> (
     {
         employeeId : {
             type : mongoose.Schema.Types.ObjectId,
+            ref : "Employee",
             required : true,
             index : true,
         },
         leaveTypeId :{
             type : mongoose.Schema.Types.ObjectId,
+            ref : "LeaveType",
             required : true,
             index : true,
         },
