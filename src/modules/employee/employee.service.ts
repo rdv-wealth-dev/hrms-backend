@@ -384,7 +384,17 @@ export class EmployeeService {
       throw new AppError("Employee not found", 404);
     }
 
-    await this.empRepo.softDeleteById(context, id);
+    await this.empRepo.updateById(context, id, {
+      isDeleted: true,
+      isActive: false,
+      status: "INACTIVE",
+    } as any);
+
+    await UserModel.findOneAndUpdate(
+      { employeeId: employee._id },
+      { isActive: false }
+    );
+
     return { message: "Employee deleted successfully" };
   }
 
