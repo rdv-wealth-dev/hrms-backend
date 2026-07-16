@@ -201,3 +201,12 @@ export const VerifyDocumentDto = z.object({
   remarks:    z.string().trim().max(500).optional(),
 });
 export type VerifyDocumentInput = z.infer<typeof VerifyDocumentDto>;
+
+// Upload Document (Direct multipart upload)
+export const UploadDocumentDto = z.object({
+  documentType: z.enum([
+    "PAN","AADHAAR","PASSPORT","DRIVING_LICENSE",
+    "OFFER_LETTER","RESUME","DEGREE","EXPERIENCE","OTHER"
+  ]),
+});
+export type UploadDocumentInput = z.infer<typeof UploadDocumentDto>;

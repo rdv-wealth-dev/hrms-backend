@@ -38,7 +38,7 @@ export class S3Service {
         return { uploadUrl, expiresIn: UPLOAD_URL_EXPIRY_SECONDS};
     }
 
-    // ─── Pre-signed GET URL — short-lived, generated on demand for viewing ────
+    // Pre-signed GET URL — short-lived, generated on demand for viewing
     // Never store a permanent public URL anywhere — this is regenerated
     // every time someone actually wants to view the document.
     async getDownloadUrl(s3Key : string): Promise<string> {
@@ -52,6 +52,17 @@ export class S3Service {
         });
     }
 
+    // Direct buffer upload from server-side (no pre-signed URL needed)
+    async uploadObject(s3Key: string, buffer: Buffer, mimeType: string): Promise<void> {
+        const command = new PutObjectCommand({
+            Bucket: env.awsS3Bucket,
+            Key: s3Key,
+            Body: buffer,
+            ContentType: mimeType,
+            ServerSideEncryption: "AES256",
+        });
+        await s3Client.send(command);
+    }
 
     // Delete — called when a document record is hard-removed from S3
     // Note: your employee-document soft-delete (isDeleted: true) does NOT

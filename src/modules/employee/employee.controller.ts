@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { EmployeeService } from "./employee.service";
 import { buildSuccessResponse } from "../../core/database/base.schema";
 import { ListEmployeesQueryDto } from "./employee.dto";
+import { AppError } from "../../core/errors/app.error";
 
 const empService = new EmployeeService();
 
@@ -401,6 +402,51 @@ export class EmployeeController {
       const result = await empService.getMyDownloadUrl(req.context, req.params.docId);
       res.status(200).json(
         buildSuccessResponse(result, "Download URL generated")
+      );
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  async uploadMyDocumentDirectly(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.file) {
+        throw new AppError("No file uploaded", 400);
+      }
+      const result = await empService.uploadMyDocumentDirectly(
+        req.context,
+        req.file,
+        req.body.documentType
+      );
+      res.status(201).json(
+        buildSuccessResponse(result, "Document uploaded")
+      );
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  async uploadDocumentDirectly(
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.file) {
+        throw new AppError("No file uploaded", 400);
+      }
+      const result = await empService.uploadDocumentDirectly(
+        req.context,
+        req.params.id,
+        req.file,
+        req.body.documentType
+      );
+      res.status(201).json(
+        buildSuccessResponse(result, "Document uploaded")
       );
     } catch (e) {
       next(e);

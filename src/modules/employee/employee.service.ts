@@ -327,6 +327,52 @@ export class EmployeeService {
     return this.getDocumentDownloadUrl(context, employeeId, docId);
   }
 
+  // Server-side Direct upload for S3 and DB document storage
+  async uploadDocumentDirectly(
+    context: RequestContext,
+    employeeId: string,
+    file: Express.Multer.File,
+    documentType: string
+  ) {
+    const employee = await this.empRepo.findById(context, employeeId);
+    if (!employee) throw new AppError("Employee not found", 404);
+
+    const org = await OrganizationModel.findById(context.tenantId).select("slug");
+    const slug = org?.slug ?? context.tenantId;
+
+    const s3Key = s3Service.buildDocumentKey(slug, employeeId, documentType, file.originalname);
+
+    // Upload file buffer to S3 directly
+    await s3Service.uploadObject(s3Key, file.buffer, file.mimetype);
+
+    // Save metadata record
+    const doc = await this.empRepo.addDocument({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+      branchId: employee.branchId as any,
+      employeeId: new mongoose.Types.ObjectId(employeeId) as any,
+      documentType: documentType as any,
+      fileName: file.originalname,
+      s3Key: s3Key,
+      mimeType: file.mimetype,
+      sizeBytes: file.size,
+      uploadedBy: new mongoose.Types.ObjectId(context.userId) as any,
+      isVerified: false,
+      createdBy: new mongoose.Types.ObjectId(context.userId) as any,
+      updatedBy: new mongoose.Types.ObjectId(context.userId) as any,
+    });
+
+    return doc;
+  }
+
+  async uploadMyDocumentDirectly(
+    context: RequestContext,
+    file: Express.Multer.File,
+    documentType: string
+  ) {
+    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
+    return this.uploadDocumentDirectly(context, employeeId, file, documentType);
+  }
+
   //Get by ID
   async getEmployeeById(
     context: RequestContext,
