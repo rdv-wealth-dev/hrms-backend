@@ -43,6 +43,8 @@ export async function closeOutAttendanceForDate(
   let markedAbsent = 0, markedWeekOff = 0, markedHoliday = 0;
 
   for (const emp of employees) {
+    if (!emp.branchId) continue; // skip employees with no branch configured
+
     const existing = await AttendanceModel.findOne({
       tenantId:       new mongoose.Types.ObjectId(tenantId),
       employeeId:     emp._id,
