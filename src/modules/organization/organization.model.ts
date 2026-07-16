@@ -12,6 +12,7 @@ export interface OrganizationDocument extends Document {
   industry?:        string;
   employeeStrength: number;
   phone?:           string;
+  mandatoryDocumentTypes : string[];
   address?: {
     addressLine1?: string;
     addressLine2?: string;
@@ -135,6 +136,11 @@ const OrganizationSchema = createPlatformSchema<OrganizationDocument>({
     fiscalYearStart:    { type: String, default: "April"                      },
     weeklyOffDays:      { type: [String], default: ["Saturday", "Sunday"]     },
     workingHoursPerDay: { type: Number,  default: 8                           },
+  },
+
+  mandatoryDocumentTypes: {
+    type:    [String],
+    default: ["PAN", "AADHAAR"],   // sensible default, HR can change
   },
 
   // Embedded subscription
