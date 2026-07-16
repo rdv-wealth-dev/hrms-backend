@@ -17,6 +17,7 @@ import { buildPagedResponse } from "../../core/database/base.schema";
 import crypto from "crypto";
 import { UserModel } from "../user/user.model";
 import { OrganizationModel } from "../organization/organization.model";
+import { SalaryStructureService } from "../payroll/salary-structure.service";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
 import { s3Service } from "../../service/s3.service";
@@ -29,6 +30,7 @@ function maskAccountNumber(acc: string): string {
 
 export class EmployeeService {
   private empRepo = new EmployeeRepository();
+  private salaryStructureService = new SalaryStructureService();
 
   //Create employee
   async createEmployee(
@@ -173,6 +175,38 @@ export class EmployeeService {
     `
     );
 
+    let salaryStructure = null;
+    if (input.salaryStructure) {
+      try {
+        salaryStructure = await this.salaryStructureService.createOrRevise(context, {
+          employeeId: employee._id.toString(),
+          ctcAnnual:  input.salaryStructure.ctcAnnual,
+          lineItems:  input.salaryStructure.lineItems,
+        });
+      } catch (err) {
+        // Don't fail the whole onboarding if salary setup has an issue (e.g. 50%
+        // wage rule violation) — employee record + login still get created,
+        // HR fixes salary separately. Log this properly in production.
+      }
+    }
+
+    let bankAccount = null;
+    if (input.bankAccount) {
+      const acc = await this.empRepo.addBankAccount({
+        tenantId:      new mongoose.Types.ObjectId(context.tenantId) as any,
+        branchId:      employee.branchId as any,
+        employeeId:    employee._id as any,
+        bankName:      input.bankAccount.bankName,
+        accountNumber: input.bankAccount.accountNumber,
+        ifscCode:      input.bankAccount.ifscCode,
+        accountType:   input.bankAccount.accountType as any,
+        isPrimary:     true,
+        isActive:      true,
+        createdBy:     new mongoose.Types.ObjectId(context.userId) as any,
+        updatedBy:     new mongoose.Types.ObjectId(context.userId) as any,
+      });
+      bankAccount = { ...acc.toObject(), accountNumber: undefined }; // mask fully in onboarding response
+    }
 
     return {
       employee: {
@@ -191,6 +225,11 @@ export class EmployeeService {
         isActive: userAccount.isActive,
         message: "Activation email sent to employee's email address",
       },
+      salaryStructure: salaryStructure ? {
+        ctcAnnual: salaryStructure.ctcAnnual,
+        grossMonthly: salaryStructure.grossMonthly,
+      } : null,
+      bankAccountAdded: !!bankAccount,
     };
   }
 

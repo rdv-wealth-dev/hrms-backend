@@ -69,3 +69,12 @@ export const UpdateStatutoryDto = z.object({
 });
 
 export type UpdateStatutoryInput = z.infer<typeof UpdateStatutoryDto>;
+
+
+export const UpdateMandatoryDocsDto = z.object({
+  mandatoryDocumentTypes: z.array(z.enum([
+    "PAN","AADHAAR","PASSPORT","DRIVING_LICENSE",
+    "OFFER_LETTER","RESUME","DEGREE","EXPERIENCE","OTHER"
+  ])).min(0),
+});
+export type UpdateMandatoryDocsInput = z.infer<typeof UpdateMandatoryDocsDto>;

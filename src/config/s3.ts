@@ -6,5 +6,9 @@ export const s3Client = new S3Client({
     credentials: {
         accessKeyId: env.awsAccessKeyId,
         secretAccessKey: env.awsSecretKey,
-    }
+    },
+    // Disable automatic CRC32 checksum — browsers can't compute it,
+    // causing 400 errors on direct pre-signed URL uploads
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
 })
