@@ -16,6 +16,8 @@ import { closeOutAttendanceForDate } from "./attendance-closeout.job";
 import { UserModel } from "../user/user.model";
 import { AppError } from "../../core/errors/app.error";
 
+import { requireCompleteProfile } from "../employee/profile-completion.middleware";
+
 const router = Router();
 const attCtrl  = new AttendanceController();
 const shiftCtrl = new ShiftController();
@@ -24,6 +26,7 @@ const shiftService = new ShiftService();
 const summaryService = new AttendanceSummaryService();
 
 router.use(authenticate);
+router.use(requireCompleteProfile);
 
 // ─── SELF-SERVICE (no permission check, auth only)
 

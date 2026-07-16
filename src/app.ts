@@ -2,6 +2,7 @@ import express, {Application, Request, Response} from "express";
 import { applySecurityMiddleware } from "./core/middlewares/security.middleware";
 import { requestIdMiddleware } from "./core/middlewares/request-id.middleware";
 import { globalErrorHandler } from "./core/errors/error.middleware";
+import { requireCompleteProfile } from "./modules/employee/profile-completion.middleware";
 import authRoutes from "./modules/auth/auth.routes";
 import organizationRoutes from "./modules/organization/organization.routes"
 import branchRoutes from  "./modules/branch/branch.routes"
