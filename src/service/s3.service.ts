@@ -29,9 +29,6 @@ export class S3Service {
             Bucket : env.awsS3Bucket,
             Key : s3Key,
             ContentType : mimeType,
-            // Server-side encryption at rest — matches the "S3 with server-side
-            // encryption" requirement from the security baseline discussion
-            ServerSideEncryption: "AES256",
         });
 
         const uploadUrl = await getSignedUrl(s3Client, command, {
