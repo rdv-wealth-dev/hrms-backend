@@ -25,8 +25,12 @@ export function applySecurityMiddleware(app: Application): void {
   // Helmet — security headers
   app.use(helmet());
 
-  // CORS — allow all origins (dev mode)
-  app.use(cors());
+  // CORS — allow all origins
+  app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }));
 
   // Body parser — size limits prevent LPDOS attacks
   app.use(express.json({ limit: "10kb" }));
