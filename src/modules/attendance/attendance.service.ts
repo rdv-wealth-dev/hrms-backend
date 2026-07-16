@@ -202,10 +202,13 @@ export class AttendanceService {
     const shift = await this.shiftRepo.findDefault(context);
     if (!shift) throw new AppError("No default shift configured", 400);
 
+    const employee = await EmployeeModel.findById(input.employeeId).select("branchId");
+    if (!employee) throw new AppError("Employee not found", 404);
+
     if (!attendance) {
       attendance = await this.attRepo.create({
         tenantId:       new mongoose.Types.ObjectId(context.tenantId) as any,
-        branchId:       new mongoose.Types.ObjectId(context.branchIds[0] ?? "") as any,
+        branchId:       employee.branchId as any,
         employeeId:     new mongoose.Types.ObjectId(input.employeeId) as any,
         shiftId:        shift._id as any,
         attendanceDate: date,

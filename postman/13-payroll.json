@@ -1,0 +1,566 @@
+{
+  "info": {
+    "name": "13 - Payroll",
+    "description": "Payroll module — Phase 18\n\nRun order:\n1. Login as Super Admin\n2. Create salary components (Basic, HRA, PF)\n3. Create salary structure for an employee\n4. Create + generate a payroll run (reads Attendance + Leave)\n5. Approve the run\n6. Employee views own payslip\n7. Error cases",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - Login as Super Admin",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "if (res.data) {",
+              "  pm.environment.set('token', res.data.accessToken);",
+              "  pm.environment.set('branchId', res.data.branch.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"rahul@abctech.com\",\n  \"password\": \"Admin@1234\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "Enable Payroll Module",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "type": "text" },
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"payroll\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/organizations/me/modules",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "organizations", "me", "modules"]
+        }
+      }
+    },
+    {
+      "name": "Create Component — Basic (Earning)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "type": "text" },
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Basic\",\n  \"code\": \"BASIC\",\n  \"type\": \"EARNING\",\n  \"calculationType\": \"FLAT\",\n  \"isTaxable\": true,\n  \"isPartOfWages\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/components",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "components"]
+        }
+      }
+    },
+    {
+      "name": "Create Component — HRA (Earning, excluded from wages)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "type": "text" },
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"House Rent Allowance\",\n  \"code\": \"HRA\",\n  \"type\": \"EARNING\",\n  \"calculationType\": \"FLAT\",\n  \"isTaxable\": true,\n  \"isPartOfWages\": false\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/components",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "components"]
+        }
+      }
+    },
+    {
+      "name": "List Components",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/components",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "components"]
+        }
+      }
+    },
+    {
+      "name": "Create Salary Structure",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('Gross and wages calculated', () => {",
+              "  const res = pm.response.json();",
+              "  pm.expect(res.data.grossMonthly).to.equal(45000);",
+              "  pm.expect(res.data.wagesForStatutory).to.equal(30000);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "description": "Uses {{employeeId}} from Phase 15 tests. HRA is 15000/45000 = 33% excluded from wages — under the 50% ceiling, should pass validation.",
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "type": "text" },
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"ctcAnnual\": 600000,\n  \"lineItems\": [\n    { \"componentCode\": \"BASIC\", \"amount\": 30000 },\n    { \"componentCode\": \"HRA\", \"amount\": 15000 }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/structures",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "structures"]
+        }
+      }
+    },
+    {
+      "name": "Create Structure — Fails 50% Wage Rule",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400', () => pm.response.to.have.status(400));",
+              "pm.test('50% wage rule error', () => {",
+              "  pm.expect(pm.response.json().message).to.include('50%');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "description": "HRA is 40000/50000 = 80% excluded from wages — exceeds 50% ceiling.\n\nExpected: 400",
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "type": "text" },
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"employeeId\": \"{{employeeId}}\",\n  \"ctcAnnual\": 600000,\n  \"lineItems\": [\n    { \"componentCode\": \"BASIC\", \"amount\": 10000 },\n    { \"componentCode\": \"HRA\", \"amount\": 40000 }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/structures",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "structures"]
+        }
+      }
+    },
+    {
+      "name": "Get Employee's Salary Structure",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/structures/{{employeeId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "structures", "{{employeeId}}"]
+        }
+      }
+    },
+    {
+      "name": "Create Payroll Run",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('Run created in DRAFT', () => {",
+              "  pm.expect(pm.response.json().data.status).to.equal('DRAFT');",
+              "});",
+              "const res = pm.response.json();",
+              "if (res.data) pm.environment.set('payrollRunId', res.data._id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "type": "text" },
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"month\": 7,\n  \"year\": 2026\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/runs",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "runs"]
+        }
+      }
+    },
+    {
+      "name": "Create Duplicate Run — Error",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 409', () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "type": "text" },
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"month\": 7,\n  \"year\": 2026\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/runs",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "runs"]
+        }
+      }
+    },
+    {
+      "name": "Generate Payslips",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Run status GENERATED', () => {",
+              "  const res = pm.response.json();",
+              "  pm.expect(res.data.status).to.equal('GENERATED');",
+              "  pm.expect(res.data.totalEmployees).to.be.at.least(1);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "description": "This is where the interlink happens — reads Attendance + Leave records for July 2026 per employee, computes payableDays, LOP, and statutory deductions.",
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/runs/{{payrollRunId}}/generate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "runs", "{{payrollRunId}}", "generate"]
+        }
+      }
+    },
+    {
+      "name": "Get Run Payslips",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Payslip has attendance summary', () => {",
+              "  const res = pm.response.json();",
+              "  const slip = res.data.data[0];",
+              "  pm.expect(slip.attendanceSummary).to.exist;",
+              "  pm.expect(slip.attendanceSummary.payableDays).to.be.a('number');",
+              "  pm.expect(slip.netPay).to.be.a('number');",
+              "});",
+              "const res = pm.response.json();",
+              "if (res.data && res.data.data[0]) {",
+              "  pm.environment.set('payslipId', res.data.data[0]._id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/runs/{{payrollRunId}}/payslips",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "runs", "{{payrollRunId}}", "payslips"]
+        }
+      }
+    },
+    {
+      "name": "Generate Again — Error (not DRAFT)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 400', () => pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/runs/{{payrollRunId}}/generate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "runs", "{{payrollRunId}}", "generate"]
+        }
+      }
+    },
+    {
+      "name": "Approve Payroll Run",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Run status APPROVED', () => {",
+              "  pm.expect(pm.response.json().data.status).to.equal('APPROVED');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "type": "text" },
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"notes\": \"Reviewed and approved for disbursal\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/runs/{{payrollRunId}}/approve",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "runs", "{{payrollRunId}}", "approve"]
+        }
+      }
+    },
+    {
+      "name": "Mark Run Paid",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Run status PAID', () => {",
+              "  pm.expect(pm.response.json().data.status).to.equal('PAID');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/runs/{{payrollRunId}}/paid",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "runs", "{{payrollRunId}}", "paid"]
+        }
+      }
+    },
+    {
+      "name": "01 - Login as Employee",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const res = pm.response.json();",
+              "if (res.data) pm.environment.set('employeeToken', res.data.accessToken);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{onboardedEmployeeEmail}}\",\n  \"password\": \"Employee@1234\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "Employee — Get My Payslips",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('At least one payslip', () => {",
+              "  pm.expect(pm.response.json().data.length).to.be.at.least(1);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{employeeToken}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/payslips/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "payslips", "me"]
+        }
+      }
+    },
+    {
+      "name": "Employee — View My Payslip Detail",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Full breakdown returned', () => {",
+              "  const res = pm.response.json();",
+              "  pm.expect(res.data.earnings).to.be.an('array');",
+              "  pm.expect(res.data.deductions).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{employeeToken}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/payslips/me/{{payslipId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "payslips", "me", "{{payslipId}}"]
+        }
+      }
+    },
+    {
+      "name": "Error — Employee views someone else's payslip",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 404', () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{employeeToken}}", "type": "text" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payroll/payslips/me/000000000000000000000000",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payroll", "payslips", "me", "000000000000000000000000"]
+        }
+      }
+    }
+  ]
+}
