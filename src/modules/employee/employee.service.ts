@@ -505,11 +505,25 @@ export class EmployeeService {
     return this.getBankAccounts(context, employeeId);
   }
 
+  async addMyBankAccount(context: RequestContext, input: AddBankAccountInput) {
+    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
+    return this.addBankAccount(context, employeeId, input);
+  }
+
+  async deleteMyBankAccount(context: RequestContext, bankId: string) {
+    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
+    return this.deleteBankAccount(context, employeeId, bankId);
+  }
+
   async getMyDocuments(context: RequestContext) {
     const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
     return this.getDocuments(context, employeeId);
   }
 
+  async deleteMyDocument(context: RequestContext, docId: string) {
+    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
+    return this.deleteDocument(context, employeeId, docId);
+  }
 
   // Shared resolver — same logic as getMyProfile's inline lookup, extracted
   private async resolveOwnEmployeeIdForSelfService(context: RequestContext): Promise<string> {

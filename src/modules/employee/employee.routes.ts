@@ -70,9 +70,25 @@ router.get(
   controller.getMyBankAccounts.bind(controller)
 );
 
+router.post(
+  "/me/bank-accounts",
+  validateBody(AddBankAccountDto),
+  controller.addMyBankAccount.bind(controller)
+);
+
+router.delete(
+  "/me/bank-accounts/:bankId",
+  controller.deleteMyBankAccount.bind(controller)
+);
+
 router.get(
   "/me/documents",
   controller.getMyDocuments.bind(controller)
+);
+
+router.delete(
+  "/me/documents/:docId",
+  controller.deleteMyDocument.bind(controller)
 );
 
 router.post(

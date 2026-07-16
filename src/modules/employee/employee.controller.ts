@@ -83,6 +83,34 @@ export class EmployeeController {
     }
   }
 
+  async addMyBankAccount(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.addMyBankAccount(req.context, req.body);
+      res.status(201).json(
+        buildSuccessResponse(result, "Bank account added"));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteMyBankAccount(
+    req: Request<{ bankId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.deleteMyBankAccount(req.context, req.params.bankId);
+      res.status(200).json(
+        buildSuccessResponse(result, "Bank account removed"));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getMyDocuments(req: Request,
     res: Response,
     next: NextFunction
@@ -91,6 +119,20 @@ export class EmployeeController {
       const result = await empService.getMyDocuments(req.context);
       res.status(200).json(
         buildSuccessResponse(result, "Your documents fetched"));
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteMyDocument(
+    req: Request<{ docId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.deleteMyDocument(req.context, req.params.docId);
+      res.status(200).json(
+        buildSuccessResponse(result, "Document removed"));
     } catch (error) {
       next(error);
     }
