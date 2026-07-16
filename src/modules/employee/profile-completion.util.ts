@@ -35,7 +35,7 @@ export async function recalculateProfileCompletion(
       tenantId: new mongoose.Types.ObjectId(tenantId),
       employeeId: new mongoose.Types.ObjectId(employeeId),
       isDeleted: false,
-    });
+    }) as unknown as string[];
     mandatoryDocs = required.every((t: string) => uploadedTypes.includes(t));
   }
 
