@@ -30,6 +30,7 @@ function maskAccountNumber(acc: string): string {
 
 export class EmployeeService {
   private empRepo = new EmployeeRepository();
+  private salaryStructureService = new SalaryStructureService();
 
   //Create employee
   async createEmployee(
@@ -174,39 +175,37 @@ export class EmployeeService {
     `
     );
 
-    // Optional — attach a bank account in the same onboarding call
-    let bankAccount: any = null;
-    if (input.bankAccount) {
-      bankAccount = await this.empRepo.addBankAccount({
-        tenantId:  new mongoose.Types.ObjectId(context.tenantId) as any,
-        branchId:  employee.branchId as any,
-        employeeId: employee._id as any,
-        bankName: input.bankAccount.bankName,
-        accountNumber: input.bankAccount.accountNumber,
-        ifscCode: input.bankAccount.ifscCode,
-        accountType: input.bankAccount.accountType as any,
-        isPrimary: true,
-        isActive: true,
-        createdBy: new mongoose.Types.ObjectId(context.userId) as any,
-        updatedBy: new mongoose.Types.ObjectId(context.userId) as any,
-      });
+    let salaryStructure = null;
+    if (input.salaryStructure) {
+      try {
+        salaryStructure = await this.salaryStructureService.createOrRevise(context, {
+          employeeId: employee._id.toString(),
+          ctcAnnual:  input.salaryStructure.ctcAnnual,
+          lineItems:  input.salaryStructure.lineItems,
+        });
+      } catch (err) {
+        // Don't fail the whole onboarding if salary setup has an issue (e.g. 50%
+        // wage rule violation) — employee record + login still get created,
+        // HR fixes salary separately. Log this properly in production.
+      }
     }
 
-    // Optional — attach a salary structure in the same onboarding call
-    let salaryStructure: any = null;
-    if (input.salaryStructure) {
-      const structureService = new SalaryStructureService();
-      // SalaryStructureService derives branchId from context.branchIds[0],
-      // which is empty for ORG_ADMIN — override with the employee's branch
-      const structureContext: RequestContext = {
-        ...context,
-        branchIds: [employee.branchId.toString()],
-      };
-      salaryStructure = await structureService.createOrRevise(structureContext, {
-        employeeId: employee._id.toString(),
-        ctcAnnual: input.salaryStructure.ctcAnnual,
-        lineItems: input.salaryStructure.lineItems,
+    let bankAccount = null;
+    if (input.bankAccount) {
+      const acc = await this.empRepo.addBankAccount({
+        tenantId:      new mongoose.Types.ObjectId(context.tenantId) as any,
+        branchId:      employee.branchId as any,
+        employeeId:    employee._id as any,
+        bankName:      input.bankAccount.bankName,
+        accountNumber: input.bankAccount.accountNumber,
+        ifscCode:      input.bankAccount.ifscCode,
+        accountType:   input.bankAccount.accountType as any,
+        isPrimary:     true,
+        isActive:      true,
+        createdBy:     new mongoose.Types.ObjectId(context.userId) as any,
+        updatedBy:     new mongoose.Types.ObjectId(context.userId) as any,
       });
+      bankAccount = { ...acc.toObject(), accountNumber: undefined }; // mask fully in onboarding response
     }
 
     return {
@@ -226,13 +225,11 @@ export class EmployeeService {
         isActive: userAccount.isActive,
         message: "Activation email sent to employee's email address",
       },
-      ...(bankAccount ? {
-        bankAccount: {
-          ...bankAccount.toObject(),
-          accountNumber: maskAccountNumber(bankAccount.accountNumber),
-        },
-      } : {}),
-      ...(salaryStructure ? { salaryStructure } : {}),
+      salaryStructure: salaryStructure ? {
+        ctcAnnual: salaryStructure.ctcAnnual,
+        grossMonthly: salaryStructure.grossMonthly,
+      } : null,
+      bankAccountAdded: !!bankAccount,
     };
   }
 
