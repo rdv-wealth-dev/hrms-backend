@@ -3,6 +3,7 @@ import { EmployeeController } from "./employee.controller";
 import { authenticate } from "../../core/middlewares/auth.middleware";
 import { checkPermission } from "../../core/middlewares/rbac.middleware";
 import { validateBody } from "../../core/validators/validate.middleware";
+import { uploadSingleFile } from "../../core/middlewares/upload.middleware";
 import {
   CreateEmployeeDto,
   UpdateEmployeeDto,
@@ -10,7 +11,8 @@ import {
   AddBankAccountDto,
   AddDocumentDto,
   RequestUploadUrlDto,
-  VerifyDocumentDto
+  VerifyDocumentDto,
+  UploadDocumentDto
 } from "./employee.dto";
 
 const router = Router();
@@ -103,6 +105,13 @@ router.post(
   controller.addMyDocument.bind(controller)
 );
 
+router.post(
+  "/me/documents/upload",
+  uploadSingleFile("file"),
+  validateBody(UploadDocumentDto),
+  controller.uploadMyDocumentDirectly.bind(controller)
+);
+
 router.get(
   "/me/documents/:docId/download-url",
   controller.getMyDownloadUrl.bind(controller)
@@ -157,6 +166,14 @@ router.post(
   checkPermission("employee.update"),
   validateBody(AddDocumentDto),
   controller.addDocument.bind(controller)
+);
+
+router.post(
+  "/:id/documents/upload",
+  checkPermission("employee.update"),
+  uploadSingleFile("file"),
+  validateBody(UploadDocumentDto),
+  controller.uploadDocumentDirectly.bind(controller)
 );
 
 router.delete(
