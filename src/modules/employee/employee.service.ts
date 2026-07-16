@@ -17,6 +17,7 @@ import { buildPagedResponse } from "../../core/database/base.schema";
 import crypto from "crypto";
 import { UserModel } from "../user/user.model";
 import { OrganizationModel } from "../organization/organization.model";
+import { SalaryStructureService } from "../payroll/salary-structure.service";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
 import { s3Service } from "../../service/s3.service";
@@ -173,6 +174,40 @@ export class EmployeeService {
     `
     );
 
+    // Optional — attach a bank account in the same onboarding call
+    let bankAccount: any = null;
+    if (input.bankAccount) {
+      bankAccount = await this.empRepo.addBankAccount({
+        tenantId:  new mongoose.Types.ObjectId(context.tenantId) as any,
+        branchId:  employee.branchId as any,
+        employeeId: employee._id as any,
+        bankName: input.bankAccount.bankName,
+        accountNumber: input.bankAccount.accountNumber,
+        ifscCode: input.bankAccount.ifscCode,
+        accountType: input.bankAccount.accountType as any,
+        isPrimary: true,
+        isActive: true,
+        createdBy: new mongoose.Types.ObjectId(context.userId) as any,
+        updatedBy: new mongoose.Types.ObjectId(context.userId) as any,
+      });
+    }
+
+    // Optional — attach a salary structure in the same onboarding call
+    let salaryStructure: any = null;
+    if (input.salaryStructure) {
+      const structureService = new SalaryStructureService();
+      // SalaryStructureService derives branchId from context.branchIds[0],
+      // which is empty for ORG_ADMIN — override with the employee's branch
+      const structureContext: RequestContext = {
+        ...context,
+        branchIds: [employee.branchId.toString()],
+      };
+      salaryStructure = await structureService.createOrRevise(structureContext, {
+        employeeId: employee._id.toString(),
+        ctcAnnual: input.salaryStructure.ctcAnnual,
+        lineItems: input.salaryStructure.lineItems,
+      });
+    }
 
     return {
       employee: {
@@ -191,6 +226,13 @@ export class EmployeeService {
         isActive: userAccount.isActive,
         message: "Activation email sent to employee's email address",
       },
+      ...(bankAccount ? {
+        bankAccount: {
+          ...bankAccount.toObject(),
+          accountNumber: maskAccountNumber(bankAccount.accountNumber),
+        },
+      } : {}),
+      ...(salaryStructure ? { salaryStructure } : {}),
     };
   }
 

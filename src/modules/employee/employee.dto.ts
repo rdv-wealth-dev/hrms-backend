@@ -66,6 +66,23 @@ export const CreateEmployeeDto = withPhoneValidation(z.object({
       email:        emailSchema.optional(),
     })
   ).optional().default([]),
+
+  // Optional — attach salary structure in the same onboarding call
+  salaryStructure: z.object({
+    ctcAnnual: z.number().min(0),
+    lineItems: z.array(z.object({
+      componentCode: z.string().trim().toUpperCase(),
+      amount:        z.number().min(0),
+    })).min(1),
+  }).optional(),
+
+  // Optional — attach a bank account in the same onboarding call
+  bankAccount: z.object({
+    bankName:      z.string().trim().min(2),
+    accountNumber: z.string().trim().min(8).max(20),
+    ifscCode:      z.string().trim().toUpperCase().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/),
+    accountType:   z.enum(["SAVINGS","CURRENT","SALARY"]).optional().default("SALARY"),
+  }).optional(),
 }));
 
 export type CreateEmployeeInput = z.infer<typeof CreateEmployeeDto>;
