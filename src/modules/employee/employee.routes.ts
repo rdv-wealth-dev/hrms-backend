@@ -48,6 +48,12 @@ router.get(
   controller.getById.bind(controller)
 );
 
+router.get(
+  "/:id/complete-profile",
+  checkPermission("employee.read"),
+  controller.getCompleteProfile.bind(controller)
+);
+
 router.patch(
   "/:id",
   checkPermission("employee.update"),

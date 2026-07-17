@@ -54,6 +54,25 @@ export class EmployeeController {
     }
   }
 
+  // GET /api/v1/employees/:id/complete-profile
+  async getCompleteProfile(
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.getCompleteEmployeeProfile(
+        req.context, 
+        req.params.id
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, "Complete employee profile fetched successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // GET /api/v1/employees/me
   async getMyProfile(
     req: Request,

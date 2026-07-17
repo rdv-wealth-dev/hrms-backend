@@ -30,6 +30,18 @@ function maskAccountNumber(acc: string): string {
   return "X".repeat(acc.length - 4) + acc.slice(-4);
 }
 
+// Helper — mask PAN number
+function maskPan(pan: string): string {
+  if (!pan || pan.length < 4) return pan;
+  return pan.substring(0, 4) + "****" + pan.substring(pan.length - 1);
+}
+
+// Helper — mask Aadhaar number
+function maskAadhaar(aadhaar: string): string {
+  if (!aadhaar || aadhaar.length < 4) return aadhaar;
+  return "****" + aadhaar.substring(aadhaar.length - 4);
+}
+
 export class EmployeeService {
   private empRepo = new EmployeeRepository();
   private salaryStructureService = new SalaryStructureService();
@@ -398,6 +410,154 @@ export class EmployeeService {
     }
 
     return employee;
+  }
+
+  //Get complete employee profile (for HR/Admin)
+  async getCompleteEmployeeProfile(
+    context: RequestContext,
+    id: string
+  ) {
+    // Get basic employee data with populated references
+    const employee = await this.empRepo.findById(context, id, {
+      populate: ["departmentId", "designationId", "managerId"],
+    });
+
+    if (!employee) {
+      throw new AppError("Employee not found", 404);
+    }
+
+    // Get documents
+    const documents = await this.empRepo.getDocuments(context, id);
+
+    // Get bank accounts (with masked account numbers)
+    const bankAccountsRaw = await this.empRepo.getBankAccounts(context, id);
+    const bankAccounts = bankAccountsRaw.map((acc) => ({
+      ...acc.toObject(),
+      accountNumber: maskAccountNumber(acc.accountNumber),
+    }));
+
+    // Get organization requirements
+    const org = await OrganizationModel.findById(context.tenantId)
+      .select("mandatoryDocumentTypes");
+    const mandatoryDocumentTypes = org?.mandatoryDocumentTypes ?? [];
+    
+    // Calculate missing documents
+    const uploadedDocTypes = documents.map(doc => doc.documentType);
+    const missingDocuments = mandatoryDocumentTypes.filter(
+      type => !uploadedDocTypes.includes(type)
+    );
+
+    // Document labels for frontend
+    const documentLabels = {
+      PAN: "PAN Card",
+      AADHAAR: "Aadhaar Card", 
+      PASSPORT: "Passport",
+      DRIVING_LICENSE: "Driving License",
+      OFFER_LETTER: "Offer Letter",
+      RESUME: "Resume/CV",
+      DEGREE: "Degree Certificate",
+      EXPERIENCE: "Experience Certificate",
+      OTHER: "Other Document"
+    };
+
+    // Enhanced profile completion
+    const profileCompletion = employee.profileCompletion;
+    const completedSections = [
+      profileCompletion.personalDetails,
+      profileCompletion.address,
+      profileCompletion.emergencyContact,
+      profileCompletion.bankDetails,
+      profileCompletion.mandatoryDocs
+    ].filter(Boolean).length;
+    
+    const overallScore = Math.round((completedSections / 5) * 100);
+
+    // Summary calculations
+    const verifiedDocuments = documents.filter(doc => doc.isVerified).length;
+    const pendingVerification = documents.filter(doc => !doc.isVerified).length;
+    const primaryBank = bankAccounts.find(acc => acc.isPrimary);
+
+    return {
+      employee: {
+        id: employee._id,
+        employeeCode: employee.employeeCode,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        email: employee.email,
+        phone: employee.phone,
+        dateOfBirth: employee.dateOfBirth,
+        gender: employee.gender,
+        bloodGroup: employee.bloodGroup,
+        maritalStatus: employee.maritalStatus,
+        nationality: employee.nationality,
+        pan: employee.pan ? maskPan(employee.pan) : null,
+        aadhaar: employee.aadhaar ? maskAadhaar(employee.aadhaar) : null,
+        passportNo: employee.passportNo,
+        departmentId: employee.departmentId,
+        designationId: employee.designationId,
+        managerId: employee.managerId,
+        employeeType: employee.employeeType,
+        status: employee.status,
+        joiningDate: employee.joiningDate,
+        confirmationDate: employee.confirmationDate,
+        probationEndDate: employee.probationEndDate,
+        exitDate: employee.exitDate,
+        exitReason: employee.exitReason,
+        currentAddress: employee.currentAddress,
+        permanentAddress: employee.permanentAddress,
+        emergencyContacts: employee.emergencyContacts,
+        avatarUrl: employee.avatarUrl,
+        createdAt: employee.createdAt,
+        updatedAt: employee.updatedAt
+      },
+      profileCompletion: {
+        personalDetails: profileCompletion.personalDetails,
+        address: profileCompletion.address,
+        emergencyContact: profileCompletion.emergencyContact,
+        bankDetails: profileCompletion.bankDetails,
+        mandatoryDocs: profileCompletion.mandatoryDocs,
+        overallScore,
+        completedSections,
+        totalSections: 5
+      },
+      isProfileComplete: employee.isProfileComplete,
+      documents: documents.map(doc => ({
+        id: doc._id,
+        documentType: doc.documentType,
+        fileName: doc.fileName,
+        mimeType: doc.mimeType,
+        sizeBytes: doc.sizeBytes,
+        uploadedAt: doc.createdAt,
+        isVerified: doc.isVerified,
+        verifiedAt: doc.updatedAt,
+        expiryDate: doc.expiryDate,
+        canDownload: true
+      })),
+      bankAccounts: bankAccounts.map(acc => ({
+        id: acc._id,
+        bankName: acc.bankName,
+        accountNumber: acc.accountNumber, // already masked
+        ifscCode: acc.ifscCode,
+        accountType: acc.accountType,
+        isPrimary: acc.isPrimary,
+        isActive: acc.isActive,
+        addedAt: acc.createdAt
+      })),
+      organizationRequirements: {
+        mandatoryDocumentTypes,
+        missingDocuments,
+        documentLabels
+      },
+      summary: {
+        totalDocuments: documents.length,
+        verifiedDocuments,
+        pendingVerification,
+        totalBankAccounts: bankAccounts.length,
+        primaryBankSet: !!primaryBank,
+        profileCompletionDate: employee.isProfileComplete ? employee.updatedAt : null,
+        lastUpdated: employee.updatedAt
+      }
+    };
   }
 
   //Update employee
