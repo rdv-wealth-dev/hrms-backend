@@ -8,10 +8,13 @@ import {
     CreateSalaryStructureDto, CreatePayrollRunDto, ApprovePayrollRunDto,
 } from "./payroll.dto";
 
+import { requireCompleteProfile } from "../employee/profile-completion.middleware";
+
 const router = Router();
 const ctrl = new PayrollController();
 
 router.use(authenticate);
+router.use(requireCompleteProfile);
 
 // Self-service — no permission check
 router.get(

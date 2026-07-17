@@ -15,10 +15,13 @@ import {
   UploadDocumentDto
 } from "./employee.dto";
 
+import { requireCompleteProfile } from "./profile-completion.middleware";
+
 const router = Router();
 const controller = new EmployeeController();
 
 router.use(authenticate);
+router.use(requireCompleteProfile);
 
 router.get(
   "/me",

@@ -21,6 +21,7 @@ import { SalaryStructureService } from "../payroll/salary-structure.service";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
 import { s3Service } from "../../service/s3.service";
+import { recalculateProfileCompletion } from "./profile-completion.util";
 
 // Helper — mask account number showing only last 4 digits
 function maskAccountNumber(acc: string): string {
@@ -361,6 +362,7 @@ export class EmployeeService {
       updatedBy: new mongoose.Types.ObjectId(context.userId) as any,
     });
 
+    await recalculateProfileCompletion(context.tenantId, employeeId);
     return doc;
   }
 
@@ -410,6 +412,7 @@ export class EmployeeService {
     if (input.managerId) updateData.managerId = new mongoose.Types.ObjectId(input.managerId);
 
     const updated = await this.empRepo.updateById(context, id, updateData);
+    await recalculateProfileCompletion(context.tenantId, id);
     return updated;
   }
 
@@ -523,6 +526,7 @@ export class EmployeeService {
     });
 
     // Return with masked account number
+    await recalculateProfileCompletion(context.tenantId, employeeId);
     return {
       ...account.toObject(),
       accountNumber: maskAccountNumber(account.accountNumber),
@@ -554,6 +558,7 @@ export class EmployeeService {
     if (!employee) throw new AppError("Employee not found", 404);
 
     await this.empRepo.deleteBankAccount(bankId);
+    await recalculateProfileCompletion(context.tenantId, employeeId);
     return { message: "Bank account removed successfully" };
   }
 
@@ -582,6 +587,7 @@ export class EmployeeService {
       updatedBy: new mongoose.Types.ObjectId(context.userId) as any,
     });
 
+    await recalculateProfileCompletion(context.tenantId, employeeId);
     return doc;
   }
 
@@ -642,6 +648,7 @@ export class EmployeeService {
     if (!employee) throw new AppError("Employee not found", 404);
 
     await this.empRepo.deleteDocument(docId);
+    await recalculateProfileCompletion(context.tenantId, employeeId);
     return { message: "Document removed successfully" };
   }
 

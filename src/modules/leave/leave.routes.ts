@@ -14,12 +14,15 @@ import {
 import { HolidayController } from "./holiday.controller";
 import { CreateHolidayDto, UpdateHolidayDto } from "./leave.dto";
 
+import { requireCompleteProfile } from "../employee/profile-completion.middleware";
+
 const router = Router();
 const typeCtrl = new LeaveTypeController();
 const requestCtrl = new LeaveRequestController();
 const holidayCtrl = new HolidayController();
 
 router.use(authenticate);
+router.use(requireCompleteProfile);
 
 // SELF-SERVICE — authenticate only, same pattern as employees/me and attendance/me
 
