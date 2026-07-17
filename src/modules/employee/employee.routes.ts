@@ -28,6 +28,12 @@ router.get(
   controller.getMyProfile.bind(controller)
 )
 
+router.patch(
+  "/me",
+  validateBody(UpdateEmployeeDto),
+  controller.updateMyProfile.bind(controller)
+)
+
 //Core employee CRUD
 router.get(
   "/",
@@ -46,6 +52,12 @@ router.get(
   "/:id",
   checkPermission("employee.read"),
   controller.getById.bind(controller)
+);
+
+router.get(
+  "/:id/complete-profile",
+  checkPermission("employee.read"),
+  controller.getCompleteProfile.bind(controller)
 );
 
 router.patch(

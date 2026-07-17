@@ -54,6 +54,25 @@ export class EmployeeController {
     }
   }
 
+  // GET /api/v1/employees/:id/complete-profile
+  async getCompleteProfile(
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.getCompleteEmployeeProfile(
+        req.context, 
+        req.params.id
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, "Complete employee profile fetched successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // GET /api/v1/employees/me
   async getMyProfile(
     req: Request,
@@ -64,6 +83,22 @@ export class EmployeeController {
       const result = await empService.getMyProfile(req.context);
       res.status(200).json(
         buildSuccessResponse(result, "Your profile fetched successfully")
+      );
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  // PATCH /api/v1/employees/me  (self-service)
+  async updateMyProfile(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.updateMyProfile(req.context, req.body);
+      res.status(200).json(
+        buildSuccessResponse(result, "Profile updated successfully")
       );
     } catch (error) {
       next(error)
