@@ -96,6 +96,10 @@ export class EmployeeService {
       isActive: true,
     });
 
+    // Recalculate profile completion after employee creation
+    // so isProfileComplete is accurate if all required fields were provided
+    await recalculateProfileCompletion(context.tenantId, employee._id.toString());
+
     // Generate account activation token
     const rawToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = crypto
