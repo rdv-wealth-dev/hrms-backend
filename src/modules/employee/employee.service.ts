@@ -10,6 +10,7 @@ import {
   ListEmployeesQuery,
   RequestUploadUrlInput,
   VerifyDocumentInput,
+  assertValidDocumentFile,
 } from "./employee.dto";
 import { AppError } from "../../core/errors/app.error";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
@@ -272,6 +273,8 @@ export class EmployeeService {
     const employee = await this.empRepo.findById(context, employeeId);
     if (!employee) throw new AppError("Employee not found", 404);
 
+    assertValidDocumentFile(input.mimeType, 1); // type check up-front (size unknown until upload)
+
     const org = await OrganizationModel.findById(context.tenantId).select("slug");
     const slug = org?.slug ?? context.tenantId;
 
@@ -337,6 +340,8 @@ export class EmployeeService {
   ) {
     const employee = await this.empRepo.findById(context, employeeId);
     if (!employee) throw new AppError("Employee not found", 404);
+
+    assertValidDocumentFile(file.mimetype, file.size);
 
     const org = await OrganizationModel.findById(context.tenantId).select("slug");
     const slug = org?.slug ?? context.tenantId;
@@ -570,6 +575,8 @@ export class EmployeeService {
   ) {
     const employee = await this.empRepo.findById(context, employeeId);
     if (!employee) throw new AppError("Employee not found", 404);
+
+    assertValidDocumentFile(input.mimeType, input.sizeBytes);
 
     const doc = await this.empRepo.addDocument({
       tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
