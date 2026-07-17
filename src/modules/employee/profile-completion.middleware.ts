@@ -23,7 +23,8 @@ export const requireCompleteProfile = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (EXEMPT_PATHS.some((p) => req.path.startsWith(p))) {
+    const fullPath = (req.baseUrl || "") + (req.path || "");
+    if (EXEMPT_PATHS.some((p) => fullPath.startsWith(p))) {
       next();
       return;
     }
