@@ -442,7 +442,7 @@ export class EmployeeService {
     const mandatoryDocumentTypes = org?.mandatoryDocumentTypes ?? [];
     
     // Calculate missing documents
-    const uploadedDocTypes = documents.map(doc => doc.documentType);
+    const uploadedDocTypes = documents.map(doc => doc.documentType) as string[];
     const missingDocuments = mandatoryDocumentTypes.filter(
       type => !uploadedDocTypes.includes(type)
     );
@@ -633,6 +633,15 @@ export class EmployeeService {
     }
     return employee;
 
+  }
+
+  // Self-service — employee updates only their own profile fields
+  async updateMyProfile(
+    context: RequestContext,
+    input: UpdateEmployeeInput
+  ) {
+    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
+    return this.updateEmployee(context, employeeId, input);
   }
 
   //Delete employee

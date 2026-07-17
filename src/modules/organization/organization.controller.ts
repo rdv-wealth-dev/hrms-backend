@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { OrganizationService } from "./organization.service";
+import { UpdateMandatoryDocsInput } from "./organization.dto";
 import { buildSuccessResponse } from "../../core/database/base.schema";
 
 const orgService = new OrganizationService();
@@ -73,6 +74,25 @@ export class OrganizationController {
       );
       res.status(200).json(
         buildSuccessResponse(result, "Statutory settings updated successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // PATCH /api/v1/organizations/me/mandatory-docs
+  async updateMandatoryDocs(
+    req:  Request,
+    res:  Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await orgService.updateMandatoryDocs(
+        req.context,
+        req.body as UpdateMandatoryDocsInput
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, "Mandatory document types updated successfully")
       );
     } catch (error) {
       next(error);

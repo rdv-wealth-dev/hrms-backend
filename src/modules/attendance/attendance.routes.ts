@@ -123,6 +123,16 @@ router.get("/report",
     attCtrl.getReport.bind(attCtrl)
 );
 
+// Utility routes for checking and cleaning orphaned attendance records
+router.get("/orphaned-records/check",
+    checkPermission("attendance.read"),
+    attCtrl.checkOrphanedRecords.bind(attCtrl)
+);
+router.post("/orphaned-records/clean",
+    checkPermission("attendance.update"),
+    attCtrl.cleanOrphanedRecords.bind(attCtrl)
+);
+
 //REGULARIZATIONS
 
 router.get("/regularizations/pending",

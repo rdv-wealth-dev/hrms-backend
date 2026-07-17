@@ -299,4 +299,14 @@ export class AttendanceService {
   ) {
     return this.attRepo.findReport(context, filters, page, pageSize);
   }
+
+  // Admin utility - check for orphaned attendance records
+  async checkOrphanedRecords(context: RequestContext) {
+    return this.attRepo.findOrphanedAttendanceRecords(context);
+  }
+
+  // Admin utility - clean up orphaned attendance records  
+  async cleanOrphanedRecords(context: RequestContext) {
+    return this.attRepo.deleteOrphanedAttendanceRecords(context);
+  }
 }

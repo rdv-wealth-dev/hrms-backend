@@ -1,5 +1,5 @@
 import { OrganizationRepository } from "./organization.repository";
-import { UpdateOrganizationInput, UpdateModulesInput, UpdateStatutoryInput } from "./organization.dto";
+import { UpdateOrganizationInput, UpdateModulesInput, UpdateStatutoryInput, UpdateMandatoryDocsInput } from "./organization.dto";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
 import { AppError } from "../../core/errors/app.error";
 
@@ -114,6 +114,23 @@ export class OrganizationService {
       context.tenantId,
       { statutory: updatedStatutory }
     );
+
+    return updated;
+  }
+
+  // Update mandatory document types
+  async updateMandatoryDocs(
+    context: RequestContext,
+    input:   UpdateMandatoryDocsInput
+  ) {
+    const org = await this.orgRepo.findById(context.tenantId);
+    if (!org) {
+      throw new AppError("Organization not found", 404);
+    }
+
+    const updated = await this.orgRepo.updateById(context.tenantId, {
+      mandatoryDocumentTypes: input.mandatoryDocumentTypes,
+    });
 
     return updated;
   }

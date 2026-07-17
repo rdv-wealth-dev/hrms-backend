@@ -89,6 +89,22 @@ export class EmployeeController {
     }
   }
 
+  // PATCH /api/v1/employees/me  (self-service)
+  async updateMyProfile(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.updateMyProfile(req.context, req.body);
+      res.status(200).json(
+        buildSuccessResponse(result, "Profile updated successfully")
+      );
+    } catch (error) {
+      next(error)
+    }
+  }
+
   async getMyBankAccounts(
     req: Request,
     res: Response,

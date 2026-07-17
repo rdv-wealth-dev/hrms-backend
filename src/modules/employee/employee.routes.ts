@@ -28,6 +28,12 @@ router.get(
   controller.getMyProfile.bind(controller)
 )
 
+router.patch(
+  "/me",
+  validateBody(UpdateEmployeeDto),
+  controller.updateMyProfile.bind(controller)
+)
+
 //Core employee CRUD
 router.get(
   "/",

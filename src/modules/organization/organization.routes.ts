@@ -3,7 +3,7 @@ import { OrganizationController } from "./organization.controller";
 import { authenticate } from "../../core/middlewares/auth.middleware";
 import { checkPermission } from "../../core/middlewares/rbac.middleware";
 import { validateBody }  from "../../core/validators/validate.middleware";
-import {UpdateOrganizationDto, UpdateModulesDto, UpdateStatutoryDto,} from "./organization.dto";
+import {UpdateOrganizationDto, UpdateModulesDto, UpdateStatutoryDto, UpdateMandatoryDocsDto,} from "./organization.dto";
 
 const router = Router();
 const controller = new OrganizationController();
@@ -40,6 +40,14 @@ router.patch(
   checkPermission("settings.update"),
   validateBody(UpdateStatutoryDto),
   controller.updateStatutory.bind(controller)
+);
+
+// PATCH /api/v1/organizations/me/mandatory-docs
+router.patch(
+  "/me/mandatory-docs",
+  checkPermission("settings.update"),
+  validateBody(UpdateMandatoryDocsDto),
+  controller.updateMandatoryDocs.bind(controller)
 );
 
 export default router;
