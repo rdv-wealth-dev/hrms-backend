@@ -90,18 +90,26 @@ export class AttendanceRepository {
     // Filter out attendance records with invalid/deleted employees and format response
     const formattedData = data
       .filter((record: any) => record.employeeId) // Remove records with null/invalid employeeId
-      .map((record: any) => ({
-        ...record,
-        employee: record.employeeId ? {
-          id: record.employeeId._id,
-          employeeCode: record.employeeId.employeeCode,
-          firstName: record.employeeId.firstName,
-          lastName: record.employeeId.lastName,
-          email: record.employeeId.email,
-          fullName: `${record.employeeId.firstName} ${record.employeeId.lastName}`,
-          department: record.employeeId.departmentId
-        } : null
-      }));
+      .map((record: any) => {
+        const emp = record.employeeId;
+        const fullName = `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim();
+        return {
+          ...record,
+          employeeId: {
+            ...emp,
+            fullName,
+          },
+          employee: {
+            id: emp._id,
+            employeeCode: emp.employeeCode,
+            firstName: emp.firstName,
+            lastName: emp.lastName,
+            email: emp.email,
+            fullName,
+            department: emp.departmentId,
+          },
+        };
+      });
 
     return { 
       data: formattedData, 
