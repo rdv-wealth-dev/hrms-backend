@@ -13,8 +13,6 @@ const bootstrap = async (): Promise<void> => {
   
   app.listen(env.port, () => {
     logger.info(`Server running on ${env.port}`);
-    logger.info(`AWS Region: ${env.awsRegion}`);
-    logger.info(`AWS S3 Bucket: ${env.awsS3Bucket}`);
   });
 }
 
