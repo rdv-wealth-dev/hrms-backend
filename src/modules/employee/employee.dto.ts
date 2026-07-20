@@ -66,6 +66,7 @@ export const CreateEmployeeDto = withPhoneValidation(z.object({
   ]).default("FULL_TIME"),
   joiningDate:   dateSchema,
   probationEndDate: dateSchema.optional(),
+  shiftId: objectIdSchema.optional(),
 
   // Address
   currentAddress: z.object({

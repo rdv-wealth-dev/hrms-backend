@@ -9,7 +9,6 @@ import { PunchDto, ManualAttendanceDto, CreateShiftDto, UpdateShiftDto, CreateRe
   ReviewRegularizationDto,
 } from "./attendance.dto";
 import { AssignShiftDto } from "./shift-assignment.dto";
-import { ShiftService } from "./shift.service";
 import { buildSuccessResponse } from "../../core/database/base.schema";
 import { AttendanceSummaryService } from "./attendance-summary.service";
 import { closeOutAttendanceForDate } from "./attendance-closeout.job";
@@ -22,7 +21,6 @@ const router = Router();
 const attCtrl  = new AttendanceController();
 const shiftCtrl = new ShiftController();
 const regCtrl  = new RegularizationController();
-const shiftService = new ShiftService();
 const summaryService = new AttendanceSummaryService();
 
 router.use(authenticate);
@@ -51,12 +49,7 @@ router.post("/manual",
 router.get(
   "/shifts/assignments",
   checkPermission("attendance.read"),
-  async (req, res, next) => {
-    try {
-      const result = await shiftService.getEmployeeShiftAssignments(req.context);
-      res.status(200).json(buildSuccessResponse(result, "Shift assignments fetched"));
-    } catch (error) { next(error); }
-  }
+  shiftCtrl.getAssignments.bind(shiftCtrl)
 );
 
 // GET /api/v1/attendance/summary/:employeeId?year=2026&month=6
@@ -109,12 +102,7 @@ router.post(
   "/shifts/assign",
   checkPermission("attendance.update"),
   validateBody(AssignShiftDto),
-  async (req, res, next) => {
-    try {
-      const result = await shiftService.bulkAssignShift(req.context, req.body);
-      res.status(200).json(buildSuccessResponse(result, result.message));
-    } catch (error) { next(error); }
-  }
+  shiftCtrl.assignShift.bind(shiftCtrl)
 );
 
 // Main attendance report

@@ -23,6 +23,7 @@ import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
 import { s3Service } from "../../service/s3.service";
 import { recalculateProfileCompletion } from "./profile-completion.util";
+import { ShiftRepository } from "../attendance/shift.repository";
 
 // Helper — mask account number showing only last 4 digits
 function maskAccountNumber(acc: string): string {
@@ -45,6 +46,7 @@ function maskAadhaar(aadhaar: string): string {
 export class EmployeeService {
   private empRepo = new EmployeeRepository();
   private salaryStructureService = new SalaryStructureService();
+  private shiftRepository = new ShiftRepository();
 
   //Create employee
   async createEmployee(
@@ -75,11 +77,18 @@ export class EmployeeService {
     // Generate atomic employee code
     const employeeCode = await getNextEmployeeCode(context.tenantId);
 
+    let resolvedShiftId = input.shiftId;
+    if (!resolvedShiftId) {
+      const defaultShift = await this.shiftRepository.findDefault(context);
+      if (defaultShift) resolvedShiftId = defaultShift._id.toString();
+    }
+
     const employee = await this.empRepo.create(context, {
       tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
       branchId: new mongoose.Types.ObjectId(input.branchId) as any,
       departmentId: new mongoose.Types.ObjectId(input.departmentId) as any,
       designationId: new mongoose.Types.ObjectId(input.designationId) as any,
+      shiftId: resolvedShiftId ? new mongoose.Types.ObjectId(resolvedShiftId) as any : undefined,
       managerId: input.managerId
         ? new mongoose.Types.ObjectId(input.managerId) as any
         : undefined,

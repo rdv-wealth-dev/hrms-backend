@@ -60,5 +60,29 @@ export class ShiftController {
     }
   }
 
+//   shift assign to employee
+
+  async assignShift(req: Request, res : Response, next : NextFunction) : Promise<void>{
+    try {
+        const result = await shiftService.bulkAssignShift(req.context, req.body);
+        res.status(200).json(
+            buildSuccessResponse(result, result.message)
+        );
+    } catch (error) {
+        next(error);
+    }
+  }
+
+  async getAssignments(req : Request, res : Response, next : NextFunction) : Promise<void> {
+    try{
+        const result = await shiftService.getEmployeeShiftAssignments(req.context);
+        res.status(200).json(
+            buildSuccessResponse(result, "Shift assignments fetched")
+        );
+    } catch (error) {
+        next(error);
+    }
+  }
+
 
 }
