@@ -32,3 +32,15 @@ if(!env.jwtSecret){
         "JWT_SECRET missing in .env, kindly check!"
     )
 }
+
+if(!env.awsS3Bucket){
+    throw new Error(
+        "AWS_S3_BUCKET_NAME is missing in .env. Please check the file configuration."
+    )
+}
+
+if(!env.awsAccessKeyId || !env.awsSecretKey){
+    throw new Error(
+        "AWS credentials (AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY) are missing in .env."
+    )
+}
