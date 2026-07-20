@@ -26,7 +26,7 @@ export interface FindOptions<T> {
 export class BaseRepository<T extends Document> {
   constructor(protected readonly model: Model<T>) {}
 
-  private buildTenantFilter(
+  protected buildTenantFilter(
     context: RequestContext,
     filter:  FilterQuery<T> = {}
   ): FilterQuery<T> {
