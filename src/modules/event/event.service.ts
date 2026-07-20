@@ -9,6 +9,7 @@ export class EventService {
   async createEvent(context: RequestContext, input: CreateEventInput) {
     const event = await this.eventRepo.create(context, {
       tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+      branchId: input.branchId ? new mongoose.Types.ObjectId(input.branchId) as any : undefined,
       title: input.title,
       description: input.description ?? "",
       date: new Date(input.date),

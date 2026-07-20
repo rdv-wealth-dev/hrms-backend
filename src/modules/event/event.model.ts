@@ -6,6 +6,7 @@ export interface EventDocument extends OrgLevelDocument {
   description?: string;
   date: Date;
   createdBy: mongoose.Types.ObjectId;
+  branchId?: mongoose.Types.ObjectId;
 }
 
 const EventSchema = createOrgLevelSchema<EventDocument>({
@@ -28,6 +29,11 @@ const EventSchema = createOrgLevelSchema<EventDocument>({
     type: Schema.Types.ObjectId,
     ref: "User",
     required: true,
+  },
+  branchId: {
+    type: Schema.Types.ObjectId,
+    ref: "Branch",
+    default: null,
   },
 });
 
