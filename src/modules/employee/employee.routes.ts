@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
+import mongoose from "mongoose";
 import { EmployeeController } from "./employee.controller";
 import { authenticate } from "../../core/middlewares/auth.middleware";
 import { checkPermission } from "../../core/middlewares/rbac.middleware";
@@ -14,11 +15,60 @@ import {
   VerifyDocumentDto,
   UploadDocumentDto
 } from "./employee.dto";
+import { UserModel } from "../user/user.model";
+import { RoleModel } from "../role/role.model";
+import { AppError } from "../../core/errors/app.error";
 
 import { requireCompleteProfile } from "./profile-completion.middleware";
 
 const router = Router();
 const controller = new EmployeeController();
+
+// Owner (self) OR admin with employee.read may view the full profile.
+// This lets employees open their own complete-profile without admin perms.
+async function authorizeCompleteProfile(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { userId, tenantId, role } = req.context;
+
+    // Org-level admins can view any profile
+    if (["SUPER_ADMIN", "ORG_ADMIN", "HR_ADMIN", "LEADERSHIP"].includes(role)) {
+      next();
+      return;
+    }
+
+    // Admin case — has employee.read permission
+    const roleDoc = await RoleModel.findOne({
+      tenantId:  new mongoose.Types.ObjectId(tenantId),
+      slug:      role,
+      isActive:  true,
+      isDeleted: false,
+    }).select("permissions");
+
+    if (roleDoc?.permissions?.includes("employee.read")) {
+      next();
+      return;
+    }
+
+    // Owner case — user is viewing their own employee record
+    const user = await UserModel.findOne({
+      _id: userId,
+      tenantId,
+    }).select("employeeId");
+
+    if (user?.employeeId && user.employeeId.toString() === req.params.id) {
+      next();
+      return;
+    }
+
+    next(new AppError("You are not authorized to view this profile.", 403));
+  } catch (error) {
+    next(error);
+  }
+}
 
 router.use(authenticate);
 router.use(requireCompleteProfile);
@@ -56,7 +106,7 @@ router.get(
 
 router.get(
   "/:id/complete-profile",
-  checkPermission("employee.read"),
+  authorizeCompleteProfile,
   controller.getCompleteProfile.bind(controller)
 );
 
