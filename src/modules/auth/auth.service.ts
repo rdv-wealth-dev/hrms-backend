@@ -294,6 +294,7 @@ export class AuthService {
         isOrgAdmin: user.isOrgAdmin,
         branchIds:    user.branchIds,
         tenantId:     user.tenantId,
+        employeeId:   user.employeeId,
       },
       organization: {
         id:           org!._id,
