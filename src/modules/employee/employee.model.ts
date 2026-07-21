@@ -90,7 +90,9 @@ export interface EmployeeDocument extends BaseDocument {
   probationEndDate?: Date;
   exitDate?:     Date;
   exitReason?:   string;
-  shiftId? : mongoose.Types.ObjectId;
+  shiftId? :           mongoose.Types.ObjectId;  // fixed shift (overridden by rotationPlanId)
+  rotationPlanId?:     mongoose.Types.ObjectId;  // active rotation plan
+  rotationStartDate?:  Date;                     // when slot-1 of the plan began
 
   // Address — embedded
   currentAddress?:   EmployeeAddress;
@@ -207,7 +209,16 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
       type:    mongoose.Schema.Types.ObjectId,
       ref:     "Shift",
       default: null,   // null = use tenant's default shift
-},
+    },
+    rotationPlanId: {
+      type:    mongoose.Schema.Types.ObjectId,
+      ref:     "ShiftRotationPlan",
+      default: null,   // null = not on a rotation plan
+    },
+    rotationStartDate: {
+      type:    Date,
+      default: null,   // date when slot-1 of the plan started for this employee
+    },
     employeeType: {
       type:    String,
       enum:    Object.values(EmployeeType),

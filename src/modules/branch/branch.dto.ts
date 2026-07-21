@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {safeStringSchema, countryCodeSchema, } from "../../core/validators/common.validator";
+import { SaturdayOffMode } from "../attendance/schedule-engine";
 
 //Create Branch
 export const CreateBranchDto = z.object({
@@ -41,6 +42,10 @@ export const CreateBranchDto = z.object({
     shiftStartTime:     z.string().optional(),
     shiftEndTime:       z.string().optional(),
     workingHoursPerDay: z.number().min(1).max(24).optional(),
+    saturdayPolicy: z.object({
+      mode:           z.nativeEnum(SaturdayOffMode),
+      customOffWeeks: z.array(z.number().int().min(1).max(5)).max(5).optional(),
+    }).optional(),
   }).optional(),
 
   statutory: z.object({

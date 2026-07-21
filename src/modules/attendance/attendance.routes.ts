@@ -2,6 +2,7 @@ import { Router } from "express";
 import { AttendanceController } from "./attendance.controller";
 import { ShiftController } from "./shift.controller";
 import { RegularizationController } from "./regularization.controller";
+import { ShiftRotationPlanController } from "./shift-rotation-plan.controller";
 import { authenticate } from "../../core/middlewares/auth.middleware";
 import { checkPermission } from "../../core/middlewares/rbac.middleware";
 import { validateBody } from "../../core/validators/validate.middleware";
@@ -10,6 +11,7 @@ import {
   ReviewRegularizationDto,
 } from "./attendance.dto";
 import { AssignShiftDto } from "./shift-assignment.dto";
+import { CreateShiftRotationPlanDto, UpdateShiftRotationPlanDto, AssignRotationPlanDto } from "./shift-rotation-plan.dto";
 import { buildSuccessResponse } from "../../core/database/base.schema";
 import { AttendanceSummaryService } from "./attendance-summary.service";
 import { closeOutAttendanceForDate } from "./attendance-closeout.job";
@@ -22,6 +24,7 @@ const router = Router();
 const attCtrl = new AttendanceController();
 const shiftCtrl = new ShiftController();
 const regCtrl = new RegularizationController();
+const rotationCtrl = new ShiftRotationPlanController();
 const summaryService = new AttendanceSummaryService();
 
 router.use(authenticate);
@@ -183,5 +186,46 @@ router.delete("/shifts/:id",
   shiftCtrl.delete.bind(shiftCtrl)
 );
 
+// ─── ROTATION PLANS ──────────────────────────────────────────────────────────
+
+// POST /api/v1/attendance/rotation-plans/assign  (must be before /:id)
+router.post(
+  "/rotation-plans/assign",
+  checkPermission("attendance.update"),
+  validateBody(AssignRotationPlanDto),
+  rotationCtrl.assign.bind(rotationCtrl)
+);
+
+router.get(
+  "/rotation-plans",
+  checkPermission("attendance.read"),
+  rotationCtrl.list.bind(rotationCtrl)
+);
+
+router.post(
+  "/rotation-plans",
+  checkPermission("attendance.create"),
+  validateBody(CreateShiftRotationPlanDto),
+  rotationCtrl.create.bind(rotationCtrl)
+);
+
+router.get(
+  "/rotation-plans/:id",
+  checkPermission("attendance.read"),
+  rotationCtrl.getById.bind(rotationCtrl)
+);
+
+router.patch(
+  "/rotation-plans/:id",
+  checkPermission("attendance.update"),
+  validateBody(UpdateShiftRotationPlanDto),
+  rotationCtrl.update.bind(rotationCtrl)
+);
+
+router.delete(
+  "/rotation-plans/:id",
+  checkPermission("attendance.update"),
+  rotationCtrl.delete.bind(rotationCtrl)
+);
 
 export default router;
