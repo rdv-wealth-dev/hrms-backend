@@ -98,6 +98,13 @@ router.post(
   controller.create.bind(controller)
 );
 
+// Calendar events — static path, must be before /:id
+router.get(
+  "/events",
+  checkPermission("employee.read"),
+  controller.getCalendarEvents.bind(controller)
+);
+
 router.get(
   "/:id",
   checkPermission("employee.read"),

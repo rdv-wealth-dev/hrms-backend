@@ -11,7 +11,10 @@ import {
   RequestUploadUrlInput,
   VerifyDocumentInput,
   assertValidDocumentFile,
+  CalendarEventsQuery,
+  CalendarEvent,
 } from "./employee.dto";
+import { EmployeeModel } from "./employee.model";
 import { AppError } from "../../core/errors/app.error";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
 import { buildPagedResponse } from "../../core/database/base.schema";
@@ -842,6 +845,141 @@ export class EmployeeService {
   }
 
   // documents 
+
+  async getCalendarEvents(
+    context: RequestContext,
+    input: CalendarEventsQuery
+  ): Promise<CalendarEvent[]> {
+    const now = new Date();
+
+    // — resolve date range from period —
+    function startOfDay(d: Date): Date {
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    }
+    function endOfDay(d: Date): Date {
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+    }
+    function isLeapYear(y: number): boolean {
+      return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+    }
+
+    let fromDate: Date;
+    let toDate: Date;
+
+    switch (input.period) {
+      case "TODAY":
+        fromDate = startOfDay(now);
+        toDate = endOfDay(now);
+        break;
+      case "THIS_WEEK": {
+        const dayOfWeek = now.getDay();
+        const monOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const monday = new Date(now);
+        monday.setDate(now.getDate() + monOffset);
+        fromDate = startOfDay(monday);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        toDate = endOfDay(sunday);
+        break;
+      }
+      case "THIS_MONTH":
+        fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        break;
+      case "PAST_WEEK":
+        fromDate = new Date(now);
+        fromDate.setDate(now.getDate() - 7);
+        fromDate = startOfDay(fromDate);
+        toDate = endOfDay(now);
+        break;
+      case "PAST_MONTH":
+        fromDate = new Date(now);
+        fromDate.setDate(now.getDate() - 30);
+        fromDate = startOfDay(fromDate);
+        toDate = endOfDay(now);
+        break;
+      default:
+        throw new AppError("Invalid period", 400);
+    }
+
+    // Build employee filter
+    const empFilter: Record<string, unknown> = {
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted: false,
+      status: { $in: ["ACTIVE", "ON_LEAVE"] },
+    };
+    if (input.branchId) {
+      empFilter.branchId = new mongoose.Types.ObjectId(input.branchId);
+    }
+
+    const employees = await EmployeeModel.find(empFilter)
+      .select("firstName lastName employeeCode dateOfBirth joiningDate branchId")
+      .lean();
+
+    const events: CalendarEvent[] = [];
+
+    for (const emp of employees) {
+      const empId = (emp as any)._id.toString();
+
+      // Helper: compute event date for a given year (handles Feb 29)
+      const getEventInYear = (base: Date, year: number): Date => {
+        const m = base.getMonth();
+        const d = base.getDate();
+        if (m === 1 && d === 29 && !isLeapYear(year)) {
+          return new Date(year, 1, 28);
+        }
+        return new Date(year, m, d);
+      };
+
+      // Birthday
+      if ((emp as any).dateOfBirth) {
+        const dob = new Date((emp as any).dateOfBirth);
+        const fromYear = fromDate.getFullYear();
+        const toYear = toDate.getFullYear();
+        for (let y = fromYear; y <= toYear; y++) {
+          const eventDate = getEventInYear(dob, y);
+          if (eventDate >= fromDate && eventDate <= toDate) {
+            events.push({
+              type: "BIRTHDAY",
+              title: `${(emp as any).firstName} ${(emp as any).lastName}'s Birthday`,
+              date: eventDate,
+              employeeId: empId,
+              employeeCode: (emp as any).employeeCode,
+              branchId: (emp as any).branchId?.toString(),
+            });
+            break; // one birthday per employee per range
+          }
+        }
+      }
+
+      // Work anniversary
+      if ((emp as any).joiningDate) {
+        const jd = new Date((emp as any).joiningDate);
+        const fromYear = fromDate.getFullYear();
+        const toYear = toDate.getFullYear();
+        for (let y = fromYear; y <= toYear; y++) {
+          const years = y - jd.getFullYear();
+          if (years < 1) continue;
+          const eventDate = getEventInYear(jd, y);
+          if (eventDate >= fromDate && eventDate <= toDate) {
+            events.push({
+              type: "ANNIVERSARY",
+              title: `${(emp as any).firstName} ${(emp as any).lastName} - ${years} Year Work Anniversary`,
+              date: eventDate,
+              employeeId: empId,
+              employeeCode: (emp as any).employeeCode,
+              branchId: (emp as any).branchId?.toString(),
+              years,
+            });
+            break;
+          }
+        }
+      }
+    }
+
+    events.sort((a, b) => a.date.getTime() - b.date.getTime());
+    return events;
+  }
 
   async getPendingDocuments(context: RequestContext) {
     return this.empRepo.getPendingDocuments(context);

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { EmployeeService } from "./employee.service";
 import { buildSuccessResponse } from "../../core/database/base.schema";
-import { ListEmployeesQueryDto } from "./employee.dto";
+import { ListEmployeesQueryDto, CalendarEventsQueryDto } from "./employee.dto";
 import { AppError } from "../../core/errors/app.error";
 
 const empService = new EmployeeService();
@@ -488,6 +488,22 @@ export class EmployeeController {
     }
   }
 
+  // GET /api/v1/employees/events?period=TODAY&branchId=...
+  async getCalendarEvents(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const query = CalendarEventsQueryDto.parse(req.query);
+      const result = await empService.getCalendarEvents(req.context, query);
+      res.status(200).json(
+        buildSuccessResponse(result, "Calendar events fetched")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 

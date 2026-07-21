@@ -243,3 +243,20 @@ export const UploadDocumentDto = z.object({
   ]),
 });
 export type UploadDocumentInput = z.infer<typeof UploadDocumentDto>;
+
+// Calendar events query
+export const CalendarEventsQueryDto = z.object({
+  period: z.enum(["TODAY", "THIS_WEEK", "THIS_MONTH", "PAST_WEEK", "PAST_MONTH"]),
+  branchId: objectIdSchema.optional(),
+});
+export type CalendarEventsQuery = z.infer<typeof CalendarEventsQueryDto>;
+
+export interface CalendarEvent {
+  type: "BIRTHDAY" | "ANNIVERSARY";
+  title: string;
+  date: Date;
+  employeeId: string;
+  employeeCode: string;
+  branchId?: string;
+  years?: number;
+}
