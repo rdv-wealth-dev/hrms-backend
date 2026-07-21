@@ -96,9 +96,30 @@ export async function closeOutAttendanceForDate(
     }
 
     // Determine shiftId to store on the attendance record (rotation-aware)
-    const resolvedShiftId = schedule.shift
+    let resolvedShiftId = schedule.shift
       ? (schedule.shift as any)._id ?? emp.shiftId
       : emp.shiftId;
+
+    if (!resolvedShiftId) {
+      const defaultShift = await shiftRepo.findDefault({ tenantId, branchIds: [emp.branchId.toString()] } as any);
+      if (defaultShift) {
+        resolvedShiftId = defaultShift._id;
+      } else {
+        // Fallback to any shift in the system for this tenant to prevent validation errors
+        const anyShift = await mongoose.model("Shift").findOne({
+          tenantId: new mongoose.Types.ObjectId(tenantId),
+          isDeleted: false,
+        });
+        if (anyShift) {
+          resolvedShiftId = anyShift._id;
+        }
+      }
+    }
+
+    if (!resolvedShiftId) {
+      logger.warn(`Skipping attendance closeout for employee ${emp._id} - no shifts found for tenant ${tenantId}.`);
+      continue;
+    }
 
     await AttendanceModel.create({
       tenantId:       new mongoose.Types.ObjectId(tenantId),
