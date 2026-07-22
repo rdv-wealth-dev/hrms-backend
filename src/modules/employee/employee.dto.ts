@@ -211,6 +211,7 @@ export const ListEmployeesQueryDto = z.object({
   designationId: objectIdSchema.optional(),
   branchId:      objectIdSchema.optional(),
   search:        z.string().trim().optional(),
+  joiningPeriod: z.enum(["this_month", "last_3_months", "last_6_months", "last_year"]).optional(),
 });
 
 export type ListEmployeesQuery = z.infer<typeof ListEmployeesQueryDto>;

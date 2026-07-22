@@ -277,6 +277,28 @@ export class EmployeeService {
     if (query.designationId) filters.designationId = new mongoose.Types.ObjectId(query.designationId);
     if (query.branchId) filters.branchId = new mongoose.Types.ObjectId(query.branchId);
 
+    if (query.joiningPeriod) {
+      const now = new Date();
+      let startDate: Date | null = null;
+
+      if (query.joiningPeriod === "this_month") {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1); // 1st of current month
+      } else if (query.joiningPeriod === "last_3_months") {
+        startDate = new Date();
+        startDate.setMonth(now.getMonth() - 3);
+      } else if (query.joiningPeriod === "last_6_months") {
+        startDate = new Date();
+        startDate.setMonth(now.getMonth() - 6);
+      } else if (query.joiningPeriod === "last_year") {
+        startDate = new Date();
+        startDate.setFullYear(now.getFullYear() - 1);
+      }
+
+      if (startDate) {
+        filters.joiningDate = { $gte: startDate };
+      }
+    }
+
     const result = await this.empRepo.search(
       context,
       query.search ?? "",
