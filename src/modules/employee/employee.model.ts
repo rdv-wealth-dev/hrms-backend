@@ -104,20 +104,18 @@ export interface EmployeeDocument extends BaseDocument {
   // Avatar
   avatarUrl?: string;
 
-  // Profile completion tracking
-  profileCompletion: EmployeeProfileCompletion;
-  isProfileComplete: boolean;
+  // Profile completion tracking — step sequence
+  onboardingStep:             number;  // 1-5, which step they're currently on
+  onboardingComplete:         boolean; // true once step 5 is submitted
+  onboardingStepsCompleted: {
+    personalDetails: boolean;
+    familyDetails:   boolean;
+    bankDetails:     boolean;
+    documents:       boolean;
+    reviewed:        boolean;
+  };
 
   isActive: boolean;
-}
-
-// Profile completion flags — computed after each save
-export interface EmployeeProfileCompletion {
-  personalDetails:  boolean;   // dob, gender, phone filled
-  address:          boolean;   // currentAddress filled
-  emergencyContact: boolean;   // at least 1 emergency contact
-  bankDetails:      boolean;   // at least 1 bank account added
-  mandatoryDocs:    boolean;   // all org-required document types uploaded
 }
 
 
@@ -255,17 +253,22 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
       default: true,
     },
 
-    // Profile completion tracking
-    profileCompletion: {
-      personalDetails:  { type: Boolean, default: false },
-      address:          { type: Boolean, default: false },
-      emergencyContact: { type: Boolean, default: false },
-      bankDetails:      { type: Boolean, default: false },
-      mandatoryDocs:    { type: Boolean, default: false },
+    // Profile completion tracking — step sequence
+    onboardingStep: {
+      type:    Number,
+      default: 1,
+      min: 1, max: 5,
     },
-    isProfileComplete: {
+    onboardingComplete: {
       type:    Boolean,
       default: false,
+    },
+    onboardingStepsCompleted: {
+      personalDetails: { type: Boolean, default: false },
+      familyDetails:   { type: Boolean, default: false },
+      bankDetails:     { type: Boolean, default: false },
+      documents:       { type: Boolean, default: false },
+      reviewed:        { type: Boolean, default: false },
     },
   },
   { collection: "employees" }
