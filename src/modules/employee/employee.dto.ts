@@ -260,3 +260,11 @@ export interface CalendarEvent {
   branchId?: string;
   years?: number;
 }
+
+export const CropAvatarDto = z.object({
+  cropX:      z.string().optional().transform(v => v ? parseInt(v) : undefined),
+  cropY:      z.string().optional().transform(v => v ? parseInt(v) : undefined),
+  cropWidth:  z.string().optional().transform(v => v ? parseInt(v) : undefined),
+  cropHeight: z.string().optional().transform(v => v ? parseInt(v) : undefined),
+});
+export type CropAvatarInput = z.infer<typeof CropAvatarDto>;

@@ -64,6 +64,35 @@ export class S3Service {
         await s3Client.send(command);
     }
 
+    buildAvatarKey(slug: string, employeeId: string, extension: string = "jpg"): string {
+        return `tenants/${slug}/employees/${employeeId}/avatar/profile.${extension}`;
+    }
+
+    async uploadPublicAvatar(s3Key: string, buffer: Buffer, mimeType: string): Promise<string> {
+        try {
+            const command = new PutObjectCommand({
+                Bucket: env.awsS3Bucket,
+                Key: s3Key,
+                Body: buffer,
+                ContentType: mimeType,
+                ACL: "public-read",
+            });
+            await s3Client.send(command);
+        } catch (err) {
+            // Fallback if public-read ACL is not allowed
+            const command = new PutObjectCommand({
+                Bucket: env.awsS3Bucket,
+                Key: s3Key,
+                Body: buffer,
+                ContentType: mimeType,
+            });
+            await s3Client.send(command);
+        }
+        const region = env.awsRegion || "ap-south-1";
+        return `https://${env.awsS3Bucket}.s3.${region}.amazonaws.com/${s3Key}`;
+    }
+
+
     // Delete — called when a document record is hard-removed from S3
     // Note: your employee-document soft-delete (isDeleted: true) does NOT
     // call this — soft-deleted documents stay in S3 for audit/recovery.

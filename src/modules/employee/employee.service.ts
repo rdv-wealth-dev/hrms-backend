@@ -13,7 +13,9 @@ import {
   assertValidDocumentFile,
   CalendarEventsQuery,
   CalendarEvent,
+  CropAvatarInput,
 } from "./employee.dto";
+import sharp from "sharp";
 import { EmployeeModel } from "./employee.model";
 import { AppError } from "../../core/errors/app.error";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
@@ -407,6 +409,71 @@ export class EmployeeService {
     const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
     return this.uploadDocumentDirectly(context, employeeId, file, documentType);
   }
+
+  async uploadAvatar(
+    context: RequestContext,
+    employeeId: string,
+    file: Express.Multer.File,
+    cropParams: CropAvatarInput
+  ) {
+    const employee = await this.empRepo.findById(context, employeeId);
+    if (!employee) throw new AppError("Employee not found", 404);
+
+    const allowedMimeTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new AppError("Only JPEG, PNG, and WebP images are allowed for profile pictures.", 400);
+    }
+
+    if (file.size > 3 * 1024 * 1024) {
+      throw new AppError("Profile picture size must not exceed 3MB.", 400);
+    }
+
+    const org = await OrganizationModel.findById(context.tenantId).select("slug");
+    const slug = org?.slug ?? context.tenantId;
+
+    const s3Key = s3Service.buildAvatarKey(slug, employeeId, "jpg");
+
+    let imageProcessor = sharp(file.buffer);
+
+    const { cropX, cropY, cropWidth, cropHeight } = cropParams;
+    if (cropX !== undefined && cropY !== undefined && cropWidth !== undefined && cropHeight !== undefined) {
+      imageProcessor = imageProcessor.extract({
+        left: cropX,
+        top: cropY,
+        width: cropWidth,
+        height: cropHeight,
+      });
+    }
+
+    const processedBuffer = await imageProcessor
+      .resize(400, 400, { fit: "cover" })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+
+    const avatarUrl = await s3Service.uploadPublicAvatar(s3Key, processedBuffer, "image/jpeg");
+
+    employee.avatarUrl = avatarUrl;
+    await employee.save();
+
+    await UserModel.updateOne(
+      { tenantId: new mongoose.Types.ObjectId(context.tenantId), employeeId: new mongoose.Types.ObjectId(employeeId) },
+      { avatar: avatarUrl }
+    );
+
+    await recalculateProfileCompletion(context.tenantId, employeeId);
+
+    return { avatarUrl };
+  }
+
+  async uploadMyAvatar(
+    context: RequestContext,
+    file: Express.Multer.File,
+    cropParams: CropAvatarInput
+  ) {
+    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
+    return this.uploadAvatar(context, employeeId, file, cropParams);
+  }
+
 
   //Get by ID
   async getEmployeeById(

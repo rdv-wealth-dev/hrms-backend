@@ -189,6 +189,13 @@ router.get(
   controller.getMyDownloadUrl.bind(controller)
 );
 
+router.patch(
+  "/me/avatar",
+  uploadSingleFile("avatar"),
+  controller.uploadMyAvatar.bind(controller)
+);
+
+
 // ── Admin: document verification (static paths before /:id) ──
 
 router.get(
@@ -266,5 +273,13 @@ router.get(
   checkPermission("employee.read"),
   controller.getDownloadUrl.bind(controller)
 );
+
+router.patch(
+  "/:id/avatar",
+  checkPermission("employee.update"),
+  uploadSingleFile("avatar"),
+  controller.uploadAvatar.bind(controller)
+);
+
 
 export default router;

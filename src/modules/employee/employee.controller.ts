@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { EmployeeService } from "./employee.service";
 import { buildSuccessResponse } from "../../core/database/base.schema";
-import { ListEmployeesQueryDto, CalendarEventsQueryDto } from "./employee.dto";
+import { ListEmployeesQueryDto, CalendarEventsQueryDto, CropAvatarDto } from "./employee.dto";
 import { AppError } from "../../core/errors/app.error";
 
 const empService = new EmployeeService();
@@ -502,6 +502,44 @@ export class EmployeeController {
       );
     } catch (error) {
       next(error);
+    }
+  }
+
+  async uploadMyAvatar(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.file) {
+        throw new AppError("No file uploaded", 400);
+      }
+      const cropParams = CropAvatarDto.parse({ ...req.query, ...req.body });
+      const result = await empService.uploadMyAvatar(req.context, req.file, cropParams);
+      res.status(200).json(
+        buildSuccessResponse(result, "Profile picture uploaded successfully")
+      );
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  async uploadAvatar(
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.file) {
+        throw new AppError("No file uploaded", 400);
+      }
+      const cropParams = CropAvatarDto.parse({ ...req.query, ...req.body });
+      const result = await empService.uploadAvatar(req.context, req.params.id, req.file, cropParams);
+      res.status(200).json(
+        buildSuccessResponse(result, "Profile picture uploaded successfully")
+      );
+    } catch (e) {
+      next(e);
     }
   }
 }
