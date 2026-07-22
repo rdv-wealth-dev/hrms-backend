@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import { createBaseSchema, BaseDocument } from "../../core/database/base.schema";
-import { extend } from "zod/mini";
 
 export enum FamilyRelationship {
     SPOUSE = "SPOUSE",

@@ -115,6 +115,16 @@ export interface EmployeeDocument extends BaseDocument {
     reviewed:        boolean;
   };
 
+  // Legacy profile-completion fields (used by service & middleware)
+  isProfileComplete: boolean;
+  profileCompletion: {
+    personalDetails:  boolean;
+    address:          boolean;
+    emergencyContact: boolean;
+    bankDetails:      boolean;
+    mandatoryDocs:    boolean;
+  };
+
   isActive: boolean;
 }
 
@@ -269,6 +279,19 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
       bankDetails:     { type: Boolean, default: false },
       documents:       { type: Boolean, default: false },
       reviewed:        { type: Boolean, default: false },
+    },
+
+    // Legacy profile-completion fields (used by service & middleware)
+    isProfileComplete: {
+      type:    Boolean,
+      default: false,
+    },
+    profileCompletion: {
+      personalDetails:  { type: Boolean, default: false },
+      address:          { type: Boolean, default: false },
+      emergencyContact: { type: Boolean, default: false },
+      bankDetails:      { type: Boolean, default: false },
+      mandatoryDocs:    { type: Boolean, default: false },
     },
   },
   { collection: "employees" }

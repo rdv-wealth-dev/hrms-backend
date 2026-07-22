@@ -47,7 +47,7 @@ export const requireCompleteProfile = async (
       return;
     }
 
-    const employee = await EmployeeModel.findById(user.employeeId).select("isProfileComplete profileCompletion");
+    const employee = await EmployeeModel.findById(user.employeeId).select("isProfileComplete onboardingComplete");
 
     if (employee && !employee.isProfileComplete) {
       next(new AppError(

@@ -15,37 +15,48 @@ export async function recalculateProfileCompletion(
   const employee = await EmployeeModel.findById(employeeId);
   if (!employee) return false;
 
-  const personalDetails = !!(employee.dateOfBirth && employee.gender && employee.phone);
-  const address = !!(employee.currentAddress?.addressLine1 && employee.currentAddress?.city);
+  // ── Legacy completion checks (used by service & middleware)
+  const personalDetails  = !!(employee.dateOfBirth && employee.gender && employee.phone);
+  const address          = !!(employee.currentAddress?.addressLine1 && employee.currentAddress?.city);
   const emergencyContact = employee.emergencyContacts.length > 0;
 
   const bankCount = await EmployeeBankAccountModel.countDocuments({
-    tenantId: new mongoose.Types.ObjectId(tenantId),
+    tenantId:   new mongoose.Types.ObjectId(tenantId),
     employeeId: new mongoose.Types.ObjectId(employeeId),
-    isActive: true, isDeleted: false,
+    isActive:   true,
+    isDeleted:  false,
   });
   const bankDetails = bankCount > 0;
 
-  const org = await OrganizationModel.findById(tenantId).select("mandatoryDocumentTypes");
+  const org      = await OrganizationModel.findById(tenantId).select("mandatoryDocumentTypes");
   const required = org?.mandatoryDocumentTypes ?? [];
 
   let mandatoryDocs = true;
   if (required.length > 0) {
     const uploadedTypes = await EmployeeDocumentModel.distinct("documentType", {
-      tenantId: new mongoose.Types.ObjectId(tenantId),
+      tenantId:   new mongoose.Types.ObjectId(tenantId),
       employeeId: new mongoose.Types.ObjectId(employeeId),
-      isDeleted: false,
+      isDeleted:  false,
     }) as unknown as string[];
     mandatoryDocs = required.every((t: string) => uploadedTypes.includes(t));
   }
 
   const isProfileComplete = personalDetails && address && emergencyContact && bankDetails && mandatoryDocs;
 
-  employee.profileCompletion = {
-    personalDetails, address, emergencyContact, bankDetails, mandatoryDocs,
-  } as any;
+  // Write legacy fields (service builds its response from these)
+  employee.profileCompletion = { personalDetails, address, emergencyContact, bankDetails, mandatoryDocs };
   employee.isProfileComplete = isProfileComplete;
-  await employee.save();
 
+  //Onboarding step flags (keep in sync with legacy)
+  employee.onboardingStepsCompleted = {
+    personalDetails,
+    familyDetails: employee.onboardingStepsCompleted?.familyDetails ?? false, // set by family endpoint
+    bankDetails,
+    documents:     mandatoryDocs,
+    reviewed:      employee.onboardingStepsCompleted?.reviewed ?? false,       // set by HR
+  };
+  employee.onboardingComplete = isProfileComplete;
+
+  await employee.save();
   return isProfileComplete;
 }
