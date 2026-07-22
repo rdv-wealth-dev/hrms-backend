@@ -97,14 +97,14 @@ export const CreateEmployeeDto = withPhoneValidation(z.object({
     })
   ).optional().default([]),
 
-  // Optional — attach salary structure in the same onboarding call
+  // Mandatory — attach salary structure in the same onboarding call
   salaryStructure: z.object({
     ctcAnnual: z.number().min(0),
     lineItems: z.array(z.object({
       componentCode: z.string().trim().toUpperCase(),
       amount:        z.number().min(0),
     })).min(1),
-  }).optional(),
+  }),
 
   // Optional — attach a bank account in the same onboarding call
   bankAccount: z.object({
