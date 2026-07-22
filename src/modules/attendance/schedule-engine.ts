@@ -248,13 +248,16 @@ export function resolveEmployeeDaySchedule(options: {
 
   // Saturday policy
   if (dayName === "Saturday") {
-    // Check if Saturday is explicitly in the fixed off-days list
-    if (fixedWeeklyOffDays.includes("Saturday")) {
-      return { shift: fixedShift ?? null, dayType: "WEEK_OFF", offReason: "FIXED_WEEKLY_OFF" };
-    }
-    // Otherwise apply the richer Saturday policy
-    if (isSaturdayOff(targetDate, saturdayPolicy ?? null)) {
-      return { shift: fixedShift ?? null, dayType: "WEEK_OFF", offReason: "SATURDAY_POLICY" };
+    const hasActiveSatPolicy = !!(saturdayPolicy && saturdayPolicy.mode && Object.values(SaturdayOffMode).includes(saturdayPolicy.mode));
+    if (hasActiveSatPolicy) {
+      if (isSaturdayOff(targetDate, saturdayPolicy)) {
+        return { shift: fixedShift ?? null, dayType: "WEEK_OFF", offReason: "SATURDAY_POLICY" };
+      }
+    } else {
+      // Check if Saturday is explicitly in the fixed off-days list
+      if (fixedWeeklyOffDays.includes("Saturday")) {
+        return { shift: fixedShift ?? null, dayType: "WEEK_OFF", offReason: "FIXED_WEEKLY_OFF" };
+      }
     }
   }
 
@@ -343,16 +346,17 @@ export function generateMonthCalendar(options: {
     // Saturday logic
     if (dayName === "Saturday") {
       const weekNum = getSaturdayWeekNumber(date);
-      const isOff   = fixedWeeklyOffDays.includes("Saturday")
-        ? true
-        : isSaturdayOff(date, saturdayPolicy ?? null);
+      const hasActiveSatPolicy = !!(saturdayPolicy && saturdayPolicy.mode && Object.values(SaturdayOffMode).includes(saturdayPolicy.mode));
+      const isOff   = hasActiveSatPolicy
+        ? isSaturdayOff(date, saturdayPolicy)
+        : fixedWeeklyOffDays.includes("Saturday");
 
       days.push({
         date:      dateStr,
         dayOfWeek: dayName,
         type:      isOff ? "WEEK_OFF" : "WORKING",
         weekNumber: weekNum,
-        offReason: isOff ? "SATURDAY_POLICY" : undefined,
+        offReason: isOff ? (hasActiveSatPolicy ? "SATURDAY_POLICY" : "FIXED_WEEKLY_OFF") : undefined,
       });
       continue;
     }

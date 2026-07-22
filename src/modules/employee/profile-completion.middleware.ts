@@ -32,7 +32,7 @@ export const requireCompleteProfile = async (
     const { role, userId, tenantId } = req.context;
 
     // Admin roles never gated by employee profile completion
-    if (["SUPER_ADMIN", "HR_ADMIN", "LEADERSHIP", "MANAGER", "PRODUCT_MANAGER", "BRANCH_ADMIN"].includes(role)) {
+    if (["SUPER_ADMIN", "ORG_ADMIN", "HR_ADMIN", "LEADERSHIP", "MANAGER", "PRODUCT_MANAGER", "BRANCH_ADMIN"].includes(role)) {
       next();
       return;
     }

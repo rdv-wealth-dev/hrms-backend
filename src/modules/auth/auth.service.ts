@@ -312,11 +312,11 @@ export class AuthService {
         subscription: org!.subscription,
         modules:      org!.modules,
       },
-      branch: {
-        id:   headOffice!._id,
-        name: headOffice!.name,
-        code: headOffice!.code,
-      },
+      branch: headOffice ? {
+        id:   headOffice._id,
+        name: headOffice.name,
+        code: headOffice.code,
+      } : null,
     };
   }
 

@@ -40,8 +40,9 @@ export class DesignationService {
     context:    RequestContext,
     pagination: PaginationOptions
   ) {
+    // Designations are org-level master data — NOT branch-scoped.
     return this.desgRepo.findAll(
-      context,
+      { ...context, branchIds: [] },
       { isActive: true },
       pagination,
       { sort: { departmentId: 1, level: 1, name: 1 } }

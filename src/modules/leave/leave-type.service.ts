@@ -33,8 +33,9 @@ export class LeaveTypeService {
     }
 
     async listLeaveTypes(context: RequestContext) {
+        // Leave types are org-level master data — NOT branch-scoped.
         return this.leaveTypeRepo.findAll(
-            context, { isActive: true, effectiveTo: null }, { pageNumber: 1, pageSize: 50 }
+            { ...context, branchIds: [] }, { isActive: true, effectiveTo: null }, { pageNumber: 1, pageSize: 50 }
         );
     }
 

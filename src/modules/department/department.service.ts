@@ -42,8 +42,11 @@ export class DepartmentService {
     context:    RequestContext,
     pagination: PaginationOptions
   ) {
+    // Departments are org-level master data — NOT branch-scoped.
+    // We deliberately skip the base repo's branchId filter here so that
+    // all departments across all branches are visible to every user.
     return this.deptRepo.findAll(
-      context,
+      { ...context, branchIds: [] },   // clear branchIds so base filter doesn't scope it
       { isActive: true },
       pagination,
       { sort: { name: 1 } }
