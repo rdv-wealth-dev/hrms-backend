@@ -58,7 +58,7 @@ const DepartmentSchema = createBaseSchema<DepartmentDocument>(
 );
 
 //Indexes
-DepartmentSchema.index({ tenantId: 1, code: 1 },     { unique: true });
+DepartmentSchema.index({ tenantId: 1, branchId: 1, code: 1 }, { unique: true });
 DepartmentSchema.index({ tenantId: 1, branchId: 1 });
 DepartmentSchema.index({ tenantId: 1, isActive: 1 });
 

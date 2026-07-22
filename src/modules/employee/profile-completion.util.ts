@@ -9,34 +9,34 @@ import { OrganizationModel } from "../organization/organization.model";
 // profile fields updated — so isProfileComplete is always current, not
 // computed on-demand on every request.
 export async function recalculateProfileCompletion(
-  tenantId:   string,
+  tenantId: string,
   employeeId: string
 ): Promise<boolean> {
   const employee = await EmployeeModel.findById(employeeId);
   if (!employee) return false;
 
   // ── Legacy completion checks (used by service & middleware)
-  const personalDetails  = !!(employee.dateOfBirth && employee.gender && employee.phone);
-  const address          = !!(employee.currentAddress?.addressLine1 && employee.currentAddress?.city);
+  const personalDetails = !!(employee.dateOfBirth && employee.gender && employee.phone);
+  const address = !!(employee.currentAddress?.addressLine1 && employee.currentAddress?.city);
   const emergencyContact = employee.emergencyContacts.length > 0;
 
   const bankCount = await EmployeeBankAccountModel.countDocuments({
-    tenantId:   new mongoose.Types.ObjectId(tenantId),
+    tenantId: new mongoose.Types.ObjectId(tenantId),
     employeeId: new mongoose.Types.ObjectId(employeeId),
-    isActive:   true,
-    isDeleted:  false,
+    isActive: true,
+    isDeleted: false,
   });
   const bankDetails = bankCount > 0;
 
-  const org      = await OrganizationModel.findById(tenantId).select("mandatoryDocumentTypes");
+  const org = await OrganizationModel.findById(tenantId).select("mandatoryDocumentTypes");
   const required = org?.mandatoryDocumentTypes ?? [];
 
   let mandatoryDocs = true;
   if (required.length > 0) {
     const uploadedTypes = await EmployeeDocumentModel.distinct("documentType", {
-      tenantId:   new mongoose.Types.ObjectId(tenantId),
+      tenantId: new mongoose.Types.ObjectId(tenantId),
       employeeId: new mongoose.Types.ObjectId(employeeId),
-      isDeleted:  false,
+      isDeleted: false,
     }) as unknown as string[];
     mandatoryDocs = required.every((t: string) => uploadedTypes.includes(t));
   }
@@ -52,8 +52,8 @@ export async function recalculateProfileCompletion(
     personalDetails,
     familyDetails: employee.onboardingStepsCompleted?.familyDetails ?? false, // set by family endpoint
     bankDetails,
-    documents:     mandatoryDocs,
-    reviewed:      employee.onboardingStepsCompleted?.reviewed ?? false,       // set by HR
+    documents: mandatoryDocs,
+    reviewed: employee.onboardingStepsCompleted?.reviewed ?? false,       // set by HR
   };
   employee.onboardingComplete = isProfileComplete;
 

@@ -56,7 +56,7 @@ const DesignationSchema = createBaseSchema<DesignationDocument>(
 );
 
 // Indexes
-DesignationSchema.index({ tenantId: 1, code: 1 },          { unique: true });
+DesignationSchema.index({ tenantId: 1, branchId: 1, code: 1 }, { unique: true });
 DesignationSchema.index({ tenantId: 1, departmentId: 1 });
 DesignationSchema.index({ tenantId: 1, isActive: 1 });
 
