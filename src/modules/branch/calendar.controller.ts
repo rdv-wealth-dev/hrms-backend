@@ -73,6 +73,63 @@ export async function getBranchCalendar(req: any, res: Response, next: NextFunct
       branchId,
     });
 
+    // ── Employee events (birthdays & anniversaries) for this month ──
+    const employees = await EmployeeModel.find({
+      tenantId:  new mongoose.Types.ObjectId(req.context.tenantId),
+      branchId:  new mongoose.Types.ObjectId(branchId),
+      isDeleted: false,
+      status:    { $in: ["ACTIVE", "ON_LEAVE"] },
+    }).select("firstName lastName employeeCode dateOfBirth joiningDate").lean();
+
+    function isLeapYear(y: number): boolean {
+      return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+    }
+    function getEventDate(base: Date, year: number): Date {
+      const m = base.getMonth();
+      const d = base.getDate();
+      if (m === 1 && d === 29 && !isLeapYear(year)) return new Date(year, 1, 28);
+      return new Date(year, m, d);
+    }
+
+    const dayEvents: Record<string, Array<{ type: string; title: string; employeeName: string; employeeCode: string; years?: number }>> = {};
+    for (const emp of employees) {
+      const empData = emp as any;
+
+      if (empData.dateOfBirth) {
+        const dob = new Date(empData.dateOfBirth);
+        const eventDate = getEventDate(dob, year);
+        const key = formatDate(eventDate);
+        if (eventDate.getMonth() === month - 1) {
+          (dayEvents[key] ??= []).push({
+            type: "BIRTHDAY",
+            title: `${empData.firstName} ${empData.lastName}'s Birthday`,
+            employeeName: `${empData.firstName} ${empData.lastName}`,
+            employeeCode: empData.employeeCode,
+          });
+        }
+      }
+
+      if (empData.joiningDate) {
+        const jd = new Date(empData.joiningDate);
+        const eventDate = getEventDate(jd, year);
+        const key = formatDate(eventDate);
+        if (eventDate.getMonth() === month - 1) {
+          (dayEvents[key] ??= []).push({
+            type: "ANNIVERSARY",
+            title: `${empData.firstName} ${empData.lastName} - ${year - jd.getFullYear()} Year Work Anniversary`,
+            employeeName: `${empData.firstName} ${empData.lastName}`,
+            employeeCode: empData.employeeCode,
+            years: year - jd.getFullYear(),
+          });
+        }
+      }
+    }
+
+    const daysWithEvents = days.map((d) => ({
+      ...d,
+      events: dayEvents[d.date] ?? [],
+    }));
+
     const summary = buildCalendarSummary(days);
 
     res.status(200).json(buildSuccessResponse({
@@ -81,7 +138,7 @@ export async function getBranchCalendar(req: any, res: Response, next: NextFunct
       year,
       month,
       saturdayPolicyMode: branchSaturdayPolicy?.mode ?? "NONE",
-      days,
+      days:               daysWithEvents,
       summary,
     }, "Branch calendar fetched"));
   } catch (err) {
