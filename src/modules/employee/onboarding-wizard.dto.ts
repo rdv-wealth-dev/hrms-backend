@@ -3,7 +3,7 @@ import { safeStringSchema, dateSchema, phoneSchema, emailSchema } from "../../co
 
 export const OnboardingStep1Dto = z.object({
   dateOfBirth: dateSchema,
-  gender: z.enum(["MALE", "FEMALE", "OTHERS"]),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]),
   bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]).optional(),
   maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]),
   phone: phoneSchema,
