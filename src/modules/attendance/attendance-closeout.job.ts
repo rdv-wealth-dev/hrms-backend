@@ -7,7 +7,7 @@ import { OrganizationModel } from "../organization/organization.model";
 import { ShiftRotationPlanModel } from "./shift-rotation-plan.model";
 import { ShiftRepository } from "./shift.repository";
 import { normalizeToMidnight } from "./attendance.util";
-import { resolveEmployeeDaySchedule, SaturdayPolicy } from "./schedule-engine";
+import { resolveEmployeeDaySchedule, SaturdayPolicy, CustomWeekOffRule } from "./schedule-engine";
 import { logger } from "../../config/logger";
 
 // Runs once daily (via cron, or manually via an admin endpoint) for a given
@@ -31,6 +31,7 @@ export async function closeOutAttendanceForDate(
   const org = await OrganizationModel.findById(tenantId);
   const orgSaturdayPolicy = (org?.locale as any)?.saturdayPolicy as SaturdayPolicy | undefined;
   const orgWeeklyOffDays  = org?.locale?.weeklyOffDays ?? ["Sunday"];
+  const orgCustomWeekOffRules = (org?.locale as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined;
 
   //  Fetch all active employees 
   const employees = await EmployeeModel.find({
@@ -64,6 +65,8 @@ export async function closeOutAttendanceForDate(
     const branchWeeklyOffDays  = branch?.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
     const branchSaturdayPolicy = (branch?.workPolicy as any)?.saturdayPolicy as SaturdayPolicy | undefined
       ?? orgSaturdayPolicy;
+    const branchCustomWeekOffRules = (branch?.workPolicy as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined
+      ?? orgCustomWeekOffRules;
 
     // Resolve rotation plan 
     const rotationPlan = emp.rotationPlanId
@@ -83,6 +86,7 @@ export async function closeOutAttendanceForDate(
       rotationStartDate:  emp.rotationStartDate ?? null,
       fixedShift:         fixedShift as any,
       fixedWeeklyOffDays: branchWeeklyOffDays,
+      customWeekOffRules: branchCustomWeekOffRules,
       saturdayPolicy:     branchSaturdayPolicy,
       holidays:           holidays as any,
       employeeBranchId:   emp.branchId.toString(),

@@ -37,19 +37,25 @@ export interface SaturdayPolicy {
   customOffWeeks?: number[]; // e.g. [1, 3] — used when mode === CUSTOM
 }
 
+export interface CustomWeekOffRule {
+  dayOfWeek: string; // e.g. "Saturday", "Friday", etc.
+  weeks:     number[]; // e.g. [1, 3] or [1, 2, 3, 4, 5]
+}
+
 export type DayType = "WORKING" | "WEEK_OFF" | "HOLIDAY";
 export type OffReason =
   | "HOLIDAY"
   | "ROTATIONAL_OFF"
   | "FIXED_WEEKLY_OFF"
-  | "SATURDAY_POLICY";
+  | "SATURDAY_POLICY"
+  | "CUSTOM_WEEK_OFF";
 
 export interface CalendarDay {
   date:         string;      // "2026-07-04"
   dayOfWeek:    string;      // "Saturday"
   type:         DayType;
   holidayName?: string;
-  weekNumber?:  number;      // 1–5, only populated for Saturdays
+  weekNumber?:  number;      // 1–5, populated for Saturdays and custom off days
   offReason?:   OffReason;
 }
 
@@ -121,6 +127,41 @@ export function isSaturdayOff(
   }
 }
 
+/**
+ * Determines if a given date is a weekly off day, taking customWeekOffRules first,
+ * then SaturdayPolicy, and finally fixedWeeklyOffDays.
+ */
+export function isWeeklyOffDay(
+  date: Date,
+  fixedWeeklyOffDays: string[],
+  customWeekOffRules?: CustomWeekOffRule[] | null,
+  saturdayPolicy?: SaturdayPolicy | null
+): boolean {
+  const dayName = DAY_NAMES_FULL[date.getDay()];
+
+  // 1. Check custom week-off rules first (case-insensitive day comparison)
+  if (customWeekOffRules && customWeekOffRules.length > 0) {
+    const matchingRule = customWeekOffRules.find(
+      (rule) => rule.dayOfWeek.toLowerCase() === dayName.toLowerCase()
+    );
+    if (matchingRule) {
+      const weekNum = Math.ceil(date.getDate() / 7);
+      return matchingRule.weeks.includes(weekNum);
+    }
+  }
+
+  // 2. If no custom rule, fallback to Saturday policy if this is Saturday
+  if (dayName === "Saturday") {
+    const hasActiveSatPolicy = !!(saturdayPolicy && saturdayPolicy.mode && Object.values(SaturdayOffMode).includes(saturdayPolicy.mode));
+    if (hasActiveSatPolicy) {
+      return isSaturdayOff(date, saturdayPolicy);
+    }
+  }
+
+  // 3. Fallback to fixed weekly off days
+  return fixedWeeklyOffDays.includes(dayName);
+}
+
 // ─── ROTATION HELPERS 
 
 const CYCLE_DAYS: Record<CycleDuration, number> = {
@@ -176,8 +217,7 @@ export function getCurrentRotationSlot(
  *
  * 1. Holiday (org-wide or branch-specific) → always HOLIDAY (overrides everything)
  * 2. Rotation plan off-days                → WEEK_OFF (ROTATIONAL_OFF)
- * 3. Branch fixed weekly off days (Sunday) → WEEK_OFF (FIXED_WEEKLY_OFF)
- * 4. Branch Saturday policy                → WEEK_OFF (SATURDAY_POLICY) or WORKING
+ * 3. Branch custom week-off rules / Saturday policy / fixed weekly off days
  */
 export function resolveEmployeeDaySchedule(options: {
   targetDate:         Date;
@@ -185,6 +225,7 @@ export function resolveEmployeeDaySchedule(options: {
   rotationStartDate?: Date | null;
   fixedShift?:        ShiftDocument | null;
   fixedWeeklyOffDays: string[];     // from branch.workPolicy.weeklyOffDays
+  customWeekOffRules?: CustomWeekOffRule[] | null;
   saturdayPolicy?:    SaturdayPolicy | null;
   holidays:           HolidayDocument[];
   employeeBranchId?:  string;
@@ -195,6 +236,7 @@ export function resolveEmployeeDaySchedule(options: {
     rotationStartDate,
     fixedShift,
     fixedWeeklyOffDays,
+    customWeekOffRules,
     saturdayPolicy,
     holidays,
     employeeBranchId,
@@ -238,27 +280,21 @@ export function resolveEmployeeDaySchedule(options: {
     };
   }
 
-  // ── 3 & 4. Fixed shift path — check weekly off days + Saturday policy 
+  // ── 3. Check custom week-off rules, Saturday policy and fixed weekly off days
+  if (isWeeklyOffDay(targetDate, fixedWeeklyOffDays, customWeekOffRules, saturdayPolicy)) {
+    let offReason: OffReason = "FIXED_WEEKLY_OFF";
 
-  // Fixed non-Saturday off days (typically Sunday)
-  const nonSaturdayOffDays = fixedWeeklyOffDays.filter((d) => d !== "Saturday");
-  if (nonSaturdayOffDays.includes(dayName)) {
-    return { shift: fixedShift ?? null, dayType: "WEEK_OFF", offReason: "FIXED_WEEKLY_OFF" };
-  }
+    const hasMatchingCustomRule = customWeekOffRules && customWeekOffRules.some(
+      (rule) => rule.dayOfWeek.toLowerCase() === dayName.toLowerCase()
+    );
 
-  // Saturday policy
-  if (dayName === "Saturday") {
-    const hasActiveSatPolicy = !!(saturdayPolicy && saturdayPolicy.mode && Object.values(SaturdayOffMode).includes(saturdayPolicy.mode));
-    if (hasActiveSatPolicy) {
-      if (isSaturdayOff(targetDate, saturdayPolicy)) {
-        return { shift: fixedShift ?? null, dayType: "WEEK_OFF", offReason: "SATURDAY_POLICY" };
-      }
-    } else {
-      // Check if Saturday is explicitly in the fixed off-days list
-      if (fixedWeeklyOffDays.includes("Saturday")) {
-        return { shift: fixedShift ?? null, dayType: "WEEK_OFF", offReason: "FIXED_WEEKLY_OFF" };
-      }
+    if (hasMatchingCustomRule) {
+      offReason = "CUSTOM_WEEK_OFF";
+    } else if (dayName === "Saturday" && saturdayPolicy && saturdayPolicy.mode && saturdayPolicy.mode !== SaturdayOffMode.ALL_WORKING) {
+      offReason = "SATURDAY_POLICY";
     }
+
+    return { shift: fixedShift ?? null, dayType: "WEEK_OFF", offReason };
   }
 
   return { shift: fixedShift ?? null, dayType: "WORKING" };
@@ -291,11 +327,12 @@ export function generateMonthCalendar(options: {
   year:            number;
   month:           number;  // 1-based
   fixedWeeklyOffDays: string[];
+  customWeekOffRules?: CustomWeekOffRule[] | null;
   saturdayPolicy?: SaturdayPolicy | null;
   holidays:        HolidayDocument[];
   branchId?:       string;
 }): CalendarDay[] {
-  const { year, month, fixedWeeklyOffDays, saturdayPolicy, holidays, branchId } = options;
+  const { year, month, fixedWeeklyOffDays, customWeekOffRules, saturdayPolicy, holidays, branchId } = options;
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const days: CalendarDay[] = [];
@@ -325,38 +362,33 @@ export function generateMonthCalendar(options: {
         dayOfWeek:   dayName,
         type:        "HOLIDAY",
         holidayName: getHolidayName(date),
-        weekNumber:  dayName === "Saturday" ? getSaturdayWeekNumber(date) : undefined,
+        weekNumber:  Math.ceil(date.getDate() / 7),
         offReason:   "HOLIDAY",
       });
       continue;
     }
 
-    // Non-Saturday fixed off days
-    const nonSaturdayOff = fixedWeeklyOffDays.filter((d) => d !== "Saturday");
-    if (nonSaturdayOff.includes(dayName)) {
+    // Week off checks
+    const isOff = isWeeklyOffDay(date, fixedWeeklyOffDays, customWeekOffRules, saturdayPolicy);
+    if (isOff) {
+      let offReason: OffReason = "FIXED_WEEKLY_OFF";
+
+      const hasMatchingCustomRule = customWeekOffRules && customWeekOffRules.some(
+        (rule) => rule.dayOfWeek.toLowerCase() === dayName.toLowerCase()
+      );
+
+      if (hasMatchingCustomRule) {
+        offReason = "CUSTOM_WEEK_OFF";
+      } else if (dayName === "Saturday" && saturdayPolicy && saturdayPolicy.mode && saturdayPolicy.mode !== SaturdayOffMode.ALL_WORKING) {
+        offReason = "SATURDAY_POLICY";
+      }
+
       days.push({
         date:      dateStr,
         dayOfWeek: dayName,
         type:      "WEEK_OFF",
-        offReason: "FIXED_WEEKLY_OFF",
-      });
-      continue;
-    }
-
-    // Saturday logic
-    if (dayName === "Saturday") {
-      const weekNum = getSaturdayWeekNumber(date);
-      const hasActiveSatPolicy = !!(saturdayPolicy && saturdayPolicy.mode && Object.values(SaturdayOffMode).includes(saturdayPolicy.mode));
-      const isOff   = hasActiveSatPolicy
-        ? isSaturdayOff(date, saturdayPolicy)
-        : fixedWeeklyOffDays.includes("Saturday");
-
-      days.push({
-        date:      dateStr,
-        dayOfWeek: dayName,
-        type:      isOff ? "WEEK_OFF" : "WORKING",
-        weekNumber: weekNum,
-        offReason: isOff ? (hasActiveSatPolicy ? "SATURDAY_POLICY" : "FIXED_WEEKLY_OFF") : undefined,
+        weekNumber: Math.ceil(date.getDate() / 7),
+        offReason,
       });
       continue;
     }

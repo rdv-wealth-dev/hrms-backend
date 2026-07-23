@@ -1,5 +1,6 @@
 import { LeaveTypeDocument, LeaveAccrualFrequency } from "./leave-type.model";
 import { LeaveSessionType } from "./leave-request.model";
+import { isWeeklyOffDay, CustomWeekOffRule, SaturdayPolicy } from "../attendance/schedule-engine";
 
 
 // Calculates total leave days between fromDate/toDate, accounting for
@@ -96,7 +97,9 @@ export function applySandwichPolicy(
   fromDate:      Date,
   toDate:        Date,
   weeklyOffDays: string[],
-  holidayDates:  Date[]
+  holidayDates:  Date[],
+  customWeekOffRules?: CustomWeekOffRule[] | null,
+  saturdayPolicy?: SaturdayPolicy | null
 ): { totalDays: number; isSandwiched: boolean } {
 
   const dayBefore = new Date(fromDate);
@@ -105,10 +108,8 @@ export function applySandwichPolicy(
   const dayAfter = new Date(toDate);
   dayAfter.setDate(dayAfter.getDate() + 1);
 
-  const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-
   const isOffOrHoliday = (d: Date): boolean => {
-    const isWeeklyOff = weeklyOffDays.includes(dayNames[d.getDay()]);
+    const isWeeklyOff = isWeeklyOffDay(d, weeklyOffDays, customWeekOffRules, saturdayPolicy);
     const isHoliday = holidayDates.some(
       h => h.toDateString() === d.toDateString()
     );

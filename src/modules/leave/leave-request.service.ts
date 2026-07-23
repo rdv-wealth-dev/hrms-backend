@@ -5,6 +5,7 @@ import { LeaveBalanceService } from "./leave-balance.service";
 import { LeaveRequestModel, LeaveRequestStatus, ApprovalLevelStatus } from "./leave-request.model";
 import { HolidayModel } from "./holiday.model";
 import { BranchModel } from "../branch/branch.model";
+import { OrganizationModel } from "../organization/organization.model";
 import { UserModel } from "../user/user.model";
 import { EmployeeModel } from "../employee/employee.model";
 import { CreateLeaveRequestInput, ReviewLeaveRequestInput, CancelLeaveRequestInput, } from "./leave.dto";
@@ -79,8 +80,15 @@ export class LeaveRequestService {
     let isSandwiched = false;
 
     if (leaveType.applySandwichPolicy) {
+      const org = await OrganizationModel.findById(context.tenantId);
+      const orgWeeklyOffDays = org?.locale?.weeklyOffDays ?? ["Sunday"];
+      const orgSaturdayPolicy = (org?.locale as any)?.saturdayPolicy;
+      const orgCustomWeekOffRules = (org?.locale as any)?.customWeekOffRules;
+
       const branch = await BranchModel.findById(employee.branchId).select("workPolicy");
-      const weeklyOffDays = branch?.workPolicy?.weeklyOffDays ?? ["Saturday", "Sunday"];
+      const branchWeeklyOffDays = branch?.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
+      const branchSaturdayPolicy = (branch?.workPolicy as any)?.saturdayPolicy ?? orgSaturdayPolicy;
+      const branchCustomWeekOffRules = (branch?.workPolicy as any)?.customWeekOffRules ?? orgCustomWeekOffRules;
 
       const holidays = await HolidayModel.find({
         tenantId: new mongoose.Types.ObjectId(context.tenantId),
@@ -89,7 +97,13 @@ export class LeaveRequestService {
       }).select("date");
 
       const result = applySandwichPolicy(
-        baseDays, fromDate, toDate, weeklyOffDays, holidays.map(h => h.date)
+        baseDays,
+        fromDate,
+        toDate,
+        branchWeeklyOffDays,
+        holidays.map(h => h.date),
+        branchCustomWeekOffRules,
+        branchSaturdayPolicy
       );
       totalDays = result.totalDays;
       isSandwiched = result.isSandwiched;
@@ -275,3 +289,4 @@ export class LeaveRequestService {
     return this.reqRepo.findReport(context, filters, page, pageSize);
   }
 }
+

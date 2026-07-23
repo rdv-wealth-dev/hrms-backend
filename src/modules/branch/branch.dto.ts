@@ -46,6 +46,12 @@ export const CreateBranchDto = z.object({
       mode:           z.nativeEnum(SaturdayOffMode),
       customOffWeeks: z.array(z.number().int().min(1).max(5)).max(5).optional(),
     }).optional(),
+    customWeekOffRules: z.array(
+      z.object({
+        dayOfWeek: z.enum(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]),
+        weeks:     z.array(z.number().int().min(1).max(5)).max(5),
+      })
+    ).optional(),
   }).optional(),
 
   statutory: z.object({

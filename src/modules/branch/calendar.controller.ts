@@ -10,6 +10,7 @@ import {
   generateMonthCalendar,
   resolveEmployeeDaySchedule,
   SaturdayPolicy,
+  CustomWeekOffRule,
   CalendarDay,
   formatDate,
 } from "../attendance/schedule-engine";
@@ -49,10 +50,13 @@ export async function getBranchCalendar(req: any, res: Response, next: NextFunct
     const org = await OrganizationModel.findById(req.context.tenantId);
     const orgSaturdayPolicy  = (org?.locale as any)?.saturdayPolicy as SaturdayPolicy | undefined;
     const orgWeeklyOffDays   = org?.locale?.weeklyOffDays ?? ["Sunday"];
+    const orgCustomWeekOffRules = (org?.locale as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined;
 
     const branchSaturdayPolicy = (branch.workPolicy as any)?.saturdayPolicy as SaturdayPolicy | undefined
       ?? orgSaturdayPolicy;
     const branchWeeklyOffDays  = branch.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
+    const branchCustomWeekOffRules = (branch.workPolicy as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined
+      ?? orgCustomWeekOffRules;
 
     // Holidays for the month
     const fromDate = new Date(year, month - 1, 1);
@@ -68,6 +72,7 @@ export async function getBranchCalendar(req: any, res: Response, next: NextFunct
       year,
       month,
       fixedWeeklyOffDays: branchWeeklyOffDays,
+      customWeekOffRules: branchCustomWeekOffRules,
       saturdayPolicy:     branchSaturdayPolicy,
       holidays:           holidays as any,
       branchId,
@@ -138,6 +143,7 @@ export async function getBranchCalendar(req: any, res: Response, next: NextFunct
       year,
       month,
       saturdayPolicyMode: branchSaturdayPolicy?.mode ?? "NONE",
+      customWeekOffRules: branchCustomWeekOffRules ?? [],
       days:               daysWithEvents,
       summary,
     }, "Branch calendar fetched"));
@@ -200,9 +206,12 @@ export async function getMyPersonalSchedule(req: any, res: Response, next: NextF
 
     const orgSaturdayPolicy  = (org?.locale as any)?.saturdayPolicy as SaturdayPolicy | undefined;
     const orgWeeklyOffDays   = org?.locale?.weeklyOffDays ?? ["Sunday"];
+    const orgCustomWeekOffRules = (org?.locale as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined;
     const branchSaturdayPolicy = (branch?.workPolicy as any)?.saturdayPolicy as SaturdayPolicy | undefined
       ?? orgSaturdayPolicy;
     const branchWeeklyOffDays  = branch?.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
+    const branchCustomWeekOffRules = (branch?.workPolicy as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined
+      ?? orgCustomWeekOffRules;
 
     const rotationPlan = employee.rotationPlanId
       ? await ShiftRotationPlanModel.findById(employee.rotationPlanId).populate("slots.shiftId")
@@ -241,6 +250,7 @@ export async function getMyPersonalSchedule(req: any, res: Response, next: NextF
         rotationStartDate:  employee.rotationStartDate ?? null,
         fixedShift:         fixedShift as any,
         fixedWeeklyOffDays: branchWeeklyOffDays,
+        customWeekOffRules: branchCustomWeekOffRules,
         saturdayPolicy:     branchSaturdayPolicy,
         holidays:           holidays as any,
         employeeBranchId:   employee.branchId.toString(),
@@ -280,6 +290,7 @@ export async function getMyPersonalSchedule(req: any, res: Response, next: NextF
         ? { name: (rotationPlan as any).name, cycleDuration: (rotationPlan as any).cycleDuration }
         : null,
       saturdayPolicyMode: branchSaturdayPolicy?.mode ?? "NONE",
+      customWeekOffRules: branchCustomWeekOffRules ?? [],
       days,
       summary,
     }, "Personal schedule fetched"));
