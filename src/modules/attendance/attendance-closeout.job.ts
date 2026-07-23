@@ -7,7 +7,7 @@ import { OrganizationModel } from "../organization/organization.model";
 import { ShiftRotationPlanModel } from "./shift-rotation-plan.model";
 import { ShiftRepository } from "./shift.repository";
 import { normalizeToMidnight } from "./attendance.util";
-import { resolveEmployeeDaySchedule, SaturdayPolicy, CustomWeekOffRule } from "./schedule-engine";
+import { resolveEmployeeDaySchedule, CustomWeekOffRule } from "./schedule-engine";
 import { logger } from "../../config/logger";
 
 // Runs once daily (via cron, or manually via an admin endpoint) for a given
@@ -27,10 +27,9 @@ export async function closeOutAttendanceForDate(
 
   const targetDate = normalizeToMidnight(date);
 
-  // Fetch org (for Saturday policy fallback) 
+  // Fetch org config
   const org = await OrganizationModel.findById(tenantId);
-  const orgSaturdayPolicy = (org?.locale as any)?.saturdayPolicy as SaturdayPolicy | undefined;
-  const orgWeeklyOffDays  = org?.locale?.weeklyOffDays ?? ["Sunday"];
+  const orgWeeklyOffDays      = org?.locale?.weeklyOffDays ?? ["Sunday"];
   const orgCustomWeekOffRules = (org?.locale as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined;
 
   //  Fetch all active employees 
@@ -60,11 +59,7 @@ export async function closeOutAttendanceForDate(
     });
     if (existing) continue;
 
-    // Resolve branch config 
-    const branch = await BranchModel.findById(emp.branchId).select("workPolicy");
-    const branchWeeklyOffDays  = branch?.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
-    const branchSaturdayPolicy = (branch?.workPolicy as any)?.saturdayPolicy as SaturdayPolicy | undefined
-      ?? orgSaturdayPolicy;
+    const branchWeeklyOffDays     = branch?.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
     const branchCustomWeekOffRules = (branch?.workPolicy as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined
       ?? orgCustomWeekOffRules;
 
@@ -79,7 +74,6 @@ export async function closeOutAttendanceForDate(
       ? await shiftRepo.findById({ tenantId, branchIds: [emp.branchId.toString()] } as any, emp.shiftId.toString())
       : await shiftRepo.findDefault({ tenantId, branchIds: [emp.branchId.toString()] } as any);
 
-    // Run the unified schedule engine 
     const schedule = resolveEmployeeDaySchedule({
       targetDate,
       rotationPlan:       rotationPlan as any,
@@ -87,7 +81,6 @@ export async function closeOutAttendanceForDate(
       fixedShift:         fixedShift as any,
       fixedWeeklyOffDays: branchWeeklyOffDays,
       customWeekOffRules: branchCustomWeekOffRules,
-      saturdayPolicy:     branchSaturdayPolicy,
       holidays:           holidays as any,
       employeeBranchId:   emp.branchId.toString(),
     });

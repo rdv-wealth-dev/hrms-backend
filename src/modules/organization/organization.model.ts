@@ -1,6 +1,6 @@
 import mongoose,{Document} from "mongoose";
 import { createPlatformSchema } from "../../core/database/base.schema";
-import { SaturdayOffMode, SaturdayPolicy, CustomWeekOffRule } from "../attendance/schedule-engine";
+import { CustomWeekOffRule } from "../attendance/schedule-engine";
 
 export interface OrganizationDocument extends Document {
   companyName:      string;
@@ -38,8 +38,7 @@ export interface OrganizationDocument extends Document {
     fiscalYearStart:    string;
     weeklyOffDays:      string[];
     workingHoursPerDay: number;
-    saturdayPolicy?: SaturdayPolicy; // org-level default; inherited by branches without their own
-    customWeekOffRules?: CustomWeekOffRule[]; // generalized custom week-off rules
+    customWeekOffRules?: CustomWeekOffRule[];
   };
   subscription: {
     plan:          string;
@@ -139,10 +138,6 @@ const OrganizationSchema = createPlatformSchema<OrganizationDocument>({
     fiscalYearStart:    { type: String, default: "April"                      },
     weeklyOffDays:      { type: [String], default: ["Sunday"]                 },
     workingHoursPerDay: { type: Number,  default: 8                           },
-    saturdayPolicy: {
-      mode:           { type: String, enum: Object.values(SaturdayOffMode), default: SaturdayOffMode.ALL_WORKING },
-      customOffWeeks: { type: [Number] },
-    },
     customWeekOffRules: [{
       dayOfWeek: { type: String, required: true },
       weeks:     { type: [Number], required: true },

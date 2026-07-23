@@ -8,7 +8,6 @@ import { OrganizationRepository } from "../organization/organization.repository"
 import { BranchRepository } from "../branch/branch.repository";
 import { UserModel } from "../user/user.model";
 import { seedDefaultRoles } from "../role/role.seed";
-import { SaturdayOffMode } from "../attendance/schedule-engine";
 
 import crypto from "crypto";
 import { emailService } from "../../service/email.service";
@@ -108,10 +107,6 @@ export class AuthService {
         fiscalYearStart:    "April",
         weeklyOffDays:      ["Sunday"],
         workingHoursPerDay: 8,
-        saturdayPolicy: {
-          mode:           SaturdayOffMode.ALL_OFF,
-          customOffWeeks: [],
-        },
       },
       subscription: {
         plan:         "free",
@@ -155,10 +150,6 @@ export class AuthService {
         timezone:           input.timezone,
         weeklyOffDays:      ["Sunday"],
         workingHoursPerDay: 8,
-        saturdayPolicy: {
-          mode:           SaturdayOffMode.ALL_OFF,
-          customOffWeeks: [],
-        },
       },
     });
 

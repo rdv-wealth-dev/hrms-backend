@@ -6,7 +6,6 @@ import {
   gstinSchema,
   panSchema,
 } from "../../core/validators/common.validator";
-import { SaturdayOffMode } from "../attendance/schedule-engine";
 
 //Update Organization
 export const UpdateOrganizationDto = z.object({
@@ -43,10 +42,6 @@ export const UpdateOrganizationDto = z.object({
     fiscalYearStart:    z.string().trim().optional(),
     weeklyOffDays:      z.array(z.string()).optional(),
     workingHoursPerDay: z.number().min(1).max(24).optional(),
-    saturdayPolicy: z.object({
-      mode:           z.nativeEnum(SaturdayOffMode),
-      customOffWeeks: z.array(z.number().int().min(1).max(5)).max(5).optional(),
-    }).optional(),
     customWeekOffRules: z.array(
       z.object({
         dayOfWeek: z.enum(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]),

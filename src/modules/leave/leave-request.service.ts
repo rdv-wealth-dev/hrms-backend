@@ -81,13 +81,11 @@ export class LeaveRequestService {
 
     if (leaveType.applySandwichPolicy) {
       const org = await OrganizationModel.findById(context.tenantId);
-      const orgWeeklyOffDays = org?.locale?.weeklyOffDays ?? ["Sunday"];
-      const orgSaturdayPolicy = (org?.locale as any)?.saturdayPolicy;
-      const orgCustomWeekOffRules = (org?.locale as any)?.customWeekOffRules;
+      const orgWeeklyOffDays      = org?.locale?.weeklyOffDays ?? ["Sunday"];
+      const orgCustomWeekOffRules  = (org?.locale as any)?.customWeekOffRules;
 
       const branch = await BranchModel.findById(employee.branchId).select("workPolicy");
-      const branchWeeklyOffDays = branch?.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
-      const branchSaturdayPolicy = (branch?.workPolicy as any)?.saturdayPolicy ?? orgSaturdayPolicy;
+      const branchWeeklyOffDays      = branch?.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
       const branchCustomWeekOffRules = (branch?.workPolicy as any)?.customWeekOffRules ?? orgCustomWeekOffRules;
 
       const holidays = await HolidayModel.find({
@@ -102,8 +100,7 @@ export class LeaveRequestService {
         toDate,
         branchWeeklyOffDays,
         holidays.map(h => h.date),
-        branchCustomWeekOffRules,
-        branchSaturdayPolicy
+        branchCustomWeekOffRules
       );
       totalDays = result.totalDays;
       isSandwiched = result.isSandwiched;

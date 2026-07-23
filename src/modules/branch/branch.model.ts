@@ -1,9 +1,8 @@
 import mongoose from "mongoose";
 import { createBaseSchema, BaseDocument } from "../../core/database/base.schema";
-import { SaturdayOffMode, SaturdayPolicy, CustomWeekOffRule } from "../attendance/schedule-engine";
+import { CustomWeekOffRule } from "../attendance/schedule-engine";
 
-// Re-export so consumers can import from a single place
-export { SaturdayOffMode, SaturdayPolicy, CustomWeekOffRule };
+export { CustomWeekOffRule };
 // BRANCH DOCUMENT INTERFACE
 
 export interface BranchDocument extends BaseDocument {
@@ -33,12 +32,11 @@ export interface BranchDocument extends BaseDocument {
   };
   workPolicy?: {
     timezone?:           string;
-    weeklyOffDays?:      string[];   // fixed off days, e.g. ["Sunday"]
+    weeklyOffDays?:      string[];
     shiftStartTime?:     string;
     shiftEndTime?:       string;
     workingHoursPerDay?: number;
-    saturdayPolicy?: SaturdayPolicy; // rule-based Saturday off configuration
-    customWeekOffRules?: CustomWeekOffRule[]; // generalized custom week-off rules
+    customWeekOffRules?: CustomWeekOffRule[];
   };
   statutory?: {
     pfApplicable?:  boolean | null;
@@ -105,10 +103,6 @@ const BranchSchema = createBaseSchema<BranchDocument>(
       shiftStartTime:     { type: String   },
       shiftEndTime:       { type: String   },
       workingHoursPerDay: { type: Number   },
-      saturdayPolicy: {
-        mode:           { type: String, enum: Object.values(SaturdayOffMode) },
-        customOffWeeks: { type: [Number] },
-      },
       customWeekOffRules: [{
         dayOfWeek: { type: String, required: true },
         weeks:     { type: [Number], required: true },
