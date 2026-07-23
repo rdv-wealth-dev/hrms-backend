@@ -15,7 +15,7 @@ import {
   CalendarEvent,
   CropAvatarInput,
 } from "./employee.dto";
-import sharp from "sharp";
+
 import { EmployeeModel } from "./employee.model";
 import { AppError } from "../../core/errors/app.error";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
@@ -453,26 +453,9 @@ export class EmployeeService {
     const org = await OrganizationModel.findById(context.tenantId).select("slug");
     const slug = org?.slug ?? context.tenantId;
 
-    const s3Key = s3Service.buildAvatarKey(slug, employeeId, "jpg");
+    const s3Key = s3Service.buildAvatarKey(slug, employeeId, file.mimetype === "image/png" ? "png" : "jpg");
 
-    let imageProcessor = sharp(file.buffer);
-
-    const { cropX, cropY, cropWidth, cropHeight } = cropParams;
-    if (cropX !== undefined && cropY !== undefined && cropWidth !== undefined && cropHeight !== undefined) {
-      imageProcessor = imageProcessor.extract({
-        left: cropX,
-        top: cropY,
-        width: cropWidth,
-        height: cropHeight,
-      });
-    }
-
-    const processedBuffer = await imageProcessor
-      .resize(400, 400, { fit: "cover" })
-      .jpeg({ quality: 85 })
-      .toBuffer();
-
-    const avatarUrl = await s3Service.uploadPublicAvatar(s3Key, processedBuffer, "image/jpeg");
+    const avatarUrl = await s3Service.uploadPublicAvatar(s3Key, file.buffer, file.mimetype);
 
     employee.avatarUrl = avatarUrl;
     await employee.save();

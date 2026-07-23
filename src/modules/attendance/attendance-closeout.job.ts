@@ -59,6 +59,8 @@ export async function closeOutAttendanceForDate(
     });
     if (existing) continue;
 
+    // Resolve branch config
+    const branch = await BranchModel.findById(emp.branchId).select("workPolicy");
     const branchWeeklyOffDays     = branch?.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
     const branchCustomWeekOffRules = (branch?.workPolicy as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined
       ?? orgCustomWeekOffRules;
