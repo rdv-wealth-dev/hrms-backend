@@ -15,6 +15,7 @@ import leaveRoutes from "./modules/leave/leave.routes";
 import profileRoutes from "./modules/profile/profile.routes";
 import payrollRoutes from "./modules/payroll/payroll.routes";
 import eventRoutes from "./modules/event/event.routes";
+import onboardingWizardRoutes from "./modules/employee/onboarding-wizard.routes";
 
 const app: Application = express();
 
@@ -29,6 +30,7 @@ app.use("/api/v1/branches", branchRoutes);
 app.use("/api/v1/departments",  departmentRoutes);
 app.use("/api/v1/designations", designationRoutes);
 app.use("/api/v1/employees", employeeRoutes);
+app.use("/api/v1/onboarding", onboardingWizardRoutes);
 app.use("/api/v1/attendance", attendanceRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/leave", leaveRoutes);

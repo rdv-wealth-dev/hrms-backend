@@ -15,6 +15,7 @@ const EXEMPT_PATHS = [
   "/api/v1/employees/me/bank-accounts",
   "/api/v1/auth/logout",
   "/api/v1/profile/me",                // so frontend can show a "complete your profile" screen
+  "/api/v1/onboarding",                // onboarding wizard routes
 ];
 
 export const requireCompleteProfile = async (
