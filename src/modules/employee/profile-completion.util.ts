@@ -55,7 +55,6 @@ export async function recalculateProfileCompletion(
     documents: mandatoryDocs,
     reviewed: employee.onboardingStepsCompleted?.reviewed ?? false,       // set by HR
   };
-  employee.onboardingComplete = isProfileComplete;
 
   await employee.save();
   return isProfileComplete;

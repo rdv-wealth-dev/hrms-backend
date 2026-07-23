@@ -78,7 +78,7 @@ export class OnboardingWizardService {
     this.assertStepAllowed(employee, 2);
 
     await this.familyRepo.replaceAllForEmployee(
-      context, employee._id.toString(), input.familyMembers as any
+      context, employee._id.toString(), employee.branchId.toString(), input.familyMembers as any
     );
 
     employee.onboardingStepsCompleted.familyDetails = true;

@@ -7,6 +7,7 @@ export class EmployeeFamilyRepository {
     async replaceAllForEmployee(
         context: RequestContext,
         employeeId: string,
+        branchId: string,
         members: Partial<EmployeeFamilyMemberDocument>[]
     ) {
         // Wizard step 2 is a full replace, not an append — re-submitting the
@@ -21,6 +22,7 @@ export class EmployeeFamilyRepository {
         const docs = members.map((m) => ({
             ...m,
             tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            branchId: new mongoose.Types.ObjectId(branchId),
             employeeId: new mongoose.Types.ObjectId(employeeId),
         }));
 
