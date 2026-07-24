@@ -38,7 +38,15 @@ export async function recalculateProfileCompletion(
       employeeId: new mongoose.Types.ObjectId(employeeId),
       isDeleted: false,
     }) as unknown as string[];
-    mandatoryDocs = required.every((t: string) => uploadedTypes.includes(t));
+    
+    // Check if document numbers are filled for mandatory types (PAN, AADHAAR, PASSPORT)
+    // or if the document file itself has been uploaded.
+    mandatoryDocs = required.every((t: string) => {
+      if (t === "PAN") return !!employee.pan;
+      if (t === "AADHAAR") return !!employee.aadhaar;
+      if (t === "PASSPORT") return !!employee.passportNo;
+      return uploadedTypes.includes(t);
+    });
   }
 
   const isProfileComplete = personalDetails && address && emergencyContact && bankDetails && mandatoryDocs;

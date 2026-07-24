@@ -9,8 +9,11 @@ import {
   OnboardingStep3Input,
 } from "./onboarding-wizard.dto";
 import { AppError } from "../../core/errors/app.error";
+import { ErrorCode } from "../../core/errors/error-codes";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
 import { recalculateProfileCompletion } from "./profile-completion.util";
+import { OrganizationModel } from "../organization/organization.model";
+import { EmployeeDocumentModel } from "./employee-document.model";
 
 export class OnboardingWizardService {
   private familyRepo = new EmployeeFamilyRepository();
@@ -64,6 +67,11 @@ export class OnboardingWizardService {
     employee.phone             = input.phone;
     employee.currentAddress    = input.currentAddress;
     employee.emergencyContacts = input.emergencyContact as any;
+
+    // Save optional document numbers (e.g. PAN, Aadhaar, Passport)
+    if (input.pan !== undefined) employee.pan = input.pan;
+    if (input.aadhaar !== undefined) employee.aadhaar = input.aadhaar;
+    if (input.passportNo !== undefined) employee.passportNo = input.passportNo;
 
     employee.onboardingStepsCompleted.personalDetails = true;
     if (employee.onboardingStep === 1) employee.onboardingStep = 2;
@@ -126,7 +134,40 @@ export class OnboardingWizardService {
     const refreshed = await EmployeeModel.findById(employee._id);
 
     if (!refreshed!.profileCompletion.mandatoryDocs) {
-      throw new AppError("Please upload all required documents before proceeding", 400);
+      // Find missing documents dynamically to show in the error message
+      const org = await OrganizationModel.findById(context.tenantId).select("mandatoryDocumentTypes");
+      const required = org?.mandatoryDocumentTypes ?? [];
+
+      const uploadedTypes = await EmployeeDocumentModel.distinct("documentType", {
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        employeeId: employee._id,
+        isDeleted: false,
+      }) as unknown as string[];
+
+      const missing: string[] = [];
+      required.forEach((t: string) => {
+        if (t === "PAN" && !refreshed!.pan) {
+          missing.push("PAN Number");
+        } else if (t === "AADHAAR" && !refreshed!.aadhaar) {
+          missing.push("Aadhaar Number");
+        } else if (t === "PASSPORT" && !refreshed!.passportNo) {
+          missing.push("Passport Number");
+        } else if (t !== "PAN" && t !== "AADHAAR" && t !== "PASSPORT") {
+          if (!uploadedTypes.includes(t)) {
+            missing.push(`${t} Document`);
+          }
+        }
+      });
+
+      if (missing.length > 0) {
+        throw new AppError(
+          `Please fill all required document details. Missing: ${missing.join(", ")}`,
+          400,
+          ErrorCode.VALIDATION_FAILED
+        );
+      }
+
+      throw new AppError("Please upload all required documents before proceeding", 400, ErrorCode.VALIDATION_FAILED);
     }
 
     refreshed!.onboardingStepsCompleted.documents = true;

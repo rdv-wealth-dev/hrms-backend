@@ -21,6 +21,9 @@ export const OnboardingStep1Dto = z.object({
     phone: phoneSchema,
     email: emailSchema.optional(),
   })).min(1, "At least one emergency contact is required"),
+  pan: z.string().trim().optional(),
+  aadhaar: z.string().trim().optional(),
+  passportNo: z.string().trim().optional(),
 });
 
 export type OnboardingStep1Input = z.infer<typeof OnboardingStep1Dto>;
