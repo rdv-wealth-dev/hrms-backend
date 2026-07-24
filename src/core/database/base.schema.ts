@@ -161,6 +161,51 @@ export function createPlatformSchema<T>(
 
 // RESPONSE BUILDERS
 
+export function cleanResponseData(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(cleanResponseData);
+  }
+
+  // Handle Mongoose documents
+  if (typeof obj.toObject === "function") {
+    obj = obj.toObject();
+  }
+
+  // Handle plain objects
+  if (typeof obj === "object") {
+    // Return early for special types
+    if (obj instanceof Date || obj.constructor?.name === "ObjectId") {
+      return obj;
+    }
+
+    const cleaned: any = {};
+    const blacklisted = new Set([
+      "__v",
+      "isDeleted",
+      "version",
+      "password",
+      "passwordHash",
+      "resetPasswordToken",
+      "resetPasswordExpires",
+      "emailVerificationToken",
+      "emailVerificationExpires",
+      "accountActivationToken",
+      "accountActivationExpires",
+    ]);
+
+    for (const key of Object.keys(obj)) {
+      if (blacklisted.has(key)) continue;
+      cleaned[key] = cleanResponseData(obj[key]);
+    }
+    return cleaned;
+  }
+
+  return obj;
+}
+
 export function buildPagedResponse<T>({
   data,
   pageNumber,
@@ -187,7 +232,7 @@ export function buildPagedResponse<T>({
     succeeded:    true,
     message,
     errors:       [],
-    data,
+    data:         cleanResponseData(data),
     pageNumber,
     pageSize,
     totalPages,
@@ -203,7 +248,7 @@ export function buildSuccessResponse<T>(
   data:    T,
   message = "Success"
 ) {
-  return { succeeded: true, message, errors: [], data };
+  return { succeeded: true, message, errors: [], data: cleanResponseData(data) };
 }
 export function buildErrorResponse(
   message:   string,

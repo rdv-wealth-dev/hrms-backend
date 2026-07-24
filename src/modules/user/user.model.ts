@@ -120,9 +120,11 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
   // },
   resetPasswordToken: {
     type: String,
+    select: false,
   },
   resetPasswordExpires: {
     type: Date,
+    select: false,
   },
   accountActivationToken: {
     type : String,
@@ -130,6 +132,7 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
   },
   accountActivationExpires : {
     type : Date,
+    select: false,
   },
   employeeId : {
     type : mongoose.Schema.Types.ObjectId,
@@ -137,9 +140,11 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
   },
   emailVerificationToken: {
     type: String,
+    select: false,
   },
   emailVerificationExpires: {
     type: Date,
+    select: false,
   },
 });
 
