@@ -19,6 +19,10 @@ export class LeaveTypeService {
             throw new AppError("Branch context is required to create a leave type", 400);
         }
 
+        const accrualFrequency = input.accrualFrequency as LeaveAccrualFrequency;
+        const cycles = getCyclesPerYear(accrualFrequency);
+        const accrualAmountPerCycle = cycles > 0 ? Number((input.annualQuota / cycles).toFixed(4)) : 0;
+
         return this.leaveTypeRepo.create(context, {
             ...input,
             tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
@@ -27,7 +31,8 @@ export class LeaveTypeService {
                 branchId: new mongoose.Types.ObjectId(o.branchId),
                 annualQuota: o.annualQuota,
             })) as any,
-            accrualFrequency: input.accrualFrequency as LeaveAccrualFrequency,
+            accrualFrequency,
+            accrualAmountPerCycle,
             isActive: true,
         });
     }
@@ -86,8 +91,31 @@ export class LeaveTypeService {
             }));
         }
 
-        return this.leaveTypeRepo.create(context, merged);
+        // Recalculate accrualAmountPerCycle based on merged/updated quota and frequency
+        const finalQuota = merged.annualQuota;
+        const finalFreq = merged.accrualFrequency as LeaveAccrualFrequency;
+        const cycles = getCyclesPerYear(finalFreq);
+        const accrualAmountPerCycle = cycles > 0 ? Number((finalQuota / cycles).toFixed(4)) : 0;
+        merged.accrualAmountPerCycle = accrualAmountPerCycle;
+
+        return this.leaveTypeRepo.create(context, merged as any);
     }
+}
 
-
+function getCyclesPerYear(freq: LeaveAccrualFrequency): number {
+    switch (freq) {
+        case LeaveAccrualFrequency.MONTHLY:      return 12;
+        case LeaveAccrualFrequency.QUARTERLY:    return 4;
+        case LeaveAccrualFrequency.HALF_YEARLY:  return 2;
+        case LeaveAccrualFrequency.YEARLY:       return 1;
+        case LeaveAccrualFrequency.WEEKLY:       return 52;
+        case LeaveAccrualFrequency.BI_WEEKLY:    return 26;
+        case LeaveAccrualFrequency.SEMI_MONTHLY: return 24;
+        case LeaveAccrualFrequency.DAILY:        return 365;
+        case LeaveAccrualFrequency.HOURLY:       return 2080;
+        case LeaveAccrualFrequency.ON_JOINING:   return 1;
+        case LeaveAccrualFrequency.MANUAL:       return 0;
+        case LeaveAccrualFrequency.NONE:         return 0;
+        default:                                 return 0;
+    }
 }

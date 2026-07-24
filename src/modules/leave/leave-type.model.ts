@@ -5,9 +5,23 @@ import {
 } from "../../core/database/base.schema";
 
 export enum LeaveAccrualFrequency {
-  MONTHLY = "MONTHLY",
-  YEARLY  = "YEARLY",
-  NONE    = "NONE",
+  // --- Standard Calendar Frequencies ---
+  MONTHLY      = "MONTHLY",      // India, UK, UAE, EU (Germany/France/Austria), Singapore
+  QUARTERLY    = "QUARTERLY",    // Custom corporate policies / Executive tiers
+  HALF_YEARLY  = "HALF_YEARLY",  // Bi-annual policy reviews
+  YEARLY       = "YEARLY",       // KSA (Saudi Arabia) / Annual Front-loaded allocations
+
+  // --- Payroll & Time-Tracking Frequencies ---
+  WEEKLY       = "WEEKLY",       // 52 pay periods / US weekly workers
+  BI_WEEKLY    = "BI_WEEKLY",    // 26 pay periods / US corporate standard
+  SEMI_MONTHLY = "SEMI_MONTHLY", // 24 pay periods / US & Latin America payroll cycles
+  DAILY        = "DAILY",        // Australia NES / Continuous daily accrual
+  HOURLY       = "HOURLY",       // US & Global contract / part-time / shift workers
+
+  // --- Operational & Event-Based ---
+  ON_JOINING   = "ON_JOINING",   // Front-loaded lump sum on Day 1 (CL/SL in India, UK grants)
+  MANUAL       = "MANUAL",       // Ad-hoc HR credits (Compensatory off / Overtime conversion)
+  NONE         = "NONE",         // Unpaid leave / Loss of Pay / Non-accruing benefits
 }
 
 // Per-branch override of entitlement — same leave type, different quota

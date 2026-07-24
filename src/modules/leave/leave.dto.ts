@@ -16,7 +16,11 @@ export const CreateLeaveTypeDto = z.object({
     branchId:    objectIdSchema,
     annualQuota: z.number().min(0),
   })).optional().default([]),
-  accrualFrequency:      z.enum(["MONTHLY", "YEARLY", "NONE"]).optional().default("NONE"),
+  accrualFrequency:      z.enum([
+    "MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY",
+    "WEEKLY", "BI_WEEKLY", "SEMI_MONTHLY", "DAILY", "HOURLY",
+    "ON_JOINING", "MANUAL", "NONE"
+  ]).optional().default("NONE"),
   accrualAmountPerCycle: z.number().min(0).optional().default(0),
   maxCarryForwardDays:   z.number().min(0).optional().default(0),
   maxConsecutiveDays:    z.number().min(0).optional().default(0),

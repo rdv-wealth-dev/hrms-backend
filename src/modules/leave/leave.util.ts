@@ -49,22 +49,28 @@ export function calculateAccrualForPeriod(
     return leaveType.annualQuota;
   }
 
-  const msPerDay = 24 * 60 * 60 * 1000;
-  const daysSinceStart = Math.floor(
-    (asOfDate.getTime() - fromDate.getTime()) / msPerDay
-  );
+  const start = new Date(fromDate);
+  const asOf  = new Date(asOfDate);
+
+  if (asOf < start) return 0;
+
+  const yearsDiff = asOf.getFullYear() - start.getFullYear();
+  const monthsDiff = asOf.getMonth() - start.getMonth() + (yearsDiff * 12);
+
+  let cyclesElapsed = 0;
 
   if (leaveType.accrualFrequency === LeaveAccrualFrequency.MONTHLY) {
-    const monthsElapsed = Math.floor(daysSinceStart / 30) + 1;
-    const accrued = monthsElapsed * leaveType.accrualAmountPerCycle;
-    return Math.min(accrued, leaveType.annualQuota);
+    cyclesElapsed = monthsDiff + 1;
+  } else if (leaveType.accrualFrequency === LeaveAccrualFrequency.QUARTERLY) {
+    cyclesElapsed = Math.floor(monthsDiff / 3) + 1;
+  } else if (leaveType.accrualFrequency === LeaveAccrualFrequency.HALF_YEARLY) {
+    cyclesElapsed = Math.floor(monthsDiff / 6) + 1;
+  } else if (leaveType.accrualFrequency === LeaveAccrualFrequency.YEARLY) {
+    cyclesElapsed = yearsDiff + 1;
   }
 
-  if (leaveType.accrualFrequency === LeaveAccrualFrequency.YEARLY) {
-    return leaveType.annualQuota;
-  }
-
-  return 0;
+  const accrued = cyclesElapsed * leaveType.accrualAmountPerCycle;
+  return Math.min(accrued, leaveType.annualQuota);
 }
 
 
