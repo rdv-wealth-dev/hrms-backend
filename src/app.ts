@@ -1,4 +1,5 @@
 import express, { Application, Request, Response } from "express";
+import compression from "compression";
 import { applySecurityMiddleware } from "./core/middlewares/security.middleware";
 import { requestIdMiddleware } from "./core/middlewares/request-id.middleware";
 import { globalErrorHandler } from "./core/errors/error.middleware";
@@ -21,6 +22,7 @@ import onboardingWizardRoutes from "./modules/employee/onboarding-wizard.routes"
 
 const app: Application = express();
 
+app.use(compression());
 app.use(requestIdMiddleware)
 
 // apply securityMiddleware

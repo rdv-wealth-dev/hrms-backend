@@ -21,6 +21,7 @@ export interface FindOptions<T> {
   projection?: ProjectionType<T>;
   populate?:   string | string[];
   baseUrl?:    string;
+  lean?:       boolean;
 }
 
 export class BaseRepository<T extends Document> {
@@ -83,19 +84,23 @@ export class BaseRepository<T extends Document> {
     context: RequestContext,
     filter:  FilterQuery<T>,
     options: FindOptions<T> = {}
-  ): Promise<T | null> {
+  ): Promise<any | null> {
     const tenantFilter = this.buildTenantFilter(context, filter);
-    return this.model
+    let query = this.model
       .findOne(tenantFilter, options.projection)
-      .populate(options.populate ?? []) as Promise<T | null>;
+      .populate(options.populate ?? []);
+    if (options.lean) {
+      query = query.lean() as any;
+    }
+    return query as Promise<any | null>;
   }
 
   async findById(
     context: RequestContext,
     id:      string,
     options: FindOptions<T> = {}
-  ): Promise<T | null> {
-    return this.model
+  ): Promise<any | null> {
+    let query = this.model
       .findOne(
         {
           _id:       id,
@@ -104,7 +109,11 @@ export class BaseRepository<T extends Document> {
         } as FilterQuery<T>,
         options.projection
       )
-      .populate(options.populate ?? []) as Promise<T | null>;
+      .populate(options.populate ?? []);
+    if (options.lean) {
+      query = query.lean() as any;
+    }
+    return query as Promise<any | null>;
   }
 
 
@@ -211,13 +220,17 @@ export class BaseRepository<T extends Document> {
   async findOneGlobal(
     filter:  FilterQuery<T>,
     options: FindOptions<T> = {}
-  ): Promise<T | null> {
-    return this.model
+  ): Promise<any | null> {
+    let query = this.model
       .findOne(
         { ...filter, isDeleted: false },
         options.projection
       )
-      .populate(options.populate ?? []) as Promise<T | null>;
+      .populate(options.populate ?? []);
+    if (options.lean) {
+      query = query.lean() as any;
+    }
+    return query as Promise<any | null>;
   }
 
   async aggregate(
