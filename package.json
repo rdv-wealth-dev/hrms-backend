@@ -24,9 +24,9 @@
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
     "libphonenumber-js": "^1.13.7",
+    "lru-cache": "^11.5.2",
     "mongoose": "^8.24.1",
     "multer": "^2.2.0",
-    "sharp": "^0.35.3",
     "uuid": "^11.1.1",
     "winston": "^3.19.0",
     "zod": "^4.4.3"

@@ -3,6 +3,7 @@ import { PayrollController } from "./payroll.controller";
 import { authenticate } from "../../core/middlewares/auth.middleware";
 import { checkPermission } from "../../core/middlewares/rbac.middleware";
 import { validateBody } from "../../core/validators/validate.middleware";
+import { heavyActionLimiter } from "../../core/middlewares/rate-limiter.middleware";
 import {
     CreateSalaryComponentDto, UpdateSalaryComponentDto,
     CreateSalaryStructureDto, CreatePayrollRunDto, ApprovePayrollRunDto,
@@ -91,6 +92,7 @@ router.get(
 router.post(
     "/runs/:id/generate",
     checkPermission("payroll.run"),
+    heavyActionLimiter(2, 300), // Layer 3: max 2 generates per user per 5 min
     ctrl.generatePayslips.bind(ctrl)
 );
 
@@ -104,6 +106,7 @@ router.patch(
     "/runs/:id/approve",
     checkPermission("payroll.approve"),
     validateBody(ApprovePayrollRunDto),
+    heavyActionLimiter(3, 300), // Layer 3: max 3 approvals per user per 5 min
     ctrl.approveRun.bind(ctrl)
 );
 

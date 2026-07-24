@@ -2,7 +2,7 @@ import { Router } from "express";
 import { AuthController } from "./auth.controller";
 import { validateBody } from "../../core/validators/validate.middleware";
 import { authenticate } from "../../core/middlewares/auth.middleware";
-import { authLimiter } from "../../core/middlewares/security.middleware";
+import { loginRateLimiter } from "../../core/middlewares/rate-limiter.middleware";
 import {
   RegisterDto,
   LoginDto,
@@ -33,9 +33,10 @@ router.post(
 );
 
 // POST /api/v1/auth/login
+// Layer 1: burst guard → max 3 taps / 10 s, then 15-min IP+email lockout
 router.post(
   "/login",
-  authLimiter,                        // max 10 attempts per 15 min
+  loginRateLimiter,
   validateBody(LoginDto),
   controller.login.bind(controller)
 );
