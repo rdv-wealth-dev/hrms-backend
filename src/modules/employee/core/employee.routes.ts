@@ -4,7 +4,7 @@ import { EmployeeController } from "./employee.controller";
 import { authenticate } from "../../../core/middlewares/auth.middleware";
 import { checkPermission } from "../../../core/middlewares/rbac.middleware";
 import { validateBody } from "../../../core/validators/validate.middleware";
-import { uploadSingleFile } from "../../../core/middlewares/upload.middleware";
+import { uploadSingleFile, uploadCsvOrExcel } from "../../../core/middlewares/upload.middleware";
 import {
   CreateEmployeeDto,
   UpdateEmployeeDto,
@@ -109,7 +109,7 @@ router.get(
 router.post(
   "/bulk-import",
   checkPermission("employee.create"),
-  uploadSingleFile("file"),
+  uploadCsvOrExcel("file"),
   controller.importEmployees.bind(controller)
 );
 

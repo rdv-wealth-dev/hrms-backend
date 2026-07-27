@@ -17,7 +17,7 @@ import {
 } from "./employee.dto";
 
 import { EmployeeModel } from "../core/employee.model";
-import { AppError } from "../../../core/errors/app.error";
+import { AppError, ValidationFailedError } from "../../../core/errors/app.error";
 import { RequestContext } from "../../../core/interfaces/request-context.interface";
 import { buildPagedResponse } from "../../../core/database/base.schema";
 import crypto from "crypto";
@@ -1078,7 +1078,7 @@ export class EmployeeService {
     const parsedData = await parseImportFile(context, file.buffer, fileType);
 
     if (!parsedData.validRecords.length) {
-      throw new AppError("No valid employee records found in file", 400);
+      throw ValidationFailedError("No valid employee records found in file", parsedData.errors);
     }
 
     // 2. Delegate bulk persistence to Repository
