@@ -60,10 +60,11 @@ export class UserService {
             );
         }
 
-        // 2. A caller cannot assign a role equal to or higher than their own role weight
-        if (newRoleWeight >= callerRoleWeight) {
+        // 2. A caller cannot assign a role higher than their own role weight
+        //    (equal is allowed — e.g., BRANCH_ADMIN can assign another BRANCH_ADMIN)
+        if (newRoleWeight > callerRoleWeight) {
             throw new AppError(
-                `You do not have permission to assign the ${input.role} role. You can only assign roles lower than your own.`,
+                `You do not have permission to assign the ${input.role} role. You can only assign roles up to your own level.`,
                 403
             );
         }

@@ -38,6 +38,23 @@ export const DEFAULT_ROLES = [
     ],
   },
   {
+    name:         "Branch Admin",
+    slug:         "BRANCH_ADMIN",
+    description:  "Full operational access within assigned branch(es) — same as HR Admin but scoped to branches",
+    isSystemRole: true,
+    permissions: [
+      "employee.read",    "employee.create",    "employee.update",    "employee.delete",
+      "attendance.read",  "attendance.create",  "attendance.update",  "attendance.approve",
+      "leave.read",       "leave.create",       "leave.update",       "leave.approve",
+      "payroll.read",     "payroll.create",     "payroll.run",        "payroll.approve",
+      "branch.read",      "branch.create",      "branch.update",
+      "department.read",  "department.create",  "department.update",
+      "designation.read", "designation.create", "designation.update",
+      "role.read",        "role.create",        "role.update",
+      "report.read",      "settings.read",      "settings.update",
+    ],
+  },
+  {
     name:         "Leadership",
     slug:         "LEADERSHIP",
     description:  "Read-only access across all branches",
