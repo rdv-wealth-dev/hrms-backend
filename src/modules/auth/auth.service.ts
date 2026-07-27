@@ -16,7 +16,7 @@ import { seedShifts } from "../attendance/shifts/shift.seed";
 import crypto from "crypto";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
-import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput, VerifyEmailInput, ActivateAccountInput } from "./auth.dto";
+import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput, VerifyEmailInput, ActivateAccountInput, ResendVerificationEmailInput } from "./auth.dto";
 import { AppError, InvalidCredentialsError, AccountInactiveError, RefreshInvalidError, } from "../../core/errors/app.error";
 import { JwtPayload } from "../../core/interfaces/jwt-payload.interface";
 
@@ -197,6 +197,7 @@ export class AuthService {
 
     superAdmin.emailVerificationToken = hashedVerificationToken;
     superAdmin.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    superAdmin.emailVerificationSentAt = new Date();
     await superAdmin.save();
 
     // 9. Send verification email
@@ -415,6 +416,68 @@ export class AuthService {
     await user.save();
 
     return { message: "Email verified successfully! You can now log in to your account." };
+  }
+
+  // Resend verification email
+  async resendVerificationEmail(input: ResendVerificationEmailInput) {
+    const user = await UserModel.findOne({
+      email: input.email.toLowerCase(),
+      isDeleted: false,
+    });
+
+    if (!user) {
+      // Return success message anyway to prevent email enumeration attacks
+      return { message: "If the account exists, a new verification link has been sent." };
+    }
+
+    if (user.isEmailVerified) {
+      return { message: "Email is already verified. You can log in now." };
+    }
+
+    // Rate limit: 2 minutes cooldown
+    if (user.emailVerificationSentAt) {
+      const diffMs = Date.now() - user.emailVerificationSentAt.getTime();
+      const diffMinutes = diffMs / (1000 * 60);
+      if (diffMinutes < 2) {
+        const waitSeconds = Math.ceil(120 - (diffMs / 1000));
+        throw new AppError(
+          `Please wait ${waitSeconds} seconds before requesting another verification email.`,
+          429
+        );
+      }
+    }
+
+    // Generate NEW, different verification token and link
+    const rawVerificationToken = crypto.randomBytes(32).toString("hex");
+    const hashedVerificationToken = crypto.createHash("sha256").update(rawVerificationToken).digest("hex");
+
+    user.emailVerificationToken = hashedVerificationToken;
+    user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    user.emailVerificationSentAt = new Date();
+    await user.save();
+
+    const verificationUrl = `${env.frontendUrl}/verify-email?token=${rawVerificationToken}`;
+
+    await emailService.sendEmail(
+      user.email,
+      `${user.firstName} ${user.lastName}`,
+      "Verify your HRMs email address (Resent)",
+      `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto;">
+          <h2>Email Verification</h2>
+          <p>You requested a new verification link. Click the button below to verify your email address. This link expires in 24 hours.</p>
+          <a href="${verificationUrl}"
+             style="display: inline-block; padding: 12px 24px; background: #2886CE; color: white; text-decoration: none; border-radius: 4px;">
+            Verify Email
+          </a>
+          <p style="margin-top: 24px; color: #666; font-size: 12px;">
+            If you didn't request this, you can safely ignore this email.
+          </p>
+        </div>
+      `
+    );
+
+    return { message: "A new verification link has been sent to your email address." };
   }
 
   async forgotPassword(input: ForgotPasswordInput) {

@@ -84,3 +84,8 @@ export const ActivateAccountDto = z.object({
 );
 
 export type ActivateAccountInput = z.infer<typeof ActivateAccountDto>;
+
+export const ResendVerificationEmailDto = z.object({
+  email: emailSchema,
+});
+export type ResendVerificationEmailInput = z.infer<typeof ResendVerificationEmailDto>;

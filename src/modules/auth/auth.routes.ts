@@ -11,6 +11,7 @@ import {
   ResetPasswordDto,
   VerifyEmailDto,
   ActivateAccountDto,
+  ResendVerificationEmailDto,
 } from "./auth.dto";
 
 const router = Router();
@@ -46,6 +47,13 @@ router.post(
   "/verify-email",
   validateBody(VerifyEmailDto),
   controller.verifyEmail.bind(controller)
+);
+
+// POST /api/v1/auth/resend-verification
+router.post(
+  "/resend-verification",
+  validateBody(ResendVerificationEmailDto),
+  controller.resendVerification.bind(controller)
 );
 
 // POST /api/v1/auth/refresh
