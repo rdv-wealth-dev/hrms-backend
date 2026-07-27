@@ -41,7 +41,7 @@ export const ReviewRegularizationDto  = z.object({
 });
 export type ReviewRegularizationInput = z.infer<typeof ReviewRegularizationDto>;
 
-// ─── SHIFT ────────────────────────────────────────────────────────────────────
+//SHIFT 
 
 export const CreateShiftDto = z.object({
     name                    : safeStringSchema(2, 100),
@@ -56,10 +56,21 @@ export const CreateShiftDto = z.object({
     isDefault               : z.boolean().optional().default(false),
 });
 export type CreateShiftInput = z.infer<typeof CreateShiftDto>;
-export const UpdateShiftDto = CreateShiftDto.partial();
+export const UpdateShiftDto = z.object({
+    name                    : safeStringSchema(2, 100).optional(),
+    code                    : z.string().trim().toUpperCase().min(2).max(20).optional(),
+    startTime               : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    endTime                 : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    gracePeriodMinutes      : z.number().min(0).max(120).optional(),
+    graceLimitPerMonth      : z.number().min(0).optional(),
+    halfDayThresholdMinutes : z.number().min(0).optional(),
+    fullDayMinutes          : z.number().min(0).optional(),
+    breakDurationMinutes    : z.number().min(0).optional(),
+    isDefault               : z.boolean().optional(),
+});
 export type UpdateShiftInput = z.infer<typeof UpdateShiftDto>;
 
-// ─── ATTENDANCE REPORT QUERY ──────────────────────────────────────────────────
+//ATTENDANCE REPORT QUERY 
 
 export const AttendanceReportQueryDto = z.object({
   fromDate    : dateSchema,
