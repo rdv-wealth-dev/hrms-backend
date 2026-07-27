@@ -29,6 +29,7 @@ import { env } from "../../../config/env";
 import { s3Service } from "../../../service/s3.service";
 import { recalculateProfileCompletion } from "../profile/profile-completion.util";
 import { ShiftRepository } from "../../attendance/shifts/shift.repository";
+import { parseImportFile, buildExportBuffer } from "./employee.utils";
 
 // Helper — mask account number showing only last 4 digits
 function maskAccountNumber(acc: string): string {
@@ -1061,5 +1062,76 @@ export class EmployeeService {
     const doc = await this.empRepo.verifyDocument(docId, input.isVerified, context.userId);
     if (!doc) throw new AppError("Document not found", 404);
     return doc;
+  }
+
+  /**
+   * Import Employees: Parses file -> Validates records -> Calls Repository
+   */
+  async importEmployees(context: RequestContext, file: Express.Multer.File) {
+    if (!file || !file.buffer) {
+      throw new AppError("Import file buffer is missing", 400);
+    }
+
+    const fileType = file.originalname.endsWith(".xlsx") ? "xlsx" : "csv";
+    
+    // 1. Parse CSV/Excel buffer into structured objects/documents
+    const parsedData = await parseImportFile(context, file.buffer, fileType);
+
+    if (!parsedData.validRecords.length) {
+      throw new AppError("No valid employee records found in file", 400);
+    }
+
+    // 2. Delegate bulk persistence to Repository
+    const dbResult = await this.empRepo.bulkCreate(
+      context,
+      parsedData.validRecords
+    );
+
+    // Recalculate Profile Completion status asynchronously for imported employees
+    const { recalculateProfileCompletion } = require("../profile/profile-completion.util");
+    for (const emp of dbResult.records) {
+      recalculateProfileCompletion(context.tenantId, emp._id.toString()).catch(() => {});
+    }
+
+    // 3. Return aggregated summary
+    return {
+      totalProcessed: parsedData.totalRows,
+      insertedCount: dbResult.insertedCount,
+      failedCount: parsedData.errors.length,
+      errors: parsedData.errors,
+    };
+  }
+
+  /**
+   * Export Employees: Fetches from Repository -> Formats file -> Returns Payload
+   */
+  async exportEmployees(
+    context: RequestContext,
+    format: "csv" | "xlsx",
+    filters: any
+  ) {
+    // 1. Query records via Repository
+    const employees = await this.empRepo.findEmployeesForExport(
+      context,
+      filters
+    );
+
+    if (!employees.length) {
+      throw new AppError("No employees found matching export criteria", 404);
+    }
+
+    // 2. Transform DB records into requested export format buffer
+    const fileBuffer = await buildExportBuffer(employees, format);
+    const mimeType = format === "xlsx" 
+      ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+      : "text/csv";
+
+    // 3. Return CSR-compliant data object
+    return {
+      fileName: `employees_export_${Date.now()}.${format}`,
+      mimeType,
+      fileData: fileBuffer.toString("base64"),
+      totalRecords: employees.length,
+    };
   }
 }

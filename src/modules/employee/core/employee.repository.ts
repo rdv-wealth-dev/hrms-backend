@@ -161,4 +161,53 @@ export class EmployeeRepository
       { new: true }
     );
   }
+
+  /**
+   * Bulk insert employees in a single transaction or batch operation.
+   */
+  async bulkCreate(
+    context: RequestContext,
+    employees: any[]
+  ): Promise<{ insertedCount: number; records: any[] }> {
+    const insertedRecords = await EmployeeModel.insertMany(
+      employees.map((emp) => ({
+        ...emp,
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        createdAt: new Date(),
+      }))
+    );
+    return {
+      insertedCount: insertedRecords.length,
+      records: insertedRecords as any[],
+    };
+  }
+
+  /**
+   * Fetch employees matching filters for export.
+   */
+  async findEmployeesForExport(
+    context: RequestContext,
+    filters: any
+  ): Promise<any[]> {
+    const query: any = {
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted: false,
+    };
+    if (filters.departmentId) {
+      query.departmentId = new mongoose.Types.ObjectId(filters.departmentId);
+    }
+    if (filters.branchId) {
+      query.branchId = new mongoose.Types.ObjectId(filters.branchId);
+    }
+    if (filters.status) {
+      query.status = filters.status;
+    }
+
+    return EmployeeModel.find(query)
+      .select("employeeCode firstName lastName email status departmentId branchId createdAt employeeType phone joiningDate")
+      .populate("branchId", "name")
+      .populate("departmentId", "name")
+      .populate("designationId", "name")
+      .lean();
+  }
 }

@@ -542,6 +542,53 @@ export class EmployeeController {
       next(e);
     }
   }
+
+  // POST /api/v1/employees/bulk-import
+  async importEmployees(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.file) {
+        throw new AppError("No import file uploaded", 400);
+      }
+
+      // Controller -> Service
+      const result = await empService.importEmployees(req.context, req.file);
+
+      res.status(200).json(
+        buildSuccessResponse(result, "Bulk import processed successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // GET /api/v1/employees/bulk-export
+  async exportEmployees(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const format = (req.query.format as string)?.toLowerCase() === "xlsx" ? "xlsx" : "csv";
+      const filters = {
+        departmentId: req.query.departmentId as string | undefined,
+        branchId: req.query.branchId as string | undefined,
+        status: req.query.status as string | undefined,
+      };
+
+      // Controller -> Service
+      const result = await empService.exportEmployees(req.context, format, filters);
+
+      res.status(200).json(
+        buildSuccessResponse(result, "Employee export generated successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 

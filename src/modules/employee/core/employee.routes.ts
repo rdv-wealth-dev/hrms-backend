@@ -105,6 +105,20 @@ router.get(
   controller.getCalendarEvents.bind(controller)
 );
 
+// Bulk Import & Export — static paths, must be before /:id
+router.post(
+  "/bulk-import",
+  checkPermission("employee.create"),
+  uploadSingleFile("file"),
+  controller.importEmployees.bind(controller)
+);
+
+router.get(
+  "/bulk-export",
+  checkPermission("employee.read"),
+  controller.exportEmployees.bind(controller)
+);
+
 router.get(
   "/:id",
   checkPermission("employee.read"),

@@ -6,7 +6,8 @@ import { CreateRegularizationInput, ReviewRegularizationInput } from "../core/at
 import { AppError } from "../../../core/errors/app.error";
 import { RequestContext } from "../../../core/interfaces/request-context.interface";
 import { SessionType, PunchSource } from "../core/attendance.model";
-import { calculateWorkedMinutes } from "../attendance.util";
+import { calculateWorkedMinutes, calculateAttendanceStatus } from "../attendance.util";
+import { ShiftModel } from "../shifts/shift.model";
 import { UserModel } from "../../user/user.model";
 
 export class RegularizationService {
@@ -100,7 +101,10 @@ export class RegularizationService {
             timestamp: request.requestedCheckIn,
             source: PunchSource.MANUAL,
           });
-          if (!attendance.firstCheckIn) attendance.firstCheckIn = request.requestedCheckIn;
+          // Always update — take the earliest check-in
+          if (!attendance.firstCheckIn || request.requestedCheckIn < attendance.firstCheckIn) {
+            attendance.firstCheckIn = request.requestedCheckIn;
+          }
         }
         if (request.requestedCheckOut) {
           attendance.sessions.push({
@@ -108,9 +112,33 @@ export class RegularizationService {
             timestamp: request.requestedCheckOut,
             source: PunchSource.MANUAL,
           });
-          attendance.lastCheckOut = request.requestedCheckOut;
+          // Always update — take the latest check-out
+          if (!attendance.lastCheckOut || request.requestedCheckOut > attendance.lastCheckOut) {
+            attendance.lastCheckOut = request.requestedCheckOut;
+          }
         }
+
+        // Recalculate worked minutes from all sessions (sorted, paired)
         attendance.workedMinutes = calculateWorkedMinutes(attendance.sessions);
+
+        // Fallback: if session pairing produced 0 (e.g. single-sided regularization),
+        // compute from time bounds directly
+        if (attendance.workedMinutes === 0 && attendance.firstCheckIn && attendance.lastCheckOut) {
+          attendance.workedMinutes = Math.max(0, Math.round(
+            (attendance.lastCheckOut.getTime() - attendance.firstCheckIn.getTime()) / 60000
+          ));
+        }
+
+        // Recalculate attendance status based on shift rules
+        const shift = await ShiftModel.findById(attendance.shiftId);
+        if (shift) {
+          attendance.status = calculateAttendanceStatus(
+            shift,
+            attendance.firstCheckIn ?? null,
+            attendance.workedMinutes,
+          );
+        }
+
         attendance.isRegularized = true;
         await this.attRepo.save(attendance);
       }
