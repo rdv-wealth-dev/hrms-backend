@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
-import { AttendanceModel } from "../attendance/attendance.model";
-import { LeaveRequestModel } from "../leave/leave-request.model";
-import { LeaveTypeModel } from "../leave/leave-type.model";
-import { SalaryStructureDocument, SalaryLineItem } from "./salary-structure.model";
-import { AttendanceSummarySnapshot, PayslipEarning, PayslipDeduction } from "./payslip.model";
+import { AttendanceModel } from "../attendance/core/attendance.model";
+import { LeaveRequestModel } from "../leave/leave-requests/leave-request.model";
+import { LeaveTypeModel } from "../leave/leave-types/leave-type.model";
+import { SalaryStructureDocument, SalaryLineItem } from "./salary-structures/salary-structure.model";
+import { AttendanceSummarySnapshot, PayslipEarning, PayslipDeduction } from "./payslip/payslip.model";
 
 // Build the Attendance/Leave summary for one employee, one month
 // This is the literal interlink point: reads Attendance records for the

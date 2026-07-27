@@ -2,9 +2,9 @@ import { Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import { BranchModel } from "./branch.model";
 import { OrganizationModel } from "../organization/organization.model";
-import { HolidayModel } from "../leave/holiday.model";
-import { ShiftRotationPlanModel } from "../attendance/shift-rotation-plan.model";
-import { EmployeeModel } from "../employee/employee.model";
+import { HolidayModel } from "../leave/holidays/holiday.model";
+import { ShiftRotationPlanModel } from "../attendance/rotation-plans/shift-rotation-plan.model";
+import { EmployeeModel } from "../employee/core/employee.model";
 import { UserModel } from "../user/user.model";
 import {
   generateMonthCalendar,
@@ -12,11 +12,11 @@ import {
   CustomWeekOffRule,
   CalendarDay,
   formatDate,
-} from "../attendance/schedule-engine";
+} from "../attendance/engine/schedule-engine";
 import { buildSuccessResponse } from "../../core/database/base.schema";
 import { AppError } from "../../core/errors/app.error";
 import { normalizeToMidnight } from "../attendance/attendance.util";
-import { ShiftRepository } from "../attendance/shift.repository";
+import { ShiftRepository } from "../attendance/shifts/shift.repository";
 
 const shiftRepo = new ShiftRepository();
 
@@ -246,7 +246,7 @@ export async function getMyPersonalSchedule(req: any, res: Response, next: NextF
         employeeBranchId:   employee.branchId.toString(),
       });
 
-      const holiday = holidays.find((h) => {
+      const holiday = holidays.find((h: any) => {
         const hd = new Date(h.date);
         return hd.getDate() === dayNum && hd.getMonth() === month - 1 && hd.getFullYear() === year;
       });

@@ -1,5 +1,5 @@
-import { AttendanceStatus, AttendanceSession, SessionType } from "./attendance.model";
-import { ShiftDocument } from "./shift.model";
+import { AttendanceStatus, AttendanceSession, SessionType } from "./core/attendance.model";
+import { ShiftDocument } from "./shifts/shift.model";
 
 // Distance between two lat/lng points in meters — Vincenty formula (WGS-84).
 // Uses the WGS-84 ellipsoid (same model as GPS satellites), giving ~0.5mm

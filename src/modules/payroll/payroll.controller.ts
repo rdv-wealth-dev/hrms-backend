@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { SalaryComponentService } from "./salary-component.service";
-import { SalaryStructureService } from "./salary-structure.service";
-import { PayrollRunService } from "./payroll-run.service";
-import { PayslipService } from "./payslip.service";
+import { SalaryComponentService } from "./salary-components/salary-component.service";
+import { SalaryStructureService } from "./salary-structures/salary-structure.service";
+import { PayrollRunService } from "./payroll-run/payroll-run.service";
+import { PayslipService } from "./payslip/payslip.service";
 import { buildSuccessResponse } from "../../core/database/base.schema";
 
 const componentService = new SalaryComponentService();

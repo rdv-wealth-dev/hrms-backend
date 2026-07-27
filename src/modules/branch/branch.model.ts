@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { createBaseSchema, BaseDocument } from "../../core/database/base.schema";
-import { CustomWeekOffRule } from "../attendance/schedule-engine";
+import { CustomWeekOffRule } from "../attendance/engine/schedule-engine";
 
 export { CustomWeekOffRule };
 // BRANCH DOCUMENT INTERFACE

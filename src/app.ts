@@ -3,7 +3,7 @@ import compression from "compression";
 import { applySecurityMiddleware } from "./core/middlewares/security.middleware";
 import { requestIdMiddleware } from "./core/middlewares/request-id.middleware";
 import { globalErrorHandler } from "./core/errors/error.middleware";
-import { requireCompleteProfile } from "./modules/employee/profile-completion.middleware";
+import { requireCompleteProfile } from "./modules/employee/profile/profile-completion.middleware";
 import { authenticate } from "./core/middlewares/auth.middleware";
 import { createTenantRateLimiter } from "./core/middlewares/rate-limiter.middleware";
 import authRoutes from "./modules/auth/auth.routes";
@@ -11,14 +11,14 @@ import organizationRoutes from "./modules/organization/organization.routes"
 import branchRoutes from "./modules/branch/branch.routes"
 import departmentRoutes from "./modules/department/department.routes";
 import designationRoutes from "./modules/designation/designation.routes";
-import employeeRoutes from "./modules/employee/employee.routes";
+import employeeRoutes from "./modules/employee/core/employee.routes";
 import attendanceRoutes from "./modules/attendance/attendance.routes";
 import userRoutes from "./modules/user/user.routes";
 import leaveRoutes from "./modules/leave/leave.routes";
 import profileRoutes from "./modules/profile/profile.routes";
 import payrollRoutes from "./modules/payroll/payroll.routes";
 import eventRoutes from "./modules/event/event.routes";
-import onboardingWizardRoutes from "./modules/employee/onboarding-wizard.routes";
+import onboardingWizardRoutes from "./modules/employee/onboarding/onboarding-wizard.routes";
 
 const app: Application = express();
 

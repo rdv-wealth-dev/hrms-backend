@@ -9,7 +9,7 @@ import {
     CreateSalaryStructureDto, CreatePayrollRunDto, ApprovePayrollRunDto,
 } from "./payroll.dto";
 
-import { requireCompleteProfile } from "../employee/profile-completion.middleware";
+import { requireCompleteProfile } from "../employee/profile/profile-completion.middleware";
 
 const router = Router();
 const ctrl = new PayrollController();

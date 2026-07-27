@@ -1,6 +1,6 @@
 import mongoose,{Document} from "mongoose";
 import { createPlatformSchema } from "../../core/database/base.schema";
-import { CustomWeekOffRule } from "../attendance/schedule-engine";
+import { CustomWeekOffRule } from "../attendance/engine/schedule-engine";
 
 export interface OrganizationDocument extends Document {
   companyName:      string;

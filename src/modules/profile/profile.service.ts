@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
 import { UserModel } from "../user/user.model";
-import { EmployeeModel } from "../employee/employee.model";
-import { AttendanceModel } from "../attendance/attendance.model";
-import { LeaveBalanceModel } from "../leave/leave-balance.model";
-import { LeaveRequestModel } from "../leave/leave-request.model";
-import { CompOffModel } from "../leave/comp-off.model";
+import { EmployeeModel } from "../employee/core/employee.model";
+import { AttendanceModel } from "../attendance/core/attendance.model";
+import { LeaveBalanceModel } from "../leave/leave-balances/leave-balance.model";
+import { LeaveRequestModel } from "../leave/leave-requests/leave-request.model";
+import { CompOffModel } from "../leave/comp-off/comp-off.model";
 import { AppError } from "../../core/errors/app.error";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
 import { normalizeToMidnight } from "../attendance/attendance.util";

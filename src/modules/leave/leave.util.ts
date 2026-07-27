@@ -1,6 +1,6 @@
-import { LeaveTypeDocument, LeaveAccrualFrequency } from "./leave-type.model";
-import { LeaveSessionType } from "./leave-request.model";
-import { isWeeklyOffDay, CustomWeekOffRule } from "../attendance/schedule-engine";
+import { LeaveTypeDocument, LeaveAccrualFrequency } from "./leave-types/leave-type.model";
+import { LeaveSessionType } from "./leave-requests/leave-request.model";
+import { isWeeklyOffDay, CustomWeekOffRule } from "../attendance/engine/schedule-engine";
 
 
 // Calculates total leave days between fromDate/toDate, accounting for

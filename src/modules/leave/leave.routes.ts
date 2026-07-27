@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { LeaveTypeController } from "./leave-type.controller";
-import { LeaveRequestController } from "./leave-request.controller";
+import { LeaveTypeController } from "./leave-types/leave-type.controller";
+import { LeaveRequestController } from "./leave-requests/leave-request.controller";
 import { authenticate } from "../../core/middlewares/auth.middleware";
 import { checkPermission } from "../../core/middlewares/rbac.middleware";
 import { validateBody } from "../../core/validators/validate.middleware";
@@ -11,10 +11,10 @@ import {
   ReviewLeaveRequestDto,
   CancelLeaveRequestDto,
 } from "./leave.dto";
-import { HolidayController } from "./holiday.controller";
+import { HolidayController } from "./holidays/holiday.controller";
 import { CreateHolidayDto, UpdateHolidayDto } from "./leave.dto";
 
-import { requireCompleteProfile } from "../employee/profile-completion.middleware";
+import { requireCompleteProfile } from "../employee/profile/profile-completion.middleware";
 
 const router = Router();
 const typeCtrl = new LeaveTypeController();
