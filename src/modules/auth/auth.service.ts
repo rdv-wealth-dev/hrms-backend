@@ -8,6 +8,10 @@ import { OrganizationRepository } from "../organization/organization.repository"
 import { BranchRepository } from "../branch/branch.repository";
 import { UserModel } from "../user/user.model";
 import { seedDefaultRoles } from "../role/role.seed";
+import { seedDepartments } from "../department/department.seed";
+import { seedDesignations } from "../designation/designation.seed";
+import { seedLeaveTypes } from "../leave/leave-types/leave-type.seed";
+import { seedShifts } from "../attendance/shifts/shift.seed";
 
 import crypto from "crypto";
 import { emailService } from "../../service/email.service";
@@ -163,6 +167,13 @@ export class AuthService {
     // (Returns a map of slug -> roleId — no longer used for JWT, kept for
     // possible future use such as assigning roleId references elsewhere)
     await seedDefaultRoles(tenantId, "system");
+
+    // 6b. Seed master data for the head office branch
+    const headOfficeId = headOffice._id.toString();
+    await seedLeaveTypes(tenantId, headOfficeId);
+    const deptMap = await seedDepartments(tenantId, headOfficeId);
+    await seedDesignations(tenantId, headOfficeId, deptMap);
+    await seedShifts(tenantId, headOfficeId);
 
     // 7. Create super admin user
     const superAdmin = await new UserModel({
