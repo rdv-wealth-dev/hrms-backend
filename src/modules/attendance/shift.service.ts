@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { ShiftRepository } from "./shift.repository";
 import { CreateShiftInput, UpdateShiftInput } from "./attendance.dto";
-import { AppError } from "../../core/errors/app.error";
+import { AppError, ValidationFailedError } from "../../core/errors/app.error";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
 import { ShiftModel } from "./shift.model";
 import { EmployeeModel } from "../employee/employee.model";
@@ -14,6 +14,12 @@ export class ShiftService {
     const existing = await this.shiftRepo.findByCode(context, input.code);
     if (existing) {
       throw new AppError(`Shift code "${input.code}" already exists`, 409);
+    }
+
+    const halfDay = input.halfDayThresholdMinutes ?? 240;
+    const fullDay = input.fullDayMinutes ?? 480;
+    if (halfDay >= fullDay) {
+      throw ValidationFailedError("fullDayMinutes must be greater than halfDayThresholdMinutes");
     }
 
     if (input.isDefault) {
@@ -102,6 +108,12 @@ export class ShiftService {
   async updateShift(context: RequestContext, id: string, input: UpdateShiftInput) {
     const shift = await this.shiftRepo.findById(context, id);
     if (!shift) throw new AppError("Shift not found", 404);
+
+    const halfDay = input.halfDayThresholdMinutes ?? shift.halfDayThresholdMinutes;
+    const fullDay = input.fullDayMinutes ?? shift.fullDayMinutes;
+    if (halfDay >= fullDay) {
+      throw ValidationFailedError("fullDayMinutes must be greater than halfDayThresholdMinutes");
+    }
 
     if (input.isDefault) {
       await ShiftModel.updateMany(

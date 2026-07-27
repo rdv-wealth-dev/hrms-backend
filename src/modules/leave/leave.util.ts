@@ -45,7 +45,10 @@ export function calculateAccrualForPeriod(
   fromDate:  Date,
   asOfDate:  Date
 ): number {
-  if (leaveType.accrualFrequency === LeaveAccrualFrequency.NONE) {
+  if (
+    leaveType.accrualFrequency === LeaveAccrualFrequency.NONE ||
+    leaveType.accrualFrequency === LeaveAccrualFrequency.ON_JOINING
+  ) {
     return leaveType.annualQuota;
   }
 
@@ -57,6 +60,10 @@ export function calculateAccrualForPeriod(
   const yearsDiff = asOf.getFullYear() - start.getFullYear();
   const monthsDiff = asOf.getMonth() - start.getMonth() + (yearsDiff * 12);
 
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const daysDiff = Math.floor((asOf.getTime() - start.getTime()) / msPerDay);
+  const weeksDiff = Math.floor(daysDiff / 7);
+
   let cyclesElapsed = 0;
 
   if (leaveType.accrualFrequency === LeaveAccrualFrequency.MONTHLY) {
@@ -67,6 +74,18 @@ export function calculateAccrualForPeriod(
     cyclesElapsed = Math.floor(monthsDiff / 6) + 1;
   } else if (leaveType.accrualFrequency === LeaveAccrualFrequency.YEARLY) {
     cyclesElapsed = yearsDiff + 1;
+  } else if (leaveType.accrualFrequency === LeaveAccrualFrequency.WEEKLY) {
+    cyclesElapsed = weeksDiff + 1;
+  } else if (leaveType.accrualFrequency === LeaveAccrualFrequency.BI_WEEKLY) {
+    cyclesElapsed = Math.floor(weeksDiff / 2) + 1;
+  } else if (leaveType.accrualFrequency === LeaveAccrualFrequency.SEMI_MONTHLY) {
+    cyclesElapsed = monthsDiff * 2 + (asOf.getDate() >= 15 ? 2 : 1) - (start.getDate() >= 15 ? 1 : 0);
+  } else if (leaveType.accrualFrequency === LeaveAccrualFrequency.DAILY) {
+    cyclesElapsed = daysDiff + 1;
+  } else if (leaveType.accrualFrequency === LeaveAccrualFrequency.HOURLY) {
+    cyclesElapsed = (daysDiff + 1) * 8; // Assumes 8 standard hours per day
+  } else if (leaveType.accrualFrequency === LeaveAccrualFrequency.MANUAL) {
+    cyclesElapsed = 0;
   }
 
   const accrued = cyclesElapsed * leaveType.accrualAmountPerCycle;

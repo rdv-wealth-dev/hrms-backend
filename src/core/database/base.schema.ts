@@ -248,16 +248,17 @@ export function buildSuccessResponse<T>(
   data:    T,
   message = "Success"
 ) {
-  return { succeeded: true, message, errors: [], data: cleanResponseData(data) };
+  return { succeeded: true, success: true, message, errors: [], data: cleanResponseData(data) };
 }
 export function buildErrorResponse(
   message:   string,
-  errors:    string[] = [],
-  errorCode: string   = "SYSTEM_INTERNAL_ERROR"
+  errors:    any[]  = [],
+  errorCode: string = "SYSTEM_INTERNAL_ERROR"
 ) {
   return {
     // console.log(data)
     succeeded: false,
+    success:   false,
     message,
     errorCode,
     errors,

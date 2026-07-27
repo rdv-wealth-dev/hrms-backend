@@ -6,13 +6,13 @@ export class AppError extends Error {
   public statusCode:    number;
   public errorCode:     ErrorCodeType;
   public isOperational: boolean;
-  public errors:        string[];
+  public errors:        any[];
 
   constructor(
     message:    string,
     statusCode: number = 500,
     errorCode:  ErrorCodeType = ErrorCode.SYSTEM_INTERNAL_ERROR,
-    errors:     string[] = []
+    errors:     any[] = []
   ) {
     super(message);
     this.statusCode    = statusCode;
@@ -49,7 +49,7 @@ export const InvalidCredentialsError = (msg = "Invalid email or password") =>
 export const AccountInactiveError = (msg = "Account is deactivated. Contact your administrator.") =>
   new AppError(msg, 401, ErrorCode.AUTH_ACCOUNT_INACTIVE);
 
-export const ValidationFailedError = (msg = "Validation failed", errors: string[] = []) =>
+export const ValidationFailedError = (msg = "Validation failed", errors: any[] = []) =>
   new AppError(msg, 400, ErrorCode.VALIDATION_FAILED, errors);
 
 export const NotFoundError = (msg = "Resource not found") =>
@@ -76,5 +76,5 @@ export const UnauthorizedError = (msg = "Unauthorized") =>
   new AppError(msg, 401, ErrorCode.AUTH_TOKEN_INVALID);
 
 // Generic bad request (legacy alias used in a few places)
-export const BadRequestError = (msg: string, errors: string[] = []) =>
+export const BadRequestError = (msg: string, errors: any[] = []) =>
   new AppError(msg, 400, ErrorCode.VALIDATION_FAILED, errors);

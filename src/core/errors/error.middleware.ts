@@ -36,9 +36,29 @@ export const globalErrorHandler = (
     return;
   }
 
-  // Mongoose / Zod validation error
+  // MongoDB CastError (invalid ObjectId / UUID lookup)
+  if (err.name === "CastError") {
+    const isShiftRoute = req.path.includes("/shifts");
+    res.status(404).json(
+      buildErrorResponse(isShiftRoute ? "Shift not found" : "Resource not found", [], ErrorCode.RESOURCE_NOT_FOUND)
+    );
+    return;
+  }
+
+  // Express body parser JSON syntax error (malformed JSON)
+  if (err instanceof SyntaxError && (err as any).status === 400 && "body" in err) {
+    res.status(400).json(
+      buildErrorResponse("Invalid JSON in request body", [err.message], ErrorCode.VALIDATION_FAILED)
+    );
+    return;
+  }
+
+  // Mongoose validation error
   if (err.name === "ValidationError") {
-    const errors = Object.values((err as any).errors).map((e: any) => e.message);
+    const errors = Object.entries((err as any).errors).map(([field, e]: [string, any]) => ({
+      field,
+      message: e.message,
+    }));
     res.status(400).json(
       buildErrorResponse("Validation failed", errors, ErrorCode.VALIDATION_FAILED)
     );

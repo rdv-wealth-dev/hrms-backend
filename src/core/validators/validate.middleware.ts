@@ -17,9 +17,10 @@ export const validateBody = (schema: ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const errors = error.issues.map(
-          (issue) => `${issue.path.join(".")}: ${issue.message}`
-        );
+        const errors = error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        }));
         next(ValidationFailedError("Validation failed", errors));
         return;
       }
@@ -41,9 +42,10 @@ export const validateQuery = (schema: ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const errors = error.issues.map(
-          (issue) => `${issue.path.join(".")}: ${issue.message}`
-        );
+        const errors = error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        }));
         next(ValidationFailedError("Invalid query parameters", errors));
         return;
       }
@@ -65,9 +67,10 @@ export const validateParams = (schema: ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const errors = error.issues.map(
-          (issue) => `${issue.path.join(".")}: ${issue.message}`
-        );
+        const errors = error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        }));
         next(ValidationFailedError("Invalid route parameters", errors));
         return;
       }
