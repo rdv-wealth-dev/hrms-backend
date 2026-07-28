@@ -723,7 +723,7 @@ export class AuthService {
   }
 
   // Complete onboarding wizard (Step 2 — called after email verification)
-  async completeOnboarding(tenantId: string, input: OnboardingWizardInput) {
+  async completeOnboarding(tenantId: string, userId: string, input: OnboardingWizardInput) {
     const org = await this.orgRepo.findById(tenantId);
     if (!org) throw new AppError("Organization not found", 404);
 
@@ -739,6 +739,9 @@ export class AuthService {
         fiscalYearStart: input.fiscalYearStart,
       },
     });
+
+    // Save phone to the admin user
+    await UserModel.findByIdAndUpdate(userId, { phone: input.phone });
 
     // Mark onboarding done — frontend uses this to skip wizard on next login
     await this.orgRepo.markOnboardingComplete(tenantId);
