@@ -248,7 +248,7 @@ export function buildSuccessResponse<T>(
   data:    T,
   message = "Success"
 ) {
-  return { succeeded: true, success: true, message, errors: [], data: cleanResponseData(data) };
+  return { succeeded: true, message, errors: [], data: cleanResponseData(data) };
 }
 export function buildErrorResponse(
   message:   string,
@@ -258,7 +258,6 @@ export function buildErrorResponse(
   return {
     // console.log(data)
     succeeded: false,
-    success:   false,
     message,
     errorCode,
     errors,
