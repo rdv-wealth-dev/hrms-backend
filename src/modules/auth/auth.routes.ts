@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { AuthController } from "./auth.controller";
-import { validateBody } from "../../core/validators/validate.middleware";
+import { validateBody, validateQuery } from "../../core/validators/validate.middleware";
 import { authenticate } from "../../core/middlewares/auth.middleware";
 import { loginRateLimiter } from "../../core/middlewares/rate-limiter.middleware";
 import {
@@ -83,6 +83,7 @@ router.post(
 // GET /api/v1/auth/check-slug?slug=acme — real-time subdomain availability check
 router.get(
   "/check-slug",
+  validateQuery(CheckSlugDto),
   controller.checkSlug.bind(controller)
 );
 
