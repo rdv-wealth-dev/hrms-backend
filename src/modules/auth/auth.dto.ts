@@ -10,6 +10,14 @@ import {
   currencyCodeSchema,
 } from "../../core/validators/common.validator";
 
+// Helper to convert empty string inputs to undefined so that optional schema fields work correctly
+function optionalString<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    schema.optional()
+  ) as unknown as z.ZodType<z.infer<T> | undefined, any, any>;
+}
+
 // Register DTO
 export const RegisterDto = withPhoneValidation(z.object({
   // Step 1 fields (public signup page)
@@ -27,11 +35,11 @@ export const RegisterDto = withPhoneValidation(z.object({
     ["1-10", "11-50", "51-200", "201-500", "500+"],
     { message: "Please select a valid company size" }
   ),
-  industry: safeStringSchema(2, 100).optional(),
+  industry: optionalString(safeStringSchema(2, 100)),
 
   // ── Step 2B fields (optional at registration, required in wizard)
-  phone: phoneSchema.optional(),
-  adminJobTitle: z.string().optional(),
+  phone: optionalString(phoneSchema),
+  adminJobTitle: optionalString(z.string().min(1, "Job title cannot be empty")),
 }));
 
 export type RegisterInput = z.infer<typeof RegisterDto>;
@@ -93,15 +101,15 @@ export const OnboardingWizardDto = z.object({
   countryCode: countryCodeSchema,
   timezone: z.string().min(1, "Timezone is required"),
   employeeCountRange: z.enum(["1-10", "11-50", "51-200", "201-500", "500+"]),
-  industry: safeStringSchema(2, 100).optional(),
-  baseCurrency: currencyCodeSchema.optional(),  // auto-filled from country, but overridable
+  industry: optionalString(safeStringSchema(2, 100)),
+  baseCurrency: optionalString(currencyCodeSchema),  // auto-filled from country, but overridable
   fiscalYearStart: z.enum([
     "January", "February", "March", "April",
     "May", "June", "July", "August",
     "September", "October", "November", "December"
   ]).default("April"),
-  adminJobTitle: z.string().optional(),
-  phone: phoneSchema.optional(),
+  adminJobTitle: optionalString(z.string().min(1, "Job title cannot be empty")),
+  phone: optionalString(phoneSchema),
 });
 export type OnboardingWizardInput = z.infer<typeof OnboardingWizardDto>;
 
