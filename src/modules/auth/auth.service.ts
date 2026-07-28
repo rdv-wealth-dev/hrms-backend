@@ -16,7 +16,7 @@ import { seedShifts } from "../attendance/shifts/shift.seed";
 import crypto from "crypto";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
-import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput, VerifyEmailInput, ActivateAccountInput, ResendVerificationEmailInput, OnboardingWizardInput } from "./auth.dto";
+import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput, VerifyEmailInput, ActivateAccountInput, ResendVerificationEmailInput, OnboardingWizardInput, ChangePasswordInput } from "./auth.dto";
 import { AppError, InvalidCredentialsError, AccountInactiveError, RefreshInvalidError, } from "../../core/errors/app.error";
 import { JwtPayload } from "../../core/interfaces/jwt-payload.interface";
 
@@ -798,5 +798,24 @@ export class AuthService {
       companyName: org?.companyName ?? null,
       logoUrl:     org?.branding?.logoUrl ?? null,
     };
+  }
+
+  async changePassword(userId: string, input: ChangePasswordInput) {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    const isCurrentPasswordValid = await bcrypt.compare(input.currentPassword, user.passwordHash);
+    if (!isCurrentPasswordValid) {
+      throw new AppError("Invalid current password", 400);
+    }
+
+    const passwordHash = await bcrypt.hash(input.newPassword, BCRYPT_SALT_ROUNDS);
+    user.passwordHash = passwordHash;
+    user.requiresPasswordReset = false;
+    await user.save();
+
+    return { message: "Password changed successfully" };
   }
 }

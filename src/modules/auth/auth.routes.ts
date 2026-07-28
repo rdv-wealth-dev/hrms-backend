@@ -15,6 +15,7 @@ import {
   CheckSlugDto,
   OnboardingWizardDto,
   CheckEmailDto,           // SSO detection + workspace branding
+  ChangePasswordDto,
 } from "./auth.dto";
 
 const router = Router();
@@ -107,6 +108,14 @@ router.post(
   authenticate,
   validateBody(OnboardingWizardDto),
   controller.completeOnboarding.bind(controller)
+);
+
+// POST /api/v1/auth/change-password
+router.post(
+  "/change-password",
+  authenticate,
+  validateBody(ChangePasswordDto),
+  controller.changePassword.bind(controller)
 );
 
 // GET /api/v1/auth/me
