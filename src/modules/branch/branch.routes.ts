@@ -50,18 +50,18 @@ router.post(
   controller.create.bind(controller)
 );
 
-// GET /api/v1/branches/:id
-router.get(
-  "/:id",
-  checkPermission("branch.read"),
-  controller.getById.bind(controller)
-);
-
 // GET /api/v1/branches/:branchId/calendar?year=&month=
 // Returns branch-level calendar (accessible to all auth users for that tenant)
 router.get(
   "/:branchId/calendar",
   getBranchCalendar
+);
+
+// GET /api/v1/branches/:id
+router.get(
+  "/:id",
+  checkPermission("branch.read"),
+  controller.getById.bind(controller)
 );
 
 // PATCH /api/v1/branches/:id
