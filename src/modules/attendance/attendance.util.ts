@@ -169,18 +169,30 @@ export function calculateAttendanceStatus(
     return AttendanceStatus.ABSENT;
   }
 
-  if (workedMinutes < shift.halfDayThresholdMinutes) {
-    return AttendanceStatus.HALF_DAY;
-  }
-
-  // If grace limit is set and exhausted, zero tolerance
-  const hasGraceLeft = !graceLimit || (graceUsed ?? 0) < graceLimit;
-  const effectiveGraceMinutes = hasGraceLeft ? shift.gracePeriodMinutes : 0;
-
   const [shiftHour, shiftMin] = shift.startTime.split(":").map(Number);
   const shiftStart = new Date(firstCheckIn);
   shiftStart.setHours(shiftHour, shiftMin, 0, 0);
 
+  // 1. Arrival-based ABSENT check: Check-in after 2:15 PM (255 mins after 10:00 AM shift start)
+  const absentArrivalThreshold = new Date(shiftStart.getTime() + 255 * 60000);
+  if (firstCheckIn > absentArrivalThreshold) {
+    return AttendanceStatus.ABSENT;
+  }
+
+  // 2. Arrival-based HALF-DAY check: Check-in after 11:30 AM (90 mins after 10:00 AM shift start)
+  const halfDayArrivalThreshold = new Date(shiftStart.getTime() + 90 * 60000);
+  if (firstCheckIn > halfDayArrivalThreshold) {
+    return AttendanceStatus.HALF_DAY;
+  }
+
+  // 3. Duration-based HALF-DAY check: Worked minutes below threshold (e.g. 4.5 hours)
+  if (workedMinutes < shift.halfDayThresholdMinutes) {
+    return AttendanceStatus.HALF_DAY;
+  }
+
+  // 4. Grace Period & Late coming check:
+  const hasGraceLeft = !graceLimit || (graceUsed ?? 0) < graceLimit;
+  const effectiveGraceMinutes = hasGraceLeft ? shift.gracePeriodMinutes : 0;
   const lateThreshold = new Date(shiftStart.getTime() + effectiveGraceMinutes * 60000);
 
   if (firstCheckIn > lateThreshold) {
