@@ -76,6 +76,7 @@ export class OrganizationRepository {
   async markOnboardingComplete(id: string): Promise<void> {
     await OrganizationModel.findByIdAndUpdate(id, {
       onboardingCompleted: true,
+      onboardingStatus: "completed",
     });
   }
 }

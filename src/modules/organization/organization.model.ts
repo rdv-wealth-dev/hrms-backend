@@ -7,6 +7,7 @@ export interface OrganizationDocument extends Document {
   slug: string;
   workspaceSlug: string;
   employeeCountRange: string;
+  onboardingStatus: "step1_completed" | "completed";
   onboardingCompleted: boolean;
   legalName?: string;
   cin?: string;
@@ -109,6 +110,11 @@ const OrganizationSchema = createPlatformSchema<OrganizationDocument>({
     type: String,
     enum: ["1-10", "11-50", "51-200", "201-500", "500+"],
     default: "1-10",
+  },
+  onboardingStatus: {
+    type: String,
+    enum: ["step1_completed", "completed"],
+    default: "step1_completed",
   },
   onboardingCompleted: {
     type: Boolean,

@@ -19,27 +19,14 @@ function optionalString<T extends z.ZodTypeAny>(schema: T) {
 }
 
 // Register DTO
-export const RegisterDto = withPhoneValidation(z.object({
-  // Step 1 fields (public signup page)
-  companyName: safeStringSchema(2, 200),
-  workspaceSlug: workspaceSlugSchema,          // add this import from common.validator
+export const RegisterDto = z.object({
   firstName: safeStringSchema(2, 100),
   lastName: safeStringSchema(2, 100),
-  email: emailSchema,                  // now blocks personal domains
-  password: passwordSchema,
-
-  //Step 2A fields (org config wizard)
-  countryCode: countryCodeSchema,
-  timezone: z.string().min(1, "Timezone is required"),
-  employeeCountRange: z.enum(
-    ["1-10", "11-50", "51-200", "201-500", "500+"],
-    { message: "Please select a valid company size" }
-  ),
-  industry: optionalString(safeStringSchema(2, 100)),
-
-  // Step 2B fields (collected in onboarding wizard, not here)
-  adminJobTitle: optionalString(z.string().min(1, "Job title cannot be empty")),
-}));
+  email: emailSchema,
+  password: passwordSchema.max(12, "Password must not exceed 12 characters"),
+  companyName: safeStringSchema(2, 200),
+  workspaceSlug: workspaceSlugSchema,
+});
 
 export type RegisterInput = z.infer<typeof RegisterDto>;
 

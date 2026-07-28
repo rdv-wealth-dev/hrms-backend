@@ -86,6 +86,15 @@ function getFiscalYearFromCountry(countryCode: string): string {
   return FISCAL_MAP[countryCode] || "January"; // default: Jan–Dec
 }
 
+function capitalize(str: string): string {
+  if (!str) return "";
+  return str
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 // AUTH SERVICE
 
 export class AuthService {
@@ -122,21 +131,25 @@ export class AuthService {
       slug = `${slug}-${Date.now()}`;
     }
 
-    // 3. Create organization
+    const defaultCountry = "IN";
+    const defaultTimezone = "Asia/Kolkata";
+
+    // 3. Create organization (using default locale/ranges until Step 2 onboarding wizard)
     const organization = await this.orgRepo.create({
       companyName:         input.companyName,
       slug,
       workspaceSlug:       input.workspaceSlug,
-      employeeCountRange:  input.employeeCountRange,
+      employeeCountRange:  "1-10",
       onboardingCompleted: false,
-      industry:            input.industry,
+      onboardingStatus:    "step1_completed",
+      industry:            "Technology",
       locale: {
-        countryCode:        input.countryCode,
-        timezone:           input.timezone,
-        currencyCode:       getCurrencyFromCountry(input.countryCode),
+        countryCode:        defaultCountry,
+        timezone:           defaultTimezone,
+        currencyCode:       getCurrencyFromCountry(defaultCountry),
         dateFormat:         "DD/MM/YYYY",
         timeFormat:         "12h",
-        fiscalYearStart:    getFiscalYearFromCountry(input.countryCode),
+        fiscalYearStart:    getFiscalYearFromCountry(defaultCountry),
         weeklyOffDays:      ["Sunday"],
         workingHoursPerDay: 8,
       },
@@ -167,56 +180,24 @@ export class AuthService {
     const tenantId = organization._id.toString();
     const tenantObjectId = new mongoose.Types.ObjectId(tenantId);
 
-    // 4. Create Head Office branch
-    const headOffice = await this.branchRepo.create({
-      tenantId: tenantObjectId as any,
-      branchId: tenantObjectId as any,
-      name: "Head Office",
-      code: "HQ",
-      isHeadOffice: true,
-      isActive: true,
-      address: {
-        countryCode: input.countryCode,
-      },
-      workPolicy: {
-        timezone: input.timezone,
-        weeklyOffDays: ["Sunday"],
-        workingHoursPerDay: 8,
-      },
-    });
-
-    // 5. Hash password
+    // 4. Hash password
     const passwordHash = await bcrypt.hash(
       input.password,
       BCRYPT_SALT_ROUNDS
     );
 
-    // 6. Seed default roles for this tenant
-    // (Returns a map of slug -> roleId — no longer used for JWT, kept for
-    // possible future use such as assigning roleId references elsewhere)
-    await seedDefaultRoles(tenantId, "system");
-
-    // 6b. Seed master data for the head office branch
-    const headOfficeId = headOffice._id.toString();
-    await seedLeaveTypes(tenantId, headOfficeId);
-    const deptMap = await seedDepartments(tenantId, headOfficeId);
-    await seedDesignations(tenantId, headOfficeId, deptMap);
-    await seedShifts(tenantId, headOfficeId);
-
-    // 7. Create super admin user
+    // 5. Create super admin user
     const superAdmin = await new UserModel({
       tenantId: tenantObjectId,
       email: input.email.toLowerCase(),
       passwordHash,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      phone: input.phone,
+      firstName: capitalize(input.firstName),
+      lastName: capitalize(input.lastName),
       role: "ORG_ADMIN",
       isOrgAdmin: true,
       isActive: true,
       isEmailVerified: false,
-      branchIds: [headOffice._id],
-      // permissions:     [],
+      branchIds: [],
     }).save();
 
     // 8. Generate email verification token
@@ -260,6 +241,7 @@ export class AuthService {
         workspaceSlug:       organization.workspaceSlug,
         workspaceUrl:        `https://${organization.workspaceSlug}.yourhrms.com`,
         onboardingCompleted: organization.onboardingCompleted,
+        onboardingStatus:    organization.onboardingStatus,
       },
     };
   }
@@ -386,6 +368,7 @@ export class AuthService {
       requiresPasswordReset,
       // onboardingCompleted — frontend checks to redirect to wizard after first login
       onboardingCompleted: org?.onboardingCompleted ?? true,
+      onboardingStatus:    org?.onboardingStatus ?? "completed",
       rememberDeviceToken, // undefined unless requested; set as httpOnly cookie on client
       user: {
         id:               user._id,
@@ -727,6 +710,8 @@ export class AuthService {
     const org = await this.orgRepo.findById(tenantId);
     if (!org) throw new AppError("Organization not found", 404);
 
+    const tenantObjectId = new mongoose.Types.ObjectId(tenantId);
+
     // Update locale, industry, employee count from wizard
     await this.orgRepo.updateById(tenantId, {
       industry:           input.industry,
@@ -740,15 +725,47 @@ export class AuthService {
       },
     });
 
-    // Save phone to the admin user
-    await UserModel.findByIdAndUpdate(userId, { phone: input.phone });
+    // Create Head Office branch using actual country and timezone
+    const headOffice = await this.branchRepo.create({
+      tenantId: tenantObjectId as any,
+      branchId: tenantObjectId as any,
+      name: "Head Office",
+      code: "HQ",
+      isHeadOffice: true,
+      isActive: true,
+      address: {
+        countryCode: input.countryCode,
+      },
+      workPolicy: {
+        timezone: input.timezone,
+        weeklyOffDays: ["Sunday"],
+        workingHoursPerDay: 8,
+      },
+    });
 
-    // Mark onboarding done — frontend uses this to skip wizard on next login
+    // Seed default roles for this tenant
+    await seedDefaultRoles(tenantId, "system");
+
+    // Seed master data for the head office branch
+    const headOfficeId = headOffice._id.toString();
+    await seedLeaveTypes(tenantId, headOfficeId);
+    const deptMap = await seedDepartments(tenantId, headOfficeId);
+    await seedDesignations(tenantId, headOfficeId, deptMap);
+    await seedShifts(tenantId, headOfficeId);
+
+    // Save phone and associate the created Head Office branch to the admin user
+    await UserModel.findByIdAndUpdate(userId, { 
+      phone: input.phone,
+      $addToSet: { branchIds: headOffice._id }
+    });
+
+    // Mark onboarding done
     await this.orgRepo.markOnboardingComplete(tenantId);
 
     return {
       message:             "Workspace configured successfully.",
       onboardingCompleted: true,
+      onboardingStatus:    "completed",
     };
   }
 

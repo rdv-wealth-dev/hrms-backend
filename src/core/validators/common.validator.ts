@@ -177,8 +177,8 @@ export const workspaceSlugSchema = z
   .toLowerCase()
   .trim()
   .regex(
-    /^[a-z0-9][a-z0-9-]*[a-z0-9]$/,
-    "Workspace URL can only contain lowercase letters, numbers, and hyphens"
+    /^[a-z0-9]+$/,
+    "Workspace URL can only contain lowercase letters and numbers"
   )
   .refine(
     (slug) => !RESERVED_SLUGS.has(slug),
