@@ -1,19 +1,33 @@
 import mongoose, { Document } from "mongoose";
-import {createOrgLevelSchema,OrgLevelDocument} from "../../core/database/base.schema";
+import { createOrgLevelSchema, OrgLevelDocument } from "../../core/database/base.schema";
 
 export interface UserDocument extends OrgLevelDocument {
-  email:           string;
-  passwordHash:    string;
-  firstName:       string;
-  lastName:        string;
-  phone?:          string;
-  avatar?:         string;
-  role:            string;
-  isOrgAdmin:    boolean;
-  isActive:        boolean;
+  email: string;
+  passwordHash: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  avatar?: string;
+  role: string;
+  isOrgAdmin: boolean;
+  isActive: boolean;
   isEmailVerified: boolean;
-  lastLoginAt?:    Date;
-  branchIds:       mongoose.Types.ObjectId[];
+  lastLoginAt?: Date;
+  // Login security
+  loginAttempts: number;
+  lockoutUntil?: Date;
+  lastLoginIp?: string;
+  lastLoginDevice?: string;
+  requiresPasswordReset: boolean;
+
+  // Device trust — "remember this device" tokens
+  rememberDeviceTokens: {
+    tokenHash: string;
+    deviceInfo: string;
+    createdAt: Date;
+    expiresAt: Date;
+  }[];
+  branchIds: mongoose.Types.ObjectId[];
 
   // Deprecated — permissions now loaded dynamically from roles collection
   // Kept for backward compatibility only
@@ -23,52 +37,56 @@ export interface UserDocument extends OrgLevelDocument {
   emailVerificationToken?: string;
   emailVerificationExpires?: Date;
   emailVerificationSentAt?: Date;
-  accountActivationToken? : string;
-  accountActivationExpires? : Date;
-  employeeId? : mongoose.Types.ObjectId;
+  accountActivationToken?: string;
+  accountActivationExpires?: Date;
+  employeeId?: mongoose.Types.ObjectId;
 
   toSafeObject(): {
-    id:              unknown;
-    email:           string;
-    firstName:       string;
-    lastName:        string;
-    fullName:        string;
-    phone?:          string;
-    avatar?:         string;
-    role:            string;
-    isOrgAdmin:    boolean;
-    isActive:        boolean;
+    id: unknown;
+    email: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    phone?: string;
+    avatar?: string;
+    role: string;
+    isOrgAdmin: boolean;
+    isActive: boolean;
     isEmailVerified: boolean;
-    branchIds:       mongoose.Types.ObjectId[];
-    tenantId:        mongoose.Types.ObjectId;
-    employeeId:      mongoose.Types.ObjectId;
-    lastLoginAt?:    Date;
-    createdAt:       Date;
+    branchIds: mongoose.Types.ObjectId[];
+    tenantId: mongoose.Types.ObjectId;
+    employeeId: mongoose.Types.ObjectId;
+    lastLoginAt?: Date;
+    createdAt: Date;
+
+    requiresPasswordReset: boolean;
+    lastLoginIp?: string;
+    lastLoginDevice?: string;
   };
 }
 
 const UserSchema = createOrgLevelSchema<UserDocument>({
   email: {
-    type:      String,
-    required:  true,
+    type: String,
+    required: true,
     lowercase: true,
-    trim:      true,
+    trim: true,
     maxlength: 255,
   },
   passwordHash: {
-    type:   String,
+    type: String,
     select: false,
   },
   firstName: {
-    type:      String,
-    required:  true,
-    trim:      true,
+    type: String,
+    required: true,
+    trim: true,
     maxlength: 100,
   },
   lastName: {
-    type:      String,
-    required:  true,
-    trim:      true,
+    type: String,
+    required: true,
+    trim: true,
     maxlength: 100,
   },
   phone: {
@@ -79,7 +97,7 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
     type: String,
   },
   role: {
-    type:     String,
+    type: String,
     required: true,
     enum: [
       "ORG_ADMIN",
@@ -94,23 +112,54 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
     default: "EMPLOYEE",
   },
   isOrgAdmin: {
-    type:    Boolean,
+    type: Boolean,
     default: false,
   },
   isActive: {
-    type:    Boolean,
+    type: Boolean,
     default: true,
   },
   isEmailVerified: {
-    type:    Boolean,
+    type: Boolean,
     default: false,
   },
   lastLoginAt: {
     type: Date,
   },
+  loginAttempts: {
+    type: Number,
+    default: 0,
+    select: false,
+  },
+  lockoutUntil: {
+    type: Date,
+    select: false,
+  },
+  lastLoginIp: {
+    type: String,
+    trim: true,
+  },
+  lastLoginDevice: {
+    type: String,
+    trim: true,
+  },
+  requiresPasswordReset: {
+    type: Boolean,
+    default: false,
+  },
+  rememberDeviceTokens: {
+    type: [{
+      tokenHash: { type: String, required: true },
+      deviceInfo: { type: String, default: "Unknown" },
+      createdAt: { type: Date, default: Date.now },
+      expiresAt: { type: Date, required: true },
+    }],
+    default: [],
+    select: false,
+  },
   branchIds: {
-    type:    [mongoose.Schema.Types.ObjectId],
-    ref:     "Branch",
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Branch",
     default: [],
   },
 
@@ -128,16 +177,16 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
     select: false,
   },
   accountActivationToken: {
-    type : String,
-    select : false,
-  },
-  accountActivationExpires : {
-    type : Date,
+    type: String,
     select: false,
   },
-  employeeId : {
-    type : mongoose.Schema.Types.ObjectId,
-    default : null,
+  accountActivationExpires: {
+    type: Date,
+    select: false,
+  },
+  employeeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null,
   },
   emailVerificationToken: {
     type: String,
@@ -154,11 +203,12 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
 });
 
 // Indexes
-UserSchema.index({ tenantId: 1, email: 1 },      { unique: true });
+UserSchema.index({ tenantId: 1, email: 1 }, { unique: true });
 UserSchema.index({ tenantId: 1, role: 1 });
 UserSchema.index({ tenantId: 1, isActive: 1 });
 UserSchema.index({ tenantId: 1, isDeleted: 1 });
 UserSchema.index({ tenantId: 1, employeeId: 1 });
+UserSchema.index({ lockoutUntil: 1 }, { sparse: true });
 
 // Virtual
 UserSchema.virtual("fullName").get(function () {
@@ -168,22 +218,25 @@ UserSchema.virtual("fullName").get(function () {
 // Methods
 UserSchema.methods.toSafeObject = function () {
   return {
-    id:              this._id,
-    email:           this.email,
-    firstName:       this.firstName,
-    lastName:        this.lastName,
-    fullName:        `${this.firstName} ${this.lastName}`,
-    phone:           this.phone,
-    avatar:          this.avatar,
-    role:            this.role,
-    isOrgAdmin:    this.isOrgAdmin,
-    isActive:        this.isActive,
+    id: this._id,
+    email: this.email,
+    firstName: this.firstName,
+    lastName: this.lastName,
+    fullName: `${this.firstName} ${this.lastName}`,
+    phone: this.phone,
+    avatar: this.avatar,
+    role: this.role,
+    isOrgAdmin: this.isOrgAdmin,
+    isActive: this.isActive,
     isEmailVerified: this.isEmailVerified,
-    branchIds:       this.branchIds,
-    tenantId:        this.tenantId,
-    employeeId:      this.employeeId,
-    lastLoginAt:     this.lastLoginAt,
-    createdAt:       this.createdAt,
+    requiresPasswordReset: this.requiresPasswordReset,
+    branchIds: this.branchIds,
+    tenantId: this.tenantId,
+    employeeId: this.employeeId,
+    lastLoginAt: this.lastLoginAt,
+    lastLoginIp: this.lastLoginIp,
+    lastLoginDevice: this.lastLoginDevice,
+    createdAt: this.createdAt,
   };
 };
 

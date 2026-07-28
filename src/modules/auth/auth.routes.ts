@@ -12,6 +12,9 @@ import {
   VerifyEmailDto,
   ActivateAccountDto,
   ResendVerificationEmailDto,
+  CheckSlugDto,
+  OnboardingWizardDto,
+  CheckEmailDto,           // SSO detection + workspace branding
 } from "./auth.dto";
 
 const router = Router();
@@ -77,7 +80,33 @@ router.post(
   controller.resetPassword.bind(controller)
 );
 
+// GET /api/v1/auth/check-slug?slug=acme — real-time subdomain availability check
+router.get(
+  "/check-slug",
+  controller.checkSlug.bind(controller)
+);
+
+// POST /api/v1/auth/check-email — SSO detection + workspace branding
+// Called real-time as user finishes typing email on the login page
+router.post(
+  "/check-email",
+  validateBody(CheckEmailDto),
+  controller.checkEmail.bind(controller)
+);
+
+// POST /api/v1/auth/magic-link — passwordless login (Phase 2 ready)
+// Uncomment when magic link is implemented
+// router.post("/magic-link", validateBody(MagicLinkDto), controller.magicLink.bind(controller));
+
 //Protected routes — auth required
+
+// POST /api/v1/auth/complete-onboarding — Step 2 wizard submit
+router.post(
+  "/complete-onboarding",
+  authenticate,
+  validateBody(OnboardingWizardDto),
+  controller.completeOnboarding.bind(controller)
+);
 
 // GET /api/v1/auth/me
 router.get(

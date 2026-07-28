@@ -16,14 +16,14 @@ import { seedShifts } from "../attendance/shifts/shift.seed";
 import crypto from "crypto";
 import { emailService } from "../../service/email.service";
 import { env } from "../../config/env";
-import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput, VerifyEmailInput, ActivateAccountInput, ResendVerificationEmailInput } from "./auth.dto";
+import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput, VerifyEmailInput, ActivateAccountInput, ResendVerificationEmailInput, OnboardingWizardInput } from "./auth.dto";
 import { AppError, InvalidCredentialsError, AccountInactiveError, RefreshInvalidError, } from "../../core/errors/app.error";
 import { JwtPayload } from "../../core/interfaces/jwt-payload.interface";
 
 // CONSTANTS
 
-const BCRYPT_SALT_ROUNDS   = 12;
-const ACCESS_TOKEN_EXPIRY  = "1d";
+const BCRYPT_SALT_ROUNDS = 12;
+const ACCESS_TOKEN_EXPIRY = "1d";
 const REFRESH_TOKEN_EXPIRY = "7d";
 
 // HELPERS
@@ -49,7 +49,7 @@ function signAccessToken(
 }
 
 function signRefreshToken(
-  userId:   string,
+  userId: string,
   tenantId: string
 ): string {
   return jwt.sign(
@@ -74,11 +74,23 @@ function getCurrencyFromCountry(countryCode: string): string {
   return COUNTRY_CURRENCY_MAP[countryCode] || "USD";
 }
 
+// Default fiscal year start by country
+function getFiscalYearFromCountry(countryCode: string): string {
+  const FISCAL_MAP: Record<string, string> = {
+    IN: "April",  // India: April–March
+    GB: "April",  // UK: April–March
+    AU: "July",   // Australia: July–June
+    NZ: "April",  // NZ: April–March
+    JP: "April",  // Japan: April–March
+  };
+  return FISCAL_MAP[countryCode] || "January"; // default: Jan–Dec
+}
+
 // AUTH SERVICE
 
 export class AuthService {
-  private userRepo   = new UserRepository();
-  private orgRepo    = new OrganizationRepository();
+  private userRepo = new UserRepository();
+  private orgRepo = new OrganizationRepository();
   private branchRepo = new BranchRepository();
 
   //Register
@@ -90,25 +102,41 @@ export class AuthService {
       throw new AppError("Email already registered", 409);
     }
 
-    // 2. Generate slug
-    let slug = generateSlug(input.companyName);
-    const slugTaken = await this.orgRepo.slugExists(slug);
+    // 2. Validate & check workspace slug
+    const workspaceSlug = input.workspaceSlug; // already validated by DTO
+    const slugTaken = await this.orgRepo.workspaceSlugExists(workspaceSlug);
     if (slugTaken) {
+      const suggestions = await this.orgRepo.suggestSlugs(workspaceSlug);
+      throw new AppError(
+        `Workspace URL "${workspaceSlug}" is already taken.`,
+        409,
+        undefined,   // use default errorCode
+        suggestions  // frontend reads these as clickable suggestion chips
+      );
+    }
+
+    // 2b. Generate internal slug (still needed for legacy routing)
+    let slug = generateSlug(input.companyName);
+    const internalSlugTaken = await this.orgRepo.slugExists(slug);
+    if (internalSlugTaken) {
       slug = `${slug}-${Date.now()}`;
     }
 
     // 3. Create organization
     const organization = await this.orgRepo.create({
-      companyName: input.companyName,
+      companyName:         input.companyName,
       slug,
-      industry:    input.industry,
+      workspaceSlug:       input.workspaceSlug,
+      employeeCountRange:  input.employeeCountRange,
+      onboardingCompleted: false,
+      industry:            input.industry,
       locale: {
         countryCode:        input.countryCode,
         timezone:           input.timezone,
         currencyCode:       getCurrencyFromCountry(input.countryCode),
         dateFormat:         "DD/MM/YYYY",
         timeFormat:         "12h",
-        fiscalYearStart:    "April",
+        fiscalYearStart:    getFiscalYearFromCountry(input.countryCode),
         weeklyOffDays:      ["Sunday"],
         workingHoursPerDay: 8,
       },
@@ -136,23 +164,23 @@ export class AuthService {
       },
     });
 
-    const tenantId  = organization._id.toString();
-    const tenantObjectId  = new mongoose.Types.ObjectId(tenantId);
+    const tenantId = organization._id.toString();
+    const tenantObjectId = new mongoose.Types.ObjectId(tenantId);
 
     // 4. Create Head Office branch
     const headOffice = await this.branchRepo.create({
-      tenantId:     tenantObjectId as any,
-      branchId:     tenantObjectId as any,
-      name:         "Head Office",
-      code:         "HQ",
+      tenantId: tenantObjectId as any,
+      branchId: tenantObjectId as any,
+      name: "Head Office",
+      code: "HQ",
       isHeadOffice: true,
-      isActive:     true,
+      isActive: true,
       address: {
         countryCode: input.countryCode,
       },
       workPolicy: {
-        timezone:           input.timezone,
-        weeklyOffDays:      ["Sunday"],
+        timezone: input.timezone,
+        weeklyOffDays: ["Sunday"],
         workingHoursPerDay: 8,
       },
     });
@@ -177,17 +205,17 @@ export class AuthService {
 
     // 7. Create super admin user
     const superAdmin = await new UserModel({
-      tenantId:        tenantObjectId,
-      email:           input.email.toLowerCase(),
+      tenantId: tenantObjectId,
+      email: input.email.toLowerCase(),
       passwordHash,
-      firstName:       input.firstName,
-      lastName:        input.lastName,
-      phone:           input.phone,
-      role:            "ORG_ADMIN",
-      isOrgAdmin:    true,
-      isActive:        true,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      phone: input.phone,
+      role: "ORG_ADMIN",
+      isOrgAdmin: true,
+      isActive: true,
       isEmailVerified: false,
-      branchIds:       [headOffice._id],
+      branchIds: [headOffice._id],
       // permissions:     [],
     }).save();
 
@@ -226,17 +254,23 @@ export class AuthService {
     return {
       message: "Registration successful! Please check your email to verify your account before logging in.",
       organization: {
-        id:           organization._id,
-        companyName:  organization.companyName,
-        slug:         organization.slug,
+        id:                  organization._id,
+        companyName:         organization.companyName,
+        slug:                organization.slug,
+        workspaceSlug:       organization.workspaceSlug,
+        workspaceUrl:        `https://${organization.workspaceSlug}.yourhrms.com`,
+        onboardingCompleted: organization.onboardingCompleted,
       },
     };
   }
 
   // Login
-  async login(input: LoginInput) {
+  async login(
+    input: LoginInput,
+    meta?: { ip?: string; device?: string; rememberDevice?: boolean }
+  ) {
 
-    // 1. Find user by email
+    // 1. Find user by email — never reveal whether the email exists
     const user = await this.userRepo.findByEmail(input.email);
     if (!user) {
       throw new AppError("Invalid email or password", 401);
@@ -258,20 +292,53 @@ export class AuthService {
       );
     }
 
-    // 4. Compare password
+    // 4. Check DB-level lockout (complements Redis rate limiter on route layer)
+    const lockout = await this.userRepo.isLockedOut(user._id.toString());
+    if (lockout.locked) {
+      const mins = Math.ceil(lockout.remainingSecs / 60);
+      throw new AppError(
+        `Too many failed login attempts. Account locked for ${mins} minute(s). Try again later or reset your password.`,
+        429,
+        undefined,
+        [{ remainingSecs: lockout.remainingSecs, lockoutActive: true }]
+      );
+    }
+
+    // 5. Compare password
     const isPasswordValid = await bcrypt.compare(
       input.password,
       user.passwordHash
     );
     if (!isPasswordValid) {
-      throw new AppError("Invalid email or password", 401);
+      // Increment attempt counter — may trigger a 15-min lockout at 5 failures
+      const attempts  = await this.userRepo.incrementLoginAttempts(user._id.toString());
+      const MAX       = 5;
+      const remaining = Math.max(MAX - attempts, 0);
+
+      if (remaining === 0) {
+        throw new AppError(
+          "Too many failed attempts. Account locked for 15 minutes.",
+          429,
+          undefined,
+          [{ lockoutActive: true, remainingSecs: 900 }]
+        );
+      }
+
+      throw new AppError(
+        `Invalid email or password. ${remaining} attempt(s) remaining before lockout.`,
+        401,
+        undefined,
+        [{ attemptsRemaining: remaining }]
+      );
     }
 
-    // 5. Build JWT payload — role slug only, no permissions array.
-    // Permission checks are resolved fresh per-request in rbac.middleware.ts
-    // by reading the roles collection directly. This keeps the token small
-    // and means role/permission edits take effect immediately instead of
-    // waiting for the token to expire.
+    // 6. Check if password reset is required (HR-invited employees)
+    //    Frontend redirects to /change-password when this is true
+    const requiresPasswordReset = user.requiresPasswordReset ?? false;
+
+    // 7. Build JWT payload — role slug only, no permissions array.
+    //    Permissions are resolved fresh per-request in rbac.middleware.ts,
+    //    so role changes take effect immediately without token re-issuance.
     const jwtPayload = {
       tenantId:  user.tenantId.toString(),
       userId:    user._id.toString(),
@@ -279,41 +346,69 @@ export class AuthService {
       branchIds: user.branchIds.map((b: any) => b.toString()),
     };
 
-    // 6. Sign tokens
+    // 8. Sign tokens
     const accessToken  = signAccessToken(jwtPayload);
     const refreshToken = signRefreshToken(
       user._id.toString(),
       user.tenantId.toString()
     );
 
-    // 7. Fetch organization and head office branch
-    const org = await this.orgRepo.findById(user.tenantId.toString());
-    const headOffice = await this.branchRepo.findHeadOffice(user.tenantId.toString());
+    // 9. Handle remember device — stores a 30-day hashed token
+    let rememberDeviceToken: string | undefined;
+    if (meta?.rememberDevice) {
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const hash     = crypto.createHash("sha256").update(rawToken).digest("hex");
+      await this.userRepo.addRememberDeviceToken(
+        user._id.toString(),
+        hash,
+        meta.device ?? "unknown"
+      );
+      rememberDeviceToken = rawToken; // send to frontend as httpOnly cookie
+    }
 
-    // 8. Update last login
-    await this.userRepo.updateLastLogin(user._id.toString());
+    // 10. Fetch org and head office (parallel)
+    const [org, headOffice] = await Promise.all([
+      this.orgRepo.findById(user.tenantId.toString()),
+      this.branchRepo.findHeadOffice(user.tenantId.toString()),
+    ]);
 
-    // 9. Return response
+    // 11. Update last login with IP + device info (resets attempt counter)
+    await this.userRepo.updateLastLogin(
+      user._id.toString(),
+      meta?.ip,
+      meta?.device
+    );
+
+    // 12. Return response
     return {
       accessToken,
-      // refreshToken,
+      refreshToken,
+      requiresPasswordReset,
+      // onboardingCompleted — frontend checks to redirect to wizard after first login
+      onboardingCompleted: org?.onboardingCompleted ?? true,
+      rememberDeviceToken, // undefined unless requested; set as httpOnly cookie on client
       user: {
-        id:           user._id,
-        email:        user.email,
-        firstName:    user.firstName,
-        lastName:     user.lastName,
-        role:         user.role,
-        isOrgAdmin: user.isOrgAdmin,
-        branchIds:    user.branchIds,
-        tenantId:     user.tenantId,
-        employeeId:   user.employeeId,
+        id:               user._id,
+        email:            user.email,
+        firstName:        user.firstName,
+        lastName:         user.lastName,
+        role:             user.role,
+        isOrgAdmin:       user.isOrgAdmin,
+        branchIds:        user.branchIds,
+        tenantId:         user.tenantId,
+        employeeId:       user.employeeId,
+        lastLoginAt:      user.lastLoginAt,    // previous session — show on dashboard
+        lastLoginIp:      user.lastLoginIp,    // previous session IP
+        lastLoginDevice:  user.lastLoginDevice,
       },
       organization: {
-        id:           org!._id,
-        companyName:  org!.companyName,
-        slug:         org!.slug,
-        subscription: org!.subscription,
-        modules:      org!.modules,
+        id:            org!._id,
+        companyName:   org!.companyName,
+        slug:          org!.slug,
+        workspaceSlug: org!.workspaceSlug,
+        subscription:  org!.subscription,
+        modules:       org!.modules,
+        branding:      org!.branding,          // logo + primaryColor for workspace theming
       },
       branch: headOffice ? {
         id:   headOffice._id,
@@ -334,9 +429,9 @@ export class AuthService {
 
       // 2. Find user
       const user = await UserModel.findOne({
-        _id:       new mongoose.Types.ObjectId(decoded.userId),
-        tenantId:  new mongoose.Types.ObjectId(decoded.tenantId),
-        isActive:  true,
+        _id: new mongoose.Types.ObjectId(decoded.userId),
+        tenantId: new mongoose.Types.ObjectId(decoded.tenantId),
+        isActive: true,
         isDeleted: false,
       });
 
@@ -346,21 +441,21 @@ export class AuthService {
 
       // 3. Build JWT payload — same minimal shape as login()
       const jwtPayload = {
-        tenantId:  user.tenantId.toString(),
-        userId:    user._id.toString(),
-        role:      user.role,
+        tenantId: user.tenantId.toString(),
+        userId: user._id.toString(),
+        role: user.role,
         branchIds: user.branchIds.map((b: any) => b.toString()),
       };
 
       // 4. Issue new tokens
-      const newAccessToken  = signAccessToken(jwtPayload);
+      const newAccessToken = signAccessToken(jwtPayload);
       const newRefreshToken = signRefreshToken(
         user._id.toString(),
         user.tenantId.toString()
       );
 
       return {
-        accessToken:  newAccessToken,
+        accessToken: newAccessToken,
         refreshToken: newRefreshToken,
       };
 
@@ -374,7 +469,7 @@ export class AuthService {
   async getMe(userId: string) {
     const user = await UserModel
       .findOne({
-        _id:       new mongoose.Types.ObjectId(userId),
+        _id: new mongoose.Types.ObjectId(userId),
         isDeleted: false,
       })
       .select("-passwordHash");
@@ -624,6 +719,64 @@ export class AuthService {
         employeeId: user.employeeId,
       },
       message: "Account activated successfully!",
+    };
+  }
+
+  // Complete onboarding wizard (Step 2 — called after email verification)
+  async completeOnboarding(tenantId: string, input: OnboardingWizardInput) {
+    const org = await this.orgRepo.findById(tenantId);
+    if (!org) throw new AppError("Organization not found", 404);
+
+    // Update locale, industry, employee count from wizard
+    await this.orgRepo.updateById(tenantId, {
+      industry:           input.industry,
+      employeeCountRange: input.employeeCountRange,
+      locale: {
+        ...org.locale,
+        countryCode:     input.countryCode,
+        timezone:        input.timezone,
+        currencyCode:    input.baseCurrency || getCurrencyFromCountry(input.countryCode),
+        fiscalYearStart: input.fiscalYearStart,
+      },
+    });
+
+    // Mark onboarding done — frontend uses this to skip wizard on next login
+    await this.orgRepo.markOnboardingComplete(tenantId);
+
+    return {
+      message:             "Workspace configured successfully.",
+      onboardingCompleted: true,
+    };
+  }
+
+  // Check email — SSO detection + workspace branding
+  // GET /api/v1/auth/check-email — called when user finishes typing email on login page.
+  // Returns SSO config so frontend can redirect before showing the password field.
+  // Never reveals whether the email/account exists (same shape for both cases).
+  async checkEmail(email: string) {
+    const user = await this.userRepo.findByEmail(email);
+
+    // Unknown email — return empty shell; do NOT reveal account existence
+    if (!user) {
+      return {
+        exists:      false,
+        ssoEnabled:  false,
+        provider:    null,
+        companyName: null,
+        logoUrl:     null,
+      };
+    }
+
+    const org = await this.orgRepo.findById(user.tenantId.toString());
+
+    // SSO config will be expanded in Phase 2 when SAML / OAuth is built.
+    // For now ssoEnabled is always false — structure is ready for org.ssoConfig.
+    return {
+      exists:      true,
+      ssoEnabled:  false,          // org?.ssoConfig?.enabled ?? false
+      provider:    null,           // org?.ssoConfig?.provider ?? null
+      companyName: org?.companyName ?? null,
+      logoUrl:     org?.branding?.logoUrl ?? null,
     };
   }
 }

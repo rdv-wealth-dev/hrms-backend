@@ -6,32 +6,41 @@ import {
   safeStringSchema,
   countryCodeSchema,
   withPhoneValidation,
+  workspaceSlugSchema,
+  currencyCodeSchema,
 } from "../../core/validators/common.validator";
 
 // Register DTO
 export const RegisterDto = withPhoneValidation(z.object({
-  // Company details
+  // Step 1 fields (public signup page)
   companyName: safeStringSchema(2, 200),
-  industry:    safeStringSchema(2, 100).optional(),
-
-  // Admin user details
+  workspaceSlug: workspaceSlugSchema,          // add this import from common.validator
   firstName: safeStringSchema(2, 100),
-  lastName:  safeStringSchema(2, 100),
-  email:     emailSchema,
-  password:  passwordSchema,
-  phone:     phoneSchema.optional(),
+  lastName: safeStringSchema(2, 100),
+  email: emailSchema,                  // now blocks personal domains
+  password: passwordSchema,
 
-  // Locale — detected from browser and sent by frontend
+  //Step 2A fields (org config wizard)
   countryCode: countryCodeSchema,
-  timezone:    z.string().min(1, "Timezone is required"),
+  timezone: z.string().min(1, "Timezone is required"),
+  employeeCountRange: z.enum(
+    ["1-10", "11-50", "51-200", "201-500", "500+"],
+    { message: "Please select a valid company size" }
+  ),
+  industry: safeStringSchema(2, 100).optional(),
+
+  // ── Step 2B fields (optional at registration, required in wizard)
+  phone: phoneSchema.optional(),
+  adminJobTitle: z.string().optional(),
 }));
 
 export type RegisterInput = z.infer<typeof RegisterDto>;
 
 // Login DTO
 export const LoginDto = z.object({
-  email:    emailSchema,
-  password: z.string().min(1, "Password is required"),
+  email:          emailSchema,
+  password:       z.string().min(1, "Password is required"),
+  rememberDevice: z.boolean().optional().default(false),
 });
 
 export type LoginInput = z.infer<typeof LoginDto>;
@@ -46,12 +55,12 @@ export type RefreshTokenInput = z.infer<typeof RefreshTokenDto>;
 //Change password DTO
 export const ChangePasswordDto = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
-  newPassword:     passwordSchema,
+  newPassword: passwordSchema,
 }).refine(
   (data) => data.currentPassword !== data.newPassword,
   {
     message: "New password must be different from current password",
-    path:    ["newPassword"],
+    path: ["newPassword"],
   }
 );
 
@@ -73,14 +82,37 @@ export const VerifyEmailDto = z.object({
 });
 export type VerifyEmailInput = z.infer<typeof VerifyEmailDto>;
 
+// Workspace slug availability check — called real-time as user types
+export const CheckSlugDto = z.object({
+  slug: workspaceSlugSchema,
+});
+export type CheckSlugInput = z.infer<typeof CheckSlugDto>;
+
+// Step 2 onboarding wizard — submitted AFTER account is created
+export const OnboardingWizardDto = z.object({
+  countryCode: countryCodeSchema,
+  timezone: z.string().min(1, "Timezone is required"),
+  employeeCountRange: z.enum(["1-10", "11-50", "51-200", "201-500", "500+"]),
+  industry: safeStringSchema(2, 100).optional(),
+  baseCurrency: currencyCodeSchema.optional(),  // auto-filled from country, but overridable
+  fiscalYearStart: z.enum([
+    "January", "February", "March", "April",
+    "May", "June", "July", "August",
+    "September", "October", "November", "December"
+  ]).default("April"),
+  adminJobTitle: z.string().optional(),
+  phone: phoneSchema.optional(),
+});
+export type OnboardingWizardInput = z.infer<typeof OnboardingWizardDto>;
+
 // Activate Account
 
 export const ActivateAccountDto = z.object({
-  token : z.string().min(1, "Activation token is required"),
-  password : passwordSchema,
+  token: z.string().min(1, "Activation token is required"),
+  password: passwordSchema,
 }).refine(
   (data) => data.password.length >= 8,
-  {message : "Password must be at least 8 characters long", path : ["password"]}
+  { message: "Password must be at least 8 characters long", path: ["password"] }
 );
 
 export type ActivateAccountInput = z.infer<typeof ActivateAccountDto>;
@@ -89,3 +121,9 @@ export const ResendVerificationEmailDto = z.object({
   email: emailSchema,
 });
 export type ResendVerificationEmailInput = z.infer<typeof ResendVerificationEmailDto>;
+
+// Check email — SSO detection + workspace branding (called as user finishes typing email)
+export const CheckEmailDto = z.object({
+  email: z.string().email("Invalid email").toLowerCase().trim(),
+});
+export type CheckEmailInput = z.infer<typeof CheckEmailDto>;

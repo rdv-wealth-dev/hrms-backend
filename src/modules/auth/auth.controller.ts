@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { AuthService } from "./auth.service";
+import { OrganizationRepository } from "../organization/organization.repository";
 import { buildSuccessResponse } from "../../core/database/base.schema";
 import { AppError } from "../../core/errors/app.error";
 
@@ -46,7 +47,11 @@ export class AuthController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const result = await authService.login(req.body);
+      const ip           = req.ip ?? (req.headers["x-forwarded-for"] as string) ?? "unknown";
+      const device       = (req.headers["user-agent"] as string) ?? "unknown";
+      const rememberDevice = req.body.rememberDevice === true;
+
+      const result = await authService.login(req.body, { ip, device, rememberDevice });
       res.status(200).json(
         buildSuccessResponse(result, "Login successful")
       );
@@ -66,7 +71,6 @@ export class AuthController {
       res.status(200).json(
         buildSuccessResponse(result, "Email verification processed")
       );
-      console.log("sadsfasdasdas")
     } catch (error) {
       next(error);
     }
@@ -168,6 +172,74 @@ export class AuthController {
       const result = await authService.resendVerificationEmail(req.body);
       res.status(200).json(
         buildSuccessResponse(result, "Verification email resent successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // GET /api/v1/auth/check-slug?slug=acme
+  async checkSlug(
+    req:  Request,
+    res:  Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { slug } = req.query as { slug: string };
+      const orgRepo = new OrganizationRepository();
+      const taken = await orgRepo.workspaceSlugExists(slug);
+      if (!taken) {
+        res.status(200).json(
+          buildSuccessResponse({ available: true, slug }, "Slug is available")
+        );
+        return;
+      }
+      const suggestions = await orgRepo.suggestSlugs(slug);
+      res.status(200).json(
+        buildSuccessResponse(
+          { available: false, slug, suggestions },
+          "Slug is taken"
+        )
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // POST /api/v1/auth/complete-onboarding
+  async completeOnboarding(
+    req:  Request,
+    res:  Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.context?.tenantId) {
+        next(new AppError("Unauthorized", 401));
+        return;
+      }
+      const result = await authService.completeOnboarding(
+        req.context.tenantId,
+        req.body
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, "Workspace setup complete")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // POST /api/v1/auth/check-email — SSO detection + workspace branding
+  // Called when user finishes typing email on login page (before password field appears)
+  async checkEmail(
+    req:  Request,
+    res:  Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await authService.checkEmail(req.body.email);
+      res.status(200).json(
+        buildSuccessResponse(result, "Email check complete")
       );
     } catch (error) {
       next(error);

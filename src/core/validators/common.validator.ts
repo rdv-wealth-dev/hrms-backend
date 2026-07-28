@@ -20,7 +20,7 @@ export const paginationSchema = z.object({
     .transform((val) => (val ? parseInt(val, 10) : 10))
     .pipe(
       z.number()
-        .min(1,   "Page size must be at least 1")
+        .min(1, "Page size must be at least 1")
         .max(100, "Page size cannot exceed 100")   // LPDOS guard
     ),
 });
@@ -50,8 +50,29 @@ export function withPhoneValidation<T extends z.ZodObject<any>>(schema: T) {
   );
 }
 
+const BLOCKED_EMAIL_DOMAINS = new Set([
+  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
+  "live.com", "icloud.com", "me.com", "aol.com",
+  "protonmail.com", "zoho.com", "ymail.com",
+  "rediffmail.com", "inbox.com", "mail.com",
+]);
+
 // Email 
 export const emailSchema = z
+  .string()
+  .email("Invalid email address")
+  .toLowerCase()
+  .trim()
+  .refine(
+    (email) => {
+      const domain = email.split("@")[1];
+      return !BLOCKED_EMAIL_DOMAINS.has(domain);
+    },
+    "Please use your work email address. Personal email providers are not allowed."
+  );
+
+// Unrestricted email — for internal use (employee invite, etc.)
+export const anyEmailSchema = z
   .string()
   .email("Invalid email address")
   .toLowerCase()
@@ -62,9 +83,9 @@ export const emailSchema = z
 export const passwordSchema = z
   .string()
   .min(8, "Password must be at least 8 characters")
-  .regex(/[A-Z]/,        "Password must contain at least one uppercase letter")
-  .regex(/[a-z]/,        "Password must contain at least one lowercase letter")
-  .regex(/[0-9]/,        "Password must contain at least one number")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
   .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
 
 // Date string
@@ -141,13 +162,39 @@ export const currencyCodeSchema = z
 export const addressSchema = z.object({
   addressLine1: safeStringSchema(1, 200).optional(),
   addressLine2: safeStringSchema(1, 200).optional(),
-  landmark:     safeStringSchema(1, 100).optional(),
-  city:         safeStringSchema(1, 100).optional(),
-  state:        safeStringSchema(1, 100).optional(),
-  countryCode:  countryCodeSchema.optional(),
-  zip:          pinCodeSchema.optional(),
+  landmark: safeStringSchema(1, 100).optional(),
+  city: safeStringSchema(1, 100).optional(),
+  state: safeStringSchema(1, 100).optional(),
+  countryCode: countryCodeSchema.optional(),
+  zip: pinCodeSchema.optional(),
 });
+
+// Workspace slug — subdomain safe
+export const workspaceSlugSchema = z
+  .string()
+  .min(3, "Workspace URL must be at least 3 characters")
+  .max(63, "Workspace URL cannot exceed 63 characters")
+  .toLowerCase()
+  .trim()
+  .regex(
+    /^[a-z0-9][a-z0-9-]*[a-z0-9]$/,
+    "Workspace URL can only contain lowercase letters, numbers, and hyphens"
+  )
+  .refine(
+    (slug) => !RESERVED_SLUGS.has(slug),
+    "This workspace name is reserved. Please choose another."
+  );
+
+// Reserved slugs — no company can claim these
+const RESERVED_SLUGS = new Set([
+  "admin", "api", "app", "www", "mail", "smtp", "ftp",
+  "support", "help", "billing", "status", "staging",
+  "dev", "test", "demo", "sandbox", "localhost",
+  "login", "signup", "register", "auth", "oauth",
+  "static", "assets", "cdn", "media", "uploads",
+  "health", "ping", "metrics", "monitor",
+]);
 
 // Type exports — use in services + repositories
 export type PaginationQuery = z.infer<typeof paginationSchema>;
-export type AddressInput    = z.infer<typeof addressSchema>;
+export type AddressInput = z.infer<typeof addressSchema>;
