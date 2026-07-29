@@ -61,7 +61,7 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/leave/holidays/seed-default",
+              "raw": "{{baseUrl}}/leave/holidays/seed-default?countryCode=US",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -69,6 +69,13 @@
                 "leave",
                 "holidays",
                 "seed-default"
+              ],
+              "query": [
+                {
+                  "key": "countryCode",
+                  "value": "US",
+                  "description": "Optional country code to seed (e.g. US or IN)"
+                }
               ]
             }
           },

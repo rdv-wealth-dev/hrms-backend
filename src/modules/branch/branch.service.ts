@@ -9,12 +9,12 @@ import { seedStatutoryNationalHolidays } from "../leave/holidays/holiday.seed";
 
 export class BranchService {
   private branchRepo = new BranchRepository();
-  private orgRepo    = new OrganizationRepository();
+  private orgRepo = new OrganizationRepository();
 
   //Create branch
   async createBranch(
     context: RequestContext,
-    input:   CreateBranchInput
+    input: CreateBranchInput
   ) {
     // Check subscription branch limit
     const org = await this.orgRepo.findById(context.tenantId);
@@ -56,19 +56,19 @@ export class BranchService {
     }
 
     const branch = await this.branchRepo.create({
-      tenantId:      new mongoose.Types.ObjectId(context.tenantId) as any,
-      name:          input.name,
-      code:          input.code,
-      isHeadOffice:  false,
-      isActive:      true,
+      tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+      name: input.name,
+      code: input.code,
+      isHeadOffice: false,
+      isActive: true,
       parentBranchId: input.parentBranchId
         ? new mongoose.Types.ObjectId(input.parentBranchId) as any
         : undefined,
-      address:    input.address,
-      contact:    input.contact,
-      geo:        resolvedGeo,
+      address: input.address,
+      contact: input.contact,
+      geo: resolvedGeo,
       workPolicy: input.workPolicy,
-      statutory:  input.statutory,
+      statutory: input.statutory,
     });
 
     // Auto-seed baseline national statutory holidays for this country (if provided)
@@ -92,7 +92,7 @@ export class BranchService {
   //Get branch by ID
   async getBranchById(
     context: RequestContext,
-    id:      string
+    id: string
   ) {
     const branch = await this.branchRepo.findById(id);
 
@@ -124,8 +124,8 @@ export class BranchService {
   //Update branch
   async updateBranch(
     context: RequestContext,
-    id:      string,
-    input:   UpdateBranchInput
+    id: string,
+    input: UpdateBranchInput
   ) {
     const branch = await this.branchRepo.findById(id);
 
@@ -153,12 +153,12 @@ export class BranchService {
 
     const updateData: Record<string, unknown> = {};
 
-    if (input.name)       updateData.name       = input.name;
-    if (input.code)       updateData.code       = input.code;
-    if (input.address)    updateData.address    = { ...branch.address, ...input.address };
-    if (input.contact)    updateData.contact    = { ...branch.contact, ...input.contact };
+    if (input.name) updateData.name = input.name;
+    if (input.code) updateData.code = input.code;
+    if (input.address) updateData.address = { ...branch.address, ...input.address };
+    if (input.contact) updateData.contact = { ...branch.contact, ...input.contact };
     if (input.workPolicy) updateData.workPolicy = { ...branch.workPolicy, ...input.workPolicy };
-    if (input.statutory)  updateData.statutory  = { ...branch.statutory,  ...input.statutory };
+    if (input.statutory) updateData.statutory = { ...branch.statutory, ...input.statutory };
 
     // Merge geo input first, then auto-geocode if address changed but no manual coords given
     let mergedGeo = { ...branch.geo, ...input.geo };
@@ -193,7 +193,7 @@ export class BranchService {
   //Delete branch
   async deleteBranch(
     context: RequestContext,
-    id:      string
+    id: string
   ) {
     const branch = await this.branchRepo.findById(id);
 

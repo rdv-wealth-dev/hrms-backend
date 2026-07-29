@@ -188,14 +188,21 @@ curl -X DELETE http://localhost:3000/api/v1/leave/holidays/60d5ec49f1b2c52e40cd2
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
----
-
 ## 🌱 7. Seed Default Statutory Holidays (`POST /leave/holidays/seed-default`)
 
 Allows existing tenants registered before this update to manually seed standard statutory national holidays (e.g. 15 August, Jan 26) matching their country. Safe to run multiple times (idempotent).
 
+*   `countryCode` (optional, string, e.g. `US` or `IN`. Defaults to the organization's primary country code if omitted)
+
+### Seed Organization Primary Country (e.g. India)
 ```bash
 curl -X POST http://localhost:3000/api/v1/leave/holidays/seed-default \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Seed a Secondary Country (e.g. USA)
+```bash
+curl -X POST "http://localhost:3000/api/v1/leave/holidays/seed-default?countryCode=US" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 

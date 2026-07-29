@@ -94,13 +94,17 @@ export class HolidayController {
   // Seeds standard statutory national holidays for existing tenants
   async seedDefaults(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const org = await OrganizationModel.findById(req.context.tenantId).select("locale");
-      const countryCode = (org?.locale as any)?.countryCode ?? "IN";
+      let countryCode = req.query.countryCode as string;
+
+      if (!countryCode) {
+        const org = await OrganizationModel.findById(req.context.tenantId).select("locale");
+        countryCode = (org?.locale as any)?.countryCode ?? "IN";
+      }
 
       await seedStatutoryNationalHolidays(req.context.tenantId, countryCode, req.context.userId);
       clearLookupCache();
 
-      res.status(200).json(buildSuccessResponse(null, "Statutory national holidays seeded successfully"));
+      res.status(200).json(buildSuccessResponse(null, `Statutory national holidays for ${countryCode.toUpperCase()} seeded successfully`));
     } catch (error) { next(error); }
   }
 }
