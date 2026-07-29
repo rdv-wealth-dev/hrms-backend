@@ -139,7 +139,7 @@ export class LeaveRequestService {
     }
 
     const populated = await LeaveRequestModel.findById(request._id)
-      .populate("employeeId", "employeeCode firstName lastName")
+      .populate("employeeId", "employeeCode firstName lastName avatarUrl")
       .populate("leaveTypeId", "name code isPaid");
 
     return populated;
