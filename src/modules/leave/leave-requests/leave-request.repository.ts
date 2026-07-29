@@ -18,7 +18,7 @@ export class LeaveRequestRepository {
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
     })
-      .populate("employeeId", "employeeCode firstName lastName avatarUrl")
+      .populate("employeeId", "employeeCode firstName lastName avatarUrl profilePicture")
       .populate("leaveTypeId", "name code isPaid");
   }
 
@@ -42,7 +42,7 @@ export class LeaveRequestRepository {
         .sort({ appliedAt: -1 })
         .skip(skip)
         .limit(safe)
-        .populate("employeeId", "employeeCode firstName lastName avatarUrl")
+        .populate("employeeId", "employeeCode firstName lastName avatarUrl profilePicture")
         .populate("leaveTypeId", "name code isPaid")
         .lean(),
       LeaveRequestModel.countDocuments(query),
@@ -84,7 +84,7 @@ export class LeaveRequestRepository {
         .sort({ appliedAt: 1 })
         .skip(skip)
         .limit(safe)
-        .populate("employeeId", "employeeCode firstName lastName avatarUrl")
+        .populate("employeeId", "employeeCode firstName lastName avatarUrl profilePicture")
         .populate("leaveTypeId", "name code")
         .lean(),
       LeaveRequestModel.countDocuments(query),
@@ -119,7 +119,7 @@ export class LeaveRequestRepository {
         .sort({ appliedAt: -1 })
         .skip(skip)
         .limit(safe)
-        .populate("employeeId", "employeeCode firstName lastName avatarUrl")
+        .populate("employeeId", "employeeCode firstName lastName avatarUrl profilePicture")
         .populate("leaveTypeId", "name code")
         .lean(),
       LeaveRequestModel.countDocuments(query),
