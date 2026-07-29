@@ -1,13 +1,17 @@
 {
   "info": {
     "_postman_id": "76c243a0-711e-450f-aa49-cd871e98d9e2",
-    "name": "HRMS Holiday Calendar API",
-    "description": "Postman collection for testing the Multi-Tenant, Multi-Country, Multi-Branch Holiday Calendar system.",
+    "name": "HRMS Holiday Calendar API (Complete Sequence)",
+    "description": "Postman collection structured with the exact folder sequence from 00 to 12 matching the HRMS API architecture.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Auth",
+      "name": "00 - Health",
+      "item": []
+    },
+    {
+      "name": "01 - Auth",
       "item": [
         {
           "name": "Login",
@@ -53,7 +57,106 @@
       ]
     },
     {
-      "name": "Holidays Management",
+      "name": "02 - Auth (Error Cases)",
+      "item": []
+    },
+    {
+      "name": "03 - Organization",
+      "item": []
+    },
+    {
+      "name": "04 - Branches",
+      "item": [
+        {
+          "name": "Get Branch Monthly Calendar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/branches/{{branchId}}/calendar?year=2026&month=11",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "branches",
+                "{{branchId}}",
+                "calendar"
+              ],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2026"
+                },
+                {
+                  "key": "month",
+                  "value": "11"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Personal Schedule",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/branches/me/schedule?year=2026&month=11",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "branches",
+                "me",
+                "schedule"
+              ],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2026"
+                },
+                {
+                  "key": "month",
+                  "value": "11"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 - Auth (Password Reset)",
+      "item": []
+    },
+    {
+      "name": "06 - Departments",
+      "item": []
+    },
+    {
+      "name": "07 - Designations",
+      "item": []
+    },
+    {
+      "name": "08 - Employee",
+      "item": []
+    },
+    {
+      "name": "09 - Employee onboarding",
+      "item": []
+    },
+    {
+      "name": "10 - Attendance",
+      "item": []
+    },
+    {
+      "name": "11 - HR Operations",
+      "item": []
+    },
+    {
+      "name": "12 - Leave",
       "item": [
         {
           "name": "Seed Default Holidays",
@@ -260,69 +363,6 @@
                 "leave",
                 "holidays",
                 "{{holidayId}}"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Calendars",
-      "item": [
-        {
-          "name": "Get Branch Monthly Calendar",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/branches/{{branchId}}/calendar?year=2026&month=11",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "branches",
-                "{{branchId}}",
-                "calendar"
-              ],
-              "query": [
-                {
-                  "key": "year",
-                  "value": "2026"
-                },
-                {
-                  "key": "month",
-                  "value": "11"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Get Personal Schedule",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/branches/me/schedule?year=2026&month=11",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "branches",
-                "me",
-                "schedule"
-              ],
-              "query": [
-                {
-                  "key": "year",
-                  "value": "2026"
-                },
-                {
-                  "key": "month",
-                  "value": "11"
-                }
               ]
             }
           },
