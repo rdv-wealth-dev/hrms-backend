@@ -4,6 +4,9 @@ import { HolidayService } from "../holidays/holiday.service";
 import { CompOffService } from "../comp-off/comp-off.service";
 import { buildSuccessResponse } from "../../../core/database/base.schema";
 import { AppError } from "../../../core/errors/app.error";
+import { OrganizationModel } from "../../organization/organization.model";
+import { seedStatutoryNationalHolidays } from "./holiday.seed";
+import { clearLookupCache } from "../../../service/cache.service";
 
 const holidayService = new HolidayService();
 const compOffService  = new CompOffService();
@@ -84,6 +87,20 @@ export class HolidayController {
     try {
       const result = await compOffService.getMyCompOffs(req.context);
       res.status(200).json(buildSuccessResponse(result, "Comp-off balance fetched"));
+    } catch (error) { next(error); }
+  }
+
+  // POST /api/v1/leave/holidays/seed-default
+  // Seeds standard statutory national holidays for existing tenants
+  async seedDefaults(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const org = await OrganizationModel.findById(req.context.tenantId).select("locale");
+      const countryCode = (org?.locale as any)?.countryCode ?? "IN";
+
+      await seedStatutoryNationalHolidays(req.context.tenantId, countryCode, req.context.userId);
+      clearLookupCache();
+
+      res.status(200).json(buildSuccessResponse(null, "Statutory national holidays seeded successfully"));
     } catch (error) { next(error); }
   }
 }

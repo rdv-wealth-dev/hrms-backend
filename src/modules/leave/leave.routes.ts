@@ -108,6 +108,12 @@ router.delete(
 
 
 //Holidays
+router.post(
+  "/holidays/seed-default",
+  checkPermission("leave.create"),
+  holidayCtrl.seedDefaults.bind(holidayCtrl)
+);
+
 router.get(
   "/holidays",
   checkPermission("leave.read"),
