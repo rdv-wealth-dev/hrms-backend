@@ -5,6 +5,7 @@ import { AppError } from "../../core/errors/app.error";
 import { RequestContext } from "../../core/interfaces/request-context.interface";
 import { OrganizationRepository } from "../organization/organization.repository";
 import { geocodingService } from "../../service/geocoding.service";
+import { seedStatutoryNationalHolidays } from "../leave/holidays/holiday.seed";
 
 export class BranchService {
   private branchRepo = new BranchRepository();
@@ -69,6 +70,13 @@ export class BranchService {
       workPolicy: input.workPolicy,
       statutory:  input.statutory,
     });
+
+    // Auto-seed baseline national statutory holidays for this country (if provided)
+    if (input.address?.countryCode) {
+      seedStatutoryNationalHolidays(context.tenantId, input.address.countryCode, context.userId).catch((err) => {
+        console.error(`[BranchService] Auto-seeding failed for country "${input.address?.countryCode}":`, err.message);
+      });
+    }
 
     return branch;
   }
@@ -168,6 +176,17 @@ export class BranchService {
     if (input.geo || input.address) updateData.geo = mergedGeo;
 
     const updated = await this.branchRepo.updateById(id, updateData);
+
+    // Auto-seed if the country code was newly added or modified on update
+    if (
+      input.address?.countryCode &&
+      input.address.countryCode.toUpperCase() !== branch.address?.countryCode?.toUpperCase()
+    ) {
+      seedStatutoryNationalHolidays(context.tenantId, input.address.countryCode, context.userId).catch((err) => {
+        console.error(`[BranchService] Auto-seeding failed on update for country "${input.address?.countryCode}":`, err.message);
+      });
+    }
+
     return updated;
   }
 
