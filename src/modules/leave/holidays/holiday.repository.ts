@@ -9,17 +9,34 @@ export class HolidayRepository extends BaseRepository<HolidayDocument> {
         super(HolidayModel);
     }
 
-    // Fetches all holidays for a tenant for a given year.
-    // Used for the HR admin list view — shows all scopes.
+    // Fetches holidays for a tenant for a given year.
+    // HQ / ORG_ADMIN (branchIds is empty = no restriction): all scopes returned.
+    // Branch HR / admin (branchIds set): sees shared COUNTRY/STATE/GLOBAL holidays
+    //   PLUS only BRANCH-scope holidays that belong to one of their branches.
+    //   BRANCH-scope holidays for other branches are hidden.
     async findForYear(context: RequestContext, year: number) {
         const from = new Date(year, 0, 1);
         const to   = new Date(year, 11, 31, 23, 59, 59);
 
-        return HolidayModel.find({
+        const baseFilter: Record<string, unknown> = {
             tenantId:  new mongoose.Types.ObjectId(context.tenantId),
             date:      { $gte: from, $lte: to },
             isDeleted: false,
-        }).sort({ date: 1 });
+        };
+
+        // When branchIds is populated the user is scoped to specific branches.
+        // Return non-BRANCH holidays (shared across tenant) + only BRANCH holidays
+        // that belong to one of the caller's branches.
+        if (context.branchIds && context.branchIds.length > 0) {
+            const branchOIds = context.branchIds.map((id) => new mongoose.Types.ObjectId(id));
+            baseFilter.$or = [
+                { scope: { $in: [HolidayScope.GLOBAL, HolidayScope.COUNTRY, HolidayScope.STATE] } },
+                { scope: { $exists: false } }, // legacy docs without scope field
+                { scope: HolidayScope.BRANCH, branchId: { $in: branchOIds } },
+            ] as any;
+        }
+
+        return HolidayModel.find(baseFilter).sort({ date: 1 });
     }
 
     // Fetches holidays across all 4 scope levels for the resolution engine.

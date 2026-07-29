@@ -91,22 +91,31 @@ export class HolidayController {
   }
 
   // POST /api/v1/leave/holidays/seed-default
-  // Seeds standard statutory national holidays for existing tenants
+  // Seeds standard statutory national holidays for the org's registered country.
+  // Country code is ALWAYS derived from the organization's registered locale —
+  // it cannot be passed manually to prevent seeding unrelated countries.
   async seedDefaults(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      let countryCode = req.query.countryCode as string;
-      const stateCode = req.query.stateCode as string;
+      // Always derive countryCode from org locale — never from query params
+      const org = await OrganizationModel.findById(req.context.tenantId).select("locale");
+      const countryCode = (org?.locale as any)?.countryCode;
 
       if (!countryCode) {
-        const org = await OrganizationModel.findById(req.context.tenantId).select("locale");
-        countryCode = (org?.locale as any)?.countryCode ?? "IN";
+        throw new AppError(
+          "Organization has no country code configured. Please set a country code in your Organization settings first.",
+          400
+        );
       }
+
+      // stateCode can still be provided to seed state-level holidays, but we
+      // no longer accept countryCode from the request.
+      const stateCode = req.query.stateCode as string | undefined;
 
       await seedStatutoryNationalHolidays(req.context.tenantId, countryCode, stateCode, req.context.userId);
       clearLookupCache();
 
-      const regionMsg = stateCode 
-        ? `${countryCode.toUpperCase()}-${stateCode.toUpperCase()}` 
+      const regionMsg = stateCode
+        ? `${countryCode.toUpperCase()}-${stateCode.toUpperCase()}`
         : countryCode.toUpperCase();
 
       res.status(200).json(buildSuccessResponse(null, `Statutory holidays for ${regionMsg} seeded successfully`));
