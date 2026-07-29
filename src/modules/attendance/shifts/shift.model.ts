@@ -13,6 +13,8 @@ export interface ShiftDocument extends BaseDocument {
   breakDurationMinutes: number;  // standard break allowance, informational
   isDefault:           boolean;  // auto-assigned shift for new employees
   isActive:            boolean;
+  absentThresholdMinutes:  number;  // minutes after shift start = ABSENT (default 255)
+  lateArrivalHalfDayMinutes: number; // minutes after shift start = HALF_DAY (default 90)
 }
 
 
@@ -68,6 +70,8 @@ const ShiftSchema = createBaseSchema<ShiftDocument>(
             type : Boolean,
             default : false,
         },
+        absentThresholdMinutes:    { type: Number, default: 255 },
+        lateArrivalHalfDayMinutes: { type: Number, default: 90  },
         isActive : {
             type : Boolean,
             default : true

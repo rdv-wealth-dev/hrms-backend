@@ -173,14 +173,16 @@ export function calculateAttendanceStatus(
   const shiftStart = new Date(firstCheckIn);
   shiftStart.setHours(shiftHour, shiftMin, 0, 0);
 
-  // 1. Arrival-based ABSENT check: Check-in after 2:15 PM (255 mins after 10:00 AM shift start)
-  const absentArrivalThreshold = new Date(shiftStart.getTime() + 255 * 60000);
+  // 1. Arrival-based ABSENT check
+  const absentThreshold   = (shift.absentThresholdMinutes   ?? 255) * 60000;
+  const absentArrivalThreshold  = new Date(shiftStart.getTime() + absentThreshold);
   if (firstCheckIn > absentArrivalThreshold) {
     return AttendanceStatus.ABSENT;
   }
 
-  // 2. Arrival-based HALF-DAY check: Check-in after 11:30 AM (90 mins after 10:00 AM shift start)
-  const halfDayArrivalThreshold = new Date(shiftStart.getTime() + 90 * 60000);
+  // 2. Arrival-based HALF-DAY check
+  const halfDayThreshold  = (shift.lateArrivalHalfDayMinutes ?? 90)  * 60000;
+  const halfDayArrivalThreshold = new Date(shiftStart.getTime() + halfDayThreshold);
   if (firstCheckIn > halfDayArrivalThreshold) {
     return AttendanceStatus.HALF_DAY;
   }
