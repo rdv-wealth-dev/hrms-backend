@@ -8,61 +8,74 @@ import { createBaseSchema, BaseDocument, } from "../../../core/database/base.sch
 // flagged as mandatory for payroll in the earlier security discussion).
 
 export enum PayrollRunStatus {
-  DRAFT      = "DRAFT",       // created, payslips not yet generated
+  DRAFT = "DRAFT",       // created, payslips not yet generated
   PROCESSING = "PROCESSING",  // payslips being generated
-  GENERATED  = "GENERATED",   // payslips ready, awaiting approval
-  APPROVED   = "APPROVED",    // approved, considered final/immutable
-  PAID       = "PAID",        // marked as disbursed
-  CANCELLED  = "CANCELLED",
+  GENERATED = "GENERATED",   // payslips ready, awaiting approval
+  APPROVED = "APPROVED",    // approved, considered final/immutable
+  PAID = "PAID",        // marked as disbursed
+  CANCELLED = "CANCELLED",
 }
 
 export interface PayrollRunDocument extends BaseDocument {
-  month:              number;   // 1-12
-  year:               number;
-  runLabel:           string;   // "June 2026" — denormalized for display
-  status:             PayrollRunStatus;
-  totalEmployees:     number;
-  totalGrossAmount:   number;
+  month: number;   // 1-12
+  year: number;
+  runLabel: string;   // "June 2026" — denormalized for display
+  status: PayrollRunStatus;
+  totalEmployees: number;
+  totalGrossAmount: number;
   totalDeductionsAmount: number;
-  totalNetAmount:     number;
-  generatedAt?:       Date;
-  approvedBy?:        mongoose.Types.ObjectId;
-  approvedAt?:        Date;
-  paidAt?:            Date;
-  notes?:             string;
+  totalNetAmount: number;
+  generatedAt?: Date;
+  approvedBy?: mongoose.Types.ObjectId;
+  approvedAt?: Date;
+  paidAt?: Date;
+  notes?: string;
+
+  // Pre-flight validation results
+  validatedAt?: Date;
+  validationErrors?: string[];
+
+  // Generation results
+  skippedEmployees?: string[];
+  erroredEmployees?: string[];
+
 }
 
 const PayrollRunSchema = createBaseSchema<PayrollRunDocument>(
   {
     month: {
-      type:     Number,
+      type: Number,
       required: true,
-      min:      1,
-      max:      12,
+      min: 1,
+      max: 12,
     },
     year: {
-      type:     Number,
+      type: Number,
       required: true,
     },
     runLabel: {
-      type:     String,
+      type: String,
       required: true,
-      trim:     true,
+      trim: true,
     },
     status: {
-      type:    String,
-      enum:    Object.values(PayrollRunStatus),
+      type: String,
+      enum: Object.values(PayrollRunStatus),
       default: PayrollRunStatus.DRAFT,
     },
-    totalEmployees:         { type: Number, default: 0 },
-    totalGrossAmount:       { type: Number, default: 0 },
-    totalDeductionsAmount:  { type: Number, default: 0 },
-    totalNetAmount:         { type: Number, default: 0 },
-    generatedAt:            { type: Date },
-    approvedBy:              { type: mongoose.Schema.Types.ObjectId },
-    approvedAt:              { type: Date },
-    paidAt:                  { type: Date },
-    notes:                   { type: String, trim: true },
+    totalEmployees: { type: Number, default: 0 },
+    totalGrossAmount: { type: Number, default: 0 },
+    totalDeductionsAmount: { type: Number, default: 0 },
+    totalNetAmount: { type: Number, default: 0 },
+    generatedAt: { type: Date },
+    approvedBy: { type: mongoose.Schema.Types.ObjectId },
+    approvedAt: { type: Date },
+    paidAt: { type: Date },
+    notes: { type: String, trim: true },
+    validatedAt: { type: Date },
+    validationErrors: { type: [String], default: [] },
+    skippedEmployees: { type: [String], default: [] },
+    erroredEmployees: { type: [String], default: [] },
   },
   { collection: "payroll_runs" }
 );

@@ -77,7 +77,7 @@ export class AttendanceRepository {
         .limit(safe)
         .populate({
           path: "employeeId",
-          select: "employeeCode firstName lastName email departmentId",
+          select: "employeeCode firstName lastName email departmentId avatarUrl",
           populate: {
             path: "departmentId",
             select: "name code"
@@ -106,6 +106,7 @@ export class AttendanceRepository {
             lastName: emp.lastName,
             email: emp.email,
             fullName,
+            avatarUrl: emp.avatarUrl,
             department: emp.departmentId,
           },
         };

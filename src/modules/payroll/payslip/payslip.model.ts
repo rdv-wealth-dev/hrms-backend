@@ -10,75 +10,81 @@ import {
 // from Attendance.status / LeaveRequest.status for that month.
 
 export interface AttendanceSummarySnapshot {
-  totalDaysInMonth:  number;
-  presentDays:       number;
-  lateDays:          number;
-  halfDays:          number;
-  absentDays:        number;    // → drives LOP
-  onLeaveDays:       number;    // approved leave — paid or unpaid depends on leave type
-  paidLeaveDays:     number;    // subset of onLeaveDays where LeaveType.isPaid = true
-  unpaidLeaveDays:   number;    // subset of onLeaveDays where LeaveType.isPaid = false → also drives LOP
-  holidayDays:       number;
-  weekOffDays:       number;
-  payableDays:       number;    // totalDaysInMonth - absentDays - unpaidLeaveDays
+  totalDaysInMonth: number;
+  presentDays: number;
+  lateDays: number;
+  halfDays: number;
+  absentDays: number;    // → drives LOP
+  onLeaveDays: number;    // approved leave — paid or unpaid depends on leave type
+  paidLeaveDays: number;    // subset of onLeaveDays where LeaveType.isPaid = true
+  unpaidLeaveDays: number;    // subset of onLeaveDays where LeaveType.isPaid = false → also drives LOP
+  holidayDays: number;
+  weekOffDays: number;
+  payableDays: number;    // totalDaysInMonth - absentDays - unpaidLeaveDays
 }
 
 export interface PayslipDeduction {
   componentCode: string;
   componentName: string;
-  amount:        number;
+  amount: number;
 }
 
 export interface PayslipEarning {
   componentCode: string;
   componentName: string;
-  amount:        number;    // pro-rated if payableDays < totalDaysInMonth
+  amount: number;    // pro-rated if payableDays < totalDaysInMonth
 }
 
 export interface PayslipDocument extends BaseDocument {
-  payrollRunId:       mongoose.Types.ObjectId;
-  employeeId:         mongoose.Types.ObjectId;
-  salaryStructureId:  mongoose.Types.ObjectId;
-  month:              number;
-  year:               number;
+  payrollRunId: mongoose.Types.ObjectId;
+  employeeId: mongoose.Types.ObjectId;
+  salaryStructureId: mongoose.Types.ObjectId;
+  month: number;
+  year: number;
 
   // The snapshot — this is the literal Attendance/Leave interlink,
   // frozen at generation time so a payslip never silently changes if
   // attendance records are edited later (audit trail requirement)
-  attendanceSummary:  AttendanceSummarySnapshot;
+  attendanceSummary: AttendanceSummarySnapshot;
 
-  earnings:           PayslipEarning[];
-  deductions:         PayslipDeduction[];
+  earnings: PayslipEarning[];
+  deductions: PayslipDeduction[];
 
-  grossEarned:        number;   // sum of earnings, already pro-rated
-  totalDeductions:    number;   // sum of deductions (statutory + LOP)
-  lopAmount:          number;   // deduction specifically attributable to absent/unpaid-leave days
-  netPay:             number;   // grossEarned - totalDeductions
+  grossEarned: number;   // sum of earnings, already pro-rated
+  totalDeductions: number;   // sum of deductions (statutory + LOP)
+  lopAmount: number;   // deduction specifically attributable to absent/unpaid-leave days
+  netPay: number;   // grossEarned - totalDeductions
 
   pfEmployeeContribution?: number;
   pfEmployerContribution?: number;
   esiEmployeeContribution?: number;
   esiEmployerContribution?: number;
-  ptAmount?:                number;
-  tdsAmount?:                number;
+  ptAmount?: number;
+  tdsAmount?: number;
 
-  generatedAt:        Date;
-  isFinalized:         boolean;   // true once the parent PayrollRun is APPROVED — immutable after
+  lwfEmployeeAmount?: number;   // Labour Welfare Fund — employee side
+  lwfEmployerAmount?: number;   // Labour Welfare Fund — employer side
+  taxRegime?: string;   // "OLD" | "NEW" — stored for Form 16 generation
+  annualTaxableIncome?: number;   // stored for Form 16 / audit
+  gratuityMonthlyProvision?: number;   // employer cost accrual — NOT deducted from employee
+
+  generatedAt: Date;
+  isFinalized: boolean;   // true once the parent PayrollRun is APPROVED — immutable after
 }
 
 const AttendanceSummarySchema = new mongoose.Schema(
   {
     totalDaysInMonth: { type: Number, required: true },
-    presentDays:      { type: Number, default: 0 },
-    lateDays:         { type: Number, default: 0 },
-    halfDays:         { type: Number, default: 0 },
-    absentDays:       { type: Number, default: 0 },
-    onLeaveDays:      { type: Number, default: 0 },
-    paidLeaveDays:    { type: Number, default: 0 },
-    unpaidLeaveDays:  { type: Number, default: 0 },
-    holidayDays:      { type: Number, default: 0 },
-    weekOffDays:      { type: Number, default: 0 },
-    payableDays:      { type: Number, required: true },
+    presentDays: { type: Number, default: 0 },
+    lateDays: { type: Number, default: 0 },
+    halfDays: { type: Number, default: 0 },
+    absentDays: { type: Number, default: 0 },
+    onLeaveDays: { type: Number, default: 0 },
+    paidLeaveDays: { type: Number, default: 0 },
+    unpaidLeaveDays: { type: Number, default: 0 },
+    holidayDays: { type: Number, default: 0 },
+    weekOffDays: { type: Number, default: 0 },
+    payableDays: { type: Number, required: true },
   },
   { _id: false }
 );
@@ -87,7 +93,7 @@ const PayslipEarningSchema = new mongoose.Schema(
   {
     componentCode: { type: String, required: true },
     componentName: { type: String, required: true },
-    amount:        { type: Number, required: true },
+    amount: { type: Number, required: true },
   },
   { _id: false }
 );
@@ -96,7 +102,7 @@ const PayslipDeductionSchema = new mongoose.Schema(
   {
     componentCode: { type: String, required: true },
     componentName: { type: String, required: true },
-    amount:        { type: Number, required: true },
+    amount: { type: Number, required: true },
   },
   { _id: false }
 );
@@ -104,44 +110,50 @@ const PayslipDeductionSchema = new mongoose.Schema(
 const PayslipSchema = createBaseSchema<PayslipDocument>(
   {
     payrollRunId: {
-      type:     mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
-      index:    true,
+      index: true,
     },
     employeeId: {
-      type:     mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
-      index:    true,
+      index: true,
     },
     salaryStructureId: {
-      type:     mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
     },
     month: { type: Number, required: true },
-    year:  { type: Number, required: true },
+    year: { type: Number, required: true },
 
     attendanceSummary: {
-      type:     AttendanceSummarySchema,
+      type: AttendanceSummarySchema,
       required: true,
     },
 
-    earnings:   { type: [PayslipEarningSchema],   default: [] },
+    earnings: { type: [PayslipEarningSchema], default: [] },
     deductions: { type: [PayslipDeductionSchema], default: [] },
 
-    grossEarned:      { type: Number, required: true },
-    totalDeductions:  { type: Number, required: true },
-    lopAmount:        { type: Number, default: 0 },
-    netPay:           { type: Number, required: true },
+    grossEarned: { type: Number, required: true },
+    totalDeductions: { type: Number, required: true },
+    lopAmount: { type: Number, default: 0 },
+    netPay: { type: Number, required: true },
 
-    pfEmployeeContribution:  { type: Number },
-    pfEmployerContribution:  { type: Number },
+    pfEmployeeContribution: { type: Number },
+    pfEmployerContribution: { type: Number },
     esiEmployeeContribution: { type: Number },
     esiEmployerContribution: { type: Number },
-    ptAmount:                 { type: Number },
-    tdsAmount:                 { type: Number },
+    ptAmount: { type: Number },
+    tdsAmount: { type: Number },
 
-    generatedAt:  { type: Date, default: Date.now },
-    isFinalized:  { type: Boolean, default: false },
+    lwfEmployeeAmount: { type: Number, default: 0 },
+    lwfEmployerAmount: { type: Number, default: 0 },
+    taxRegime: { type: String, enum: ["OLD", "NEW"] },
+    annualTaxableIncome: { type: Number },
+    gratuityMonthlyProvision: { type: Number, default: 0 },
+
+    generatedAt: { type: Date, default: Date.now },
+    isFinalized: { type: Boolean, default: false },
   },
   { collection: "payslips" }
 );
