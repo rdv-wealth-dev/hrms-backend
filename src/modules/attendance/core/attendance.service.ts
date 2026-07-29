@@ -270,7 +270,7 @@ export class AttendanceService {
       });
       attendance.firstCheckIn = new Date(input.checkIn);
     }
-
+    
     if (input.checkOut) {
       attendance.sessions.push({
         type: SessionType.CHECK_OUT,

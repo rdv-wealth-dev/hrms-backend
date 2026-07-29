@@ -47,6 +47,7 @@ export interface AttendanceDocument extends BaseDocument {
     isRegularized:   boolean;     // true if this day went through regularization
     regularizationReason?: string;
     notes?:          string;
+    overtimeId?: mongoose.Types.ObjectId;  // populated after OT computation
 }
 
 const AttendanceSessionSchema = new mongoose.Schema(
@@ -134,6 +135,11 @@ const AttendanceSchema = createBaseSchema<AttendanceDocument>(
         notes : {
             type : String,
             trim : true,
+        },
+        overtimeId: {
+          type:    mongoose.Schema.Types.ObjectId,
+          ref:     "Overtime",
+          default: null,
         },
     },
         {collection : "attendance"}
