@@ -16,4 +16,8 @@ export class OvertimeService {
   async reject(context: RequestContext, id: string, reason: string): Promise<any> {
     return null;
   }
+
+  async computeForDay(tenantId: string, branchId: string, employeeId: string, date: Date): Promise<any> {
+    return null;
+  }
 }

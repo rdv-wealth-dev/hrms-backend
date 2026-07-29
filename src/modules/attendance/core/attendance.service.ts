@@ -15,12 +15,14 @@ import { UserModel } from "../../user/user.model";
 import { BranchModel } from "../../branch/branch.model";
 import { EmployeeModel } from "../../employee/core/employee.model";
 import { GraceUsageRepository } from "../engine/grace-usage.repository";
+import { OvertimeService } from "../../payroll/overtime.service";
 
 
 export class AttendanceService {
   private attRepo       = new AttendanceRepository();
   private shiftRepo     = new ShiftRepository();
   private graceRepo     = new GraceUsageRepository();
+  private overtimeService = new OvertimeService();
 
   // Resolve the calling user's own employeeId
   private async resolveOwnEmployeeId(context: RequestContext): Promise<string> {
@@ -193,6 +195,29 @@ export class AttendanceService {
     }
 
     await this.attRepo.save(attendance);
+
+    // Trigger OT computation on checkout — workedMinutes is now final for the day
+    // computeForDay is idempotent (upsert) — safe to call multiple times
+    if (input.type === SessionType.CHECK_OUT) {
+      try {
+        const otRecord = await this.overtimeService.computeForDay(
+          context.tenantId,
+          branchId,
+          employeeId,
+          today
+        );
+        // Link OT record back to attendance document if OT was found
+        if (otRecord) {
+          attendance.overtimeId = otRecord._id as any;
+          await this.attRepo.save(attendance);
+        }
+      } catch (otError) {
+        // OT computation failure must NOT fail the punch
+        // Log and continue — payroll will surface missing OT at validation time
+        console.error(`OT computation failed for employee ${employeeId}:`, otError);
+      }
+    }
+
     return attendance;
   }
 
@@ -287,6 +312,25 @@ export class AttendanceService {
     if (input.notes) attendance.notes = input.notes;
 
     await this.attRepo.save(attendance);
+
+    // Trigger OT computation after manual entry — workedMinutes is now set
+    if (attendance.workedMinutes > 0) {
+      try {
+        const otRecord = await this.overtimeService.computeForDay(
+          context.tenantId,
+          branchId,
+          input.employeeId,
+          date
+        );
+        if (otRecord) {
+          attendance.overtimeId = otRecord._id as any;
+          await this.attRepo.save(attendance);
+        }
+      } catch (otError) {
+        console.error(`OT computation failed for employee ${input.employeeId}:`, otError);
+      }
+    }
+
     return attendance;
   }
 
