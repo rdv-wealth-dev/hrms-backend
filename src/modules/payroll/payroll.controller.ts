@@ -4,11 +4,20 @@ import { SalaryStructureService } from "./salary-structures/salary-structure.ser
 import { PayrollRunService } from "./payroll-run/payroll-run.service";
 import { PayslipService } from "./payslip/payslip.service";
 import { buildSuccessResponse } from "../../core/database/base.schema";
+import { AttendanceLockService } from "../attendance/core/attendance-lock.service";
+import { OvertimeService } from "./overtime.service";
+import { ProfessionalTaxService, LWFConfigService, OvertimeConfigService, TaxDeclarationService } from "./statutory-config.service";
 
 const componentService = new SalaryComponentService();
 const structureService = new SalaryStructureService();
 const runService = new PayrollRunService();
 const payslipService = new PayslipService();
+const lockService      = new AttendanceLockService();
+const otService        = new OvertimeService();
+const ptService        = new ProfessionalTaxService();
+const lwfService       = new LWFConfigService();
+const otConfigService  = new OvertimeConfigService();
+const taxDeclService   = new TaxDeclarationService();
 
 export class PayrollController {
 
@@ -239,125 +248,316 @@ export class PayrollController {
     }
   }
 
-  // ── Attendance Lock ──
-  async lockAttendance(req: Request, res: Response, next: NextFunction): Promise<void> {
+  // ── Pre-flight Validation ─────────────────────────────────────────────────
+
+  async validateRun(
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "Attendance locked"));
+      const result = await runService.validateRun(req.context!, req.params.id);
+      res.status(200).json(
+        buildSuccessResponse(
+          result,
+          result.valid
+            ? "Pre-flight validation passed — ready to generate"
+            : `Validation found ${result.errors.length} issue(s) — fix before generating`
+        )
+      );
     } catch (e) { next(e); }
   }
 
-  async unlockAttendance(req: Request, res: Response, next: NextFunction): Promise<void> {
+  // ── Attendance Lock ───────────────────────────────────────────────────────
+
+  async lockAttendance(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "Attendance unlocked"));
+      const { year, month } = req.body;
+      const result = await lockService.lockPeriod(
+        req.context!, parseInt(year), parseInt(month)
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, `Attendance locked for ${year}-${String(month).padStart(2, "0")}`)
+      );
     } catch (e) { next(e); }
   }
 
-  async getAttendanceLockStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async unlockAttendance(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "Attendance lock status fetched"));
+      const { year, month, reason } = req.body;
+      const result = await lockService.unlockPeriod(
+        req.context!, parseInt(year), parseInt(month), reason
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, `Attendance unlocked for ${year}-${String(month).padStart(2, "0")}`)
+      );
     } catch (e) { next(e); }
   }
 
-  async listAttendanceLocksByYear(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getAttendanceLockStatus(
+    req: Request<{ year: string; month: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse([], "Attendance locks fetched"));
+      const result = await lockService.getLockStatus(
+        req.context!,
+        parseInt(req.params.year),
+        parseInt(req.params.month)
+      );
+      res.status(200).json(buildSuccessResponse(result, "Lock status fetched"));
     } catch (e) { next(e); }
   }
 
-  // ── Pre-flight Validation ──
-  async validateRun(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+  async listAttendanceLocksByYear(
+    req: Request<{ year: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      const result = await runService.validateRun(req.context, req.params.id);
-      res.status(200).json(buildSuccessResponse(result, "Pre-flight validation complete"));
+      const result = await lockService.listYearLocks(
+        req.context!, parseInt(req.params.year)
+      );
+      res.status(200).json(buildSuccessResponse(result, "Year lock statuses fetched"));
     } catch (e) { next(e); }
   }
 
-  // ── Overtime ──
-  async listPendingOT(req: Request, res: Response, next: NextFunction): Promise<void> {
+  // ── Overtime ──────────────────────────────────────────────────────────────
+
+  async listPendingOT(
+    req: Request<{ year: string; month: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse([], "Pending overtime requests fetched"));
+      const result = await otService.listPending(
+        req.context!,
+        parseInt(req.params.year),
+        parseInt(req.params.month)
+      );
+      res.status(200).json(buildSuccessResponse(result, "Pending OT records fetched"));
     } catch (e) { next(e); }
   }
 
-  async listEmployeeOT(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async listEmployeeOT(
+    req: Request<{ employeeId: string; year: string; month: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse([], "Employee overtime requests fetched"));
+      const result = await otService.listForEmployee(
+        req.context!,
+        req.params.employeeId,
+        parseInt(req.params.year),
+        parseInt(req.params.month)
+      );
+      res.status(200).json(buildSuccessResponse(result, "OT records fetched"));
     } catch (e) { next(e); }
   }
 
-  async approveOT(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async approveOT(
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "Overtime approved"));
+      const result = await otService.approve(req.context!, req.params.id);
+      res.status(200).json(buildSuccessResponse(result, "Overtime approved"));
     } catch (e) { next(e); }
   }
 
-  async rejectOT(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async rejectOT(
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "Overtime rejected"));
+      const { reason } = req.body;
+      const result = await otService.reject(req.context!, req.params.id, reason);
+      res.status(200).json(buildSuccessResponse(result, "Overtime rejected"));
     } catch (e) { next(e); }
   }
 
-  // ── Statutory Config — PT slabs ──
-  async listPTConfigs(req: Request, res: Response, next: NextFunction): Promise<void> {
+  // ── Professional Tax Config ───────────────────────────────────────────────
+
+  async listPTConfigs(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse([], "PT configurations fetched"));
+      const fy     = req.query.financialYear as string | undefined;
+      const result = await ptService.listConfigs(req.context!, fy);
+      res.status(200).json(buildSuccessResponse(result, "PT configs fetched"));
     } catch (e) { next(e); }
   }
 
-  async upsertPTConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async upsertPTConfig(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "PT configuration updated"));
+      const result = await ptService.upsertConfig(req.context!, req.body);
+      res.status(200).json(buildSuccessResponse(result, "PT config saved"));
     } catch (e) { next(e); }
   }
 
-  async deletePTConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async deletePTConfig(
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "PT configuration deleted"));
+      const result = await ptService.deleteConfig(req.context!, req.params.id);
+      res.status(200).json(buildSuccessResponse(result, "PT config deleted"));
     } catch (e) { next(e); }
   }
 
-  // ── Statutory Config — LWF ──
-  async listLWFConfigs(req: Request, res: Response, next: NextFunction): Promise<void> {
+  // ── LWF Config ────────────────────────────────────────────────────────────
+
+  async listLWFConfigs(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse([], "LWF configurations fetched"));
+      const fy     = req.query.financialYear as string | undefined;
+      const result = await lwfService.listConfigs(req.context!, fy);
+      res.status(200).json(buildSuccessResponse(result, "LWF configs fetched"));
     } catch (e) { next(e); }
   }
 
-  async upsertLWFConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async upsertLWFConfig(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "LWF configuration updated"));
+      const result = await lwfService.upsertConfig(req.context!, req.body);
+      res.status(200).json(buildSuccessResponse(result, "LWF config saved"));
     } catch (e) { next(e); }
   }
 
-  // ── Statutory Config — OT Rules ──
-  async getOTConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+  // ── OT Config ─────────────────────────────────────────────────────────────
+
+  async getOTConfig(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "OT configurations fetched"));
+      const result = await otConfigService.getConfig(req.context!);
+      res.status(200).json(buildSuccessResponse(result, "OT config fetched"));
     } catch (e) { next(e); }
   }
 
-  async upsertOTConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async upsertOTConfig(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "OT configuration updated"));
+      const result = await otConfigService.upsertConfig(req.context!, req.body);
+      res.status(200).json(buildSuccessResponse(result, "OT config saved"));
     } catch (e) { next(e); }
   }
 
-  // ── Tax Declaration ──
-  async submitTaxDeclaration(req: Request, res: Response, next: NextFunction): Promise<void> {
+  // ── Tax Declaration ───────────────────────────────────────────────────────
+
+  async submitTaxDeclaration(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "Tax declaration submitted"));
+      // Resolve employeeId from logged-in user
+      const mongoose = require("mongoose");
+      const { UserModel } = require("../user/user.model");
+      const user = await UserModel.findOne({
+        _id:      new mongoose.Types.ObjectId(req.context!.userId),
+        tenantId: new mongoose.Types.ObjectId(req.context!.tenantId),
+      }).select("employeeId");
+
+      if (!user?.employeeId) {
+        res.status(404).json(
+          buildSuccessResponse(null, "No employee record linked to this account")
+        );
+        return;
+      }
+
+      const result = await taxDeclService.submitOrRevise(
+        req.context!,
+        user.employeeId.toString(),
+        req.body
+      );
+      res.status(200).json(buildSuccessResponse(result, "Tax declaration saved"));
     } catch (e) { next(e); }
   }
 
-  async getTaxDeclaration(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async getTaxDeclaration(
+    req: Request<{ financialYear: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "Tax declaration fetched"));
+      const mongoose = require("mongoose");
+      const { UserModel } = require("../user/user.model");
+      const user = await UserModel.findOne({
+        _id:      new mongoose.Types.ObjectId(req.context!.userId),
+        tenantId: new mongoose.Types.ObjectId(req.context!.tenantId),
+      }).select("employeeId");
+
+      if (!user?.employeeId) {
+        res.status(404).json(
+          buildSuccessResponse(null, "No employee record linked to this account")
+        );
+        return;
+      }
+
+      const result = await taxDeclService.getDeclaration(
+        req.context!,
+        user.employeeId.toString(),
+        req.params.financialYear
+      );
+      res.status(200).json(buildSuccessResponse(result, "Tax declaration fetched"));
     } catch (e) { next(e); }
   }
 
-  async markTaxProofSubmitted(req: Request, res: Response, next: NextFunction): Promise<void> {
+  async markTaxProofSubmitted(
+    req: Request<{ financialYear: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
     try {
-      res.status(200).json(buildSuccessResponse(null, "Tax proof marked as submitted"));
+      const mongoose = require("mongoose");
+      const { UserModel } = require("../user/user.model");
+      const user = await UserModel.findOne({
+        _id:      new mongoose.Types.ObjectId(req.context!.userId),
+        tenantId: new mongoose.Types.ObjectId(req.context!.tenantId),
+      }).select("employeeId");
+
+      if (!user?.employeeId) {
+        res.status(404).json(
+          buildSuccessResponse(null, "No employee record linked to this account")
+        );
+        return;
+      }
+
+      const result = await taxDeclService.markProofSubmitted(
+        req.context!,
+        user.employeeId.toString(),
+        req.params.financialYear
+      );
+      res.status(200).json(buildSuccessResponse(result, "Proof submission marked"));
     } catch (e) { next(e); }
   }
 }
