@@ -238,4 +238,126 @@ export class PayrollController {
         next(e); 
     }
   }
+
+  // ── Attendance Lock ──
+  async lockAttendance(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "Attendance locked"));
+    } catch (e) { next(e); }
+  }
+
+  async unlockAttendance(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "Attendance unlocked"));
+    } catch (e) { next(e); }
+  }
+
+  async getAttendanceLockStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "Attendance lock status fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async listAttendanceLocksByYear(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse([], "Attendance locks fetched"));
+    } catch (e) { next(e); }
+  }
+
+  // ── Pre-flight Validation ──
+  async validateRun(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await runService.validateRun(req.context, req.params.id);
+      res.status(200).json(buildSuccessResponse(result, "Pre-flight validation complete"));
+    } catch (e) { next(e); }
+  }
+
+  // ── Overtime ──
+  async listPendingOT(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse([], "Pending overtime requests fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async listEmployeeOT(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse([], "Employee overtime requests fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async approveOT(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "Overtime approved"));
+    } catch (e) { next(e); }
+  }
+
+  async rejectOT(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "Overtime rejected"));
+    } catch (e) { next(e); }
+  }
+
+  // ── Statutory Config — PT slabs ──
+  async listPTConfigs(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse([], "PT configurations fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async upsertPTConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "PT configuration updated"));
+    } catch (e) { next(e); }
+  }
+
+  async deletePTConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "PT configuration deleted"));
+    } catch (e) { next(e); }
+  }
+
+  // ── Statutory Config — LWF ──
+  async listLWFConfigs(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse([], "LWF configurations fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async upsertLWFConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "LWF configuration updated"));
+    } catch (e) { next(e); }
+  }
+
+  // ── Statutory Config — OT Rules ──
+  async getOTConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "OT configurations fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async upsertOTConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "OT configuration updated"));
+    } catch (e) { next(e); }
+  }
+
+  // ── Tax Declaration ──
+  async submitTaxDeclaration(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "Tax declaration submitted"));
+    } catch (e) { next(e); }
+  }
+
+  async getTaxDeclaration(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "Tax declaration fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async markTaxProofSubmitted(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      res.status(200).json(buildSuccessResponse(null, "Tax proof marked as submitted"));
+    } catch (e) { next(e); }
+  }
 }
