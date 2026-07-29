@@ -73,7 +73,12 @@ export class BranchService {
 
     // Auto-seed baseline national statutory holidays for this country (if provided)
     if (input.address?.countryCode) {
-      seedStatutoryNationalHolidays(context.tenantId, input.address.countryCode, context.userId).catch((err) => {
+      seedStatutoryNationalHolidays(
+        context.tenantId,
+        input.address.countryCode,
+        input.address.state ?? null,
+        context.userId
+      ).catch((err) => {
         console.error(`[BranchService] Auto-seeding failed for country "${input.address?.countryCode}":`, err.message);
       });
     }
@@ -182,7 +187,12 @@ export class BranchService {
       input.address?.countryCode &&
       input.address.countryCode.toUpperCase() !== branch.address?.countryCode?.toUpperCase()
     ) {
-      seedStatutoryNationalHolidays(context.tenantId, input.address.countryCode, context.userId).catch((err) => {
+      seedStatutoryNationalHolidays(
+        context.tenantId,
+        input.address.countryCode,
+        input.address.state ?? null,
+        context.userId
+      ).catch((err) => {
         console.error(`[BranchService] Auto-seeding failed on update for country "${input.address?.countryCode}":`, err.message);
       });
     }

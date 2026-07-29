@@ -95,16 +95,21 @@ export class HolidayController {
   async seedDefaults(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       let countryCode = req.query.countryCode as string;
+      const stateCode = req.query.stateCode as string;
 
       if (!countryCode) {
         const org = await OrganizationModel.findById(req.context.tenantId).select("locale");
         countryCode = (org?.locale as any)?.countryCode ?? "IN";
       }
 
-      await seedStatutoryNationalHolidays(req.context.tenantId, countryCode, req.context.userId);
+      await seedStatutoryNationalHolidays(req.context.tenantId, countryCode, stateCode, req.context.userId);
       clearLookupCache();
 
-      res.status(200).json(buildSuccessResponse(null, `Statutory national holidays for ${countryCode.toUpperCase()} seeded successfully`));
+      const regionMsg = stateCode 
+        ? `${countryCode.toUpperCase()}-${stateCode.toUpperCase()}` 
+        : countryCode.toUpperCase();
+
+      res.status(200).json(buildSuccessResponse(null, `Statutory holidays for ${regionMsg} seeded successfully`));
     } catch (error) { next(error); }
   }
 }

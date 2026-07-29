@@ -1,16 +1,18 @@
 import mongoose from "mongoose";
 import Holidays from "date-holidays";
 import { HolidayScope, HolidayType } from "./holiday.model";
+import { normalizeStateCode } from "./utils/state-code-mapper.util";
 import { logger } from "../../../config/logger";
 
 /**
- * Seeds dynamic baseline country-level statutory holidays for a tenant.
+ * Seeds dynamic baseline country-level and state-level statutory holidays for a tenant.
  * Uses 'date-holidays' to fetch public holidays for the current year and the next year (2-year rolling window).
- * Normalizes dates to UTC midnight to avoid timezone offsets and uses updateOne for idempotent updates.
+ * If a stateCode is provided, it seeds both country-wide and state-specific statutory holidays.
  */
 export async function seedStatutoryNationalHolidays(
   tenantId:    string,
   countryCode: string = "IN",
+  stateCode?:  string | null,
   createdBy:   string = "system"
 ): Promise<void> {
   const cc = countryCode.toUpperCase();
@@ -19,11 +21,14 @@ export async function seedStatutoryNationalHolidays(
   const currentYear = new Date().getUTCFullYear();
   const yearsToSeed = 2;
 
+  // Normalize state code (e.g. "Karnataka" -> "KA", "Zurich" -> "ZH")
+  const normalizedState = normalizeStateCode(stateCode, cc);
+
   try {
-    // 1. Initialize date-holidays for the country code
+    // 1. Initialize date-holidays with optional state/canton code
     const hd = new Holidays();
     
-    // Check if the country code is supported by the library
+    // Check if country is supported
     const countries = hd.getCountries();
     if (!countries[cc]) {
       logger.warn({
@@ -34,13 +39,23 @@ export async function seedStatutoryNationalHolidays(
       return;
     }
 
-    hd.init(cc);
+    // Try to initialize with state if provided, fall back to country-only
+    try {
+      if (normalizedState) {
+        hd.init(cc, normalizedState.toLowerCase());
+      } else {
+        hd.init(cc);
+      }
+    } catch (e) {
+      // Fallback if state code is not recognized by the library
+      hd.init(cc);
+    }
 
     const collection = mongoose.connection.collection("holidays");
     let inserted = 0;
     let skipped  = 0;
 
-    // 2. Loop through a 2-year rolling window (current year + next year)
+    // 2. Loop through a 2-year rolling window
     for (let i = 0; i < yearsToSeed; i++) {
       const targetYear = currentYear + i;
       const yearHolidays = hd.getHolidays(targetYear);
@@ -48,24 +63,32 @@ export async function seedStatutoryNationalHolidays(
       if (!yearHolidays) continue;
 
       for (const item of yearHolidays) {
-        // ⚠️ Fix #1: Strictly filter for official statutory public holidays (skip observances, bank holidays, optional)
+        // Strictly filter for official statutory public holidays
         if (item.type !== "public") {
           continue;
         }
 
-        // ⚠️ Fix #2: Normalize Date to UTC Midnight (Y-M-D) to eliminate timezone shifts
+        // Normalize Date to UTC Midnight (Y-M-D) to eliminate timezone shifts
         const dateStr = typeof item.date === "string" ? item.date : new Date(item.date).toISOString();
-        const dateParts = dateStr.split(" ")[0].split("T")[0].split("-"); // E.g., "2026-12-25" -> ["2026", "12", "25"]
+        const dateParts = dateStr.split(" ")[0].split("T")[0].split("-");
         const year      = parseInt(dateParts[0], 10);
-        const month     = parseInt(dateParts[1], 10) - 1; // Javascript months are 0-indexed
+        const month     = parseInt(dateParts[1], 10) - 1;
         const day       = parseInt(dateParts[2], 10);
 
         const holidayDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
 
+        // Determine if this is a state-specific holiday or national holiday.
+        // In date-holidays, state-specific holidays returned when initialized with (country, state)
+        // have an 'item.state' property set to the state code.
+        const isStateHoliday = !!(item as any).state;
+        const resolvedScope  = isStateHoliday ? HolidayScope.STATE : HolidayScope.COUNTRY;
+        const resolvedState  = isStateHoliday ? normalizedState : null;
+
         const query = {
           tenantId:    tenantOId,
-          scope:       HolidayScope.COUNTRY,
+          scope:       resolvedScope,
           countryCode: cc,
+          stateCode:   resolvedState,
           date:        holidayDate,
           isDeleted:   false,
         };
@@ -75,12 +98,14 @@ export async function seedStatutoryNationalHolidays(
           name:        item.name,
           date:        holidayDate,
           type:        HolidayType.NATIONAL,
-          scope:       HolidayScope.COUNTRY,
+          scope:       resolvedScope,
           isOptional:  false,
-          description: `Statutory National Holiday for ${cc}`,
+          description: isStateHoliday 
+            ? `Statutory State Holiday for ${cc}-${normalizedState}` 
+            : `Statutory National Holiday for ${cc}`,
           branchId:    null,
           countryCode: cc,
-          stateCode:   null,
+          stateCode:   resolvedState,
           createdBy,
           updatedBy:   createdBy,
           isDeleted:   false,
@@ -89,8 +114,7 @@ export async function seedStatutoryNationalHolidays(
           updatedAt:   now,
         };
 
-        // ⚠️ Fix #3: Idempotent upsert via MongoDB updateOne with $setOnInsert
-        // This ensures the seeder never overwrites custom names or edits made by HR Admins
+        // Idempotent upsert via MongoDB updateOne with $setOnInsert
         const result = await collection.updateOne(
           query,
           { $setOnInsert: doc },
@@ -109,6 +133,7 @@ export async function seedStatutoryNationalHolidays(
       message: "Seeded statutory holidays using date-holidays",
       tenantId,
       countryCode: cc,
+      stateCode: normalizedState,
       yearsSeeded: yearsToSeed,
       inserted,
       skipped,
