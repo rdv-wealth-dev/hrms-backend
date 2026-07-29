@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from "express";
+import { Types } from "mongoose";
 import { HolidayService } from "../holidays/holiday.service";
 import { CompOffService } from "../comp-off/comp-off.service";
 import { buildSuccessResponse } from "../../../core/database/base.schema";
+import { AppError } from "../../../core/errors/app.error";
 
 const holidayService = new HolidayService();
 const compOffService  = new CompOffService();
@@ -44,6 +46,31 @@ export class HolidayController {
     } catch (error) { next(error); }
   }
 
+  // GET /api/v1/leave/holidays/resolve?branchId=<id>&year=2026
+  // Returns the fully merged, priority-resolved holiday list for the given branch.
+  // Mounted before requireCompleteProfile in leave.routes.ts.
+  async resolveForBranch(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { branchId, year } = req.query;
+
+      if (!branchId || typeof branchId !== "string") {
+        throw new AppError("branchId query param is required", 400);
+      }
+
+      if (!Types.ObjectId.isValid(branchId)) {
+        throw new AppError("Invalid branchId format", 400);
+      }
+
+      const yearNum = year ? parseInt(year as string, 10) : new Date().getFullYear();
+      if (isNaN(yearNum) || yearNum < 2000 || yearNum > 2100) {
+        throw new AppError("Invalid year parameter", 400);
+      }
+
+      const result = await holidayService.resolveHolidaysForBranch(req.context, branchId, yearNum);
+      res.status(200).json(buildSuccessResponse(result, "Resolved holidays fetched successfully"));
+    } catch (error) { next(error); }
+  }
+
   // POST /api/v1/leave/comp-off  (HR credits an employee)
   async creditCompOff(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -59,4 +86,4 @@ export class HolidayController {
       res.status(200).json(buildSuccessResponse(result, "Comp-off balance fetched"));
     } catch (error) { next(error); }
   }
-}
+}

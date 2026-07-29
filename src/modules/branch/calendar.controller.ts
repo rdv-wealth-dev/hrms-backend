@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { BranchModel } from "./branch.model";
 import { OrganizationModel } from "../organization/organization.model";
 import { HolidayModel } from "../leave/holidays/holiday.model";
+import { HolidayService } from "../leave/holidays/holiday.service";
 import { ShiftRotationPlanModel } from "../attendance/rotation-plans/shift-rotation-plan.model";
 import { EmployeeModel } from "../employee/core/employee.model";
 import { UserModel } from "../user/user.model";
@@ -19,6 +20,7 @@ import { normalizeToMidnight } from "../attendance/attendance.util";
 import { ShiftRepository } from "../attendance/shifts/shift.repository";
 
 const shiftRepo = new ShiftRepository();
+const holidayService = new HolidayService();
 
 //BRANCH CALENDAR
 
@@ -54,14 +56,11 @@ export async function getBranchCalendar(req: any, res: Response, next: NextFunct
     const branchCustomWeekOffRules  = (branch.workPolicy as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined
       ?? orgCustomWeekOffRules;
 
-    // Holidays for the month
-    const fromDate = new Date(year, month - 1, 1);
-    const toDate   = new Date(year, month, 0, 23, 59, 59);
-    const holidays = await HolidayModel.find({
-      tenantId:  new mongoose.Types.ObjectId(req.context.tenantId),
-      date:      { $gte: fromDate, $lte: toDate },
-      isDeleted: false,
-      $or: [{ branchId: null }, { branchId: new mongoose.Types.ObjectId(branchId) }],
+    // Holidays for the month resolved via engine
+    const yearlyHolidays = await holidayService.resolveHolidaysForBranch(req.context, branchId, year);
+    const holidays = yearlyHolidays.filter(h => {
+      const d = new Date(h.date);
+      return d.getMonth() === month - 1;
     });
 
     const days = generateMonthCalendar({
@@ -217,13 +216,14 @@ export async function getMyPersonalSchedule(req: any, res: Response, next: NextF
           { tenantId: req.context.tenantId, branchIds: [employee.branchId.toString()] } as any
         );
 
-    const fromDate = new Date(year, month - 1, 1);
-    const toDate   = new Date(year, month, 0, 23, 59, 59);
-    const holidays = await HolidayModel.find({
-      tenantId:  new mongoose.Types.ObjectId(req.context.tenantId),
-      date:      { $gte: fromDate, $lte: toDate },
-      isDeleted: false,
-      $or: [{ branchId: null }, { branchId: employee.branchId }],
+    const yearlyHolidays = await holidayService.resolveHolidaysForBranch(
+      req.context,
+      employee.branchId.toString(),
+      year
+    );
+    const holidays = yearlyHolidays.filter(h => {
+      const d = new Date(h.date);
+      return d.getMonth() === month - 1;
     });
 
     const daysInMonth = new Date(year, month, 0).getDate();

@@ -22,7 +22,17 @@ const requestCtrl = new LeaveRequestController();
 const holidayCtrl = new HolidayController();
 
 router.use(authenticate);
+
+// RESOLVE — placed BEFORE requireCompleteProfile so HR Admins without a complete
+// employee profile can still fetch the resolved holiday calendar for any branch.
+router.get(
+  "/holidays/resolve",
+  checkPermission("leave.read"),
+  holidayCtrl.resolveForBranch.bind(holidayCtrl)
+);
+
 router.use(requireCompleteProfile);
+
 
 // SELF-SERVICE — authenticate only, same pattern as employees/me and attendance/me
 

@@ -12,6 +12,7 @@ import { seedDepartments } from "../department/department.seed";
 import { seedDesignations } from "../designation/designation.seed";
 import { seedLeaveTypes } from "../leave/leave-types/leave-type.seed";
 import { seedShifts } from "../attendance/shifts/shift.seed";
+import { seedStatutoryNationalHolidays } from "../leave/holidays/holiday.seed";
 
 import crypto from "crypto";
 import { emailService } from "../../service/email.service";
@@ -752,6 +753,7 @@ export class AuthService {
     const deptMap = await seedDepartments(tenantId, headOfficeId);
     await seedDesignations(tenantId, headOfficeId, deptMap);
     await seedShifts(tenantId, headOfficeId);
+    await seedStatutoryNationalHolidays(tenantId, input.countryCode || "IN", "system");
 
     // Save phone and associate the created Head Office branch to the admin user
     await UserModel.findByIdAndUpdate(userId, { 

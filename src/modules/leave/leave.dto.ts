@@ -3,6 +3,7 @@ import {
   safeStringSchema,
   objectIdSchema,
   dateSchema,
+  countryCodeSchema,
 } from "../../core/validators/common.validator";
 
 //Leave Type DTOs
@@ -68,9 +69,12 @@ export const CreateHolidayDto = z.object({
   name:        safeStringSchema(2, 200),
   date:        dateSchema,
   type:        z.enum(["NATIONAL", "RESTRICTED", "REGIONAL"]).optional().default("NATIONAL"),
+  scope:       z.enum(["GLOBAL", "COUNTRY", "STATE", "BRANCH"]).optional().default("BRANCH"),
   isOptional:  z.boolean().optional().default(false),
   description: safeStringSchema(0, 500).optional(),
-  branchId:    objectIdSchema.optional(),   // if omitted, applies org-wide
+  branchId:    objectIdSchema.optional(),              // required when scope = BRANCH
+  countryCode: countryCodeSchema.optional(),           // required when scope = COUNTRY or STATE
+  stateCode:   z.string().trim().toUpperCase().max(10).optional(),  // required when scope = STATE
 });
 
 export type CreateHolidayInput = z.infer<typeof CreateHolidayDto>;
