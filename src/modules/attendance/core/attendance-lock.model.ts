@@ -1,9 +1,7 @@
 import mongoose from "mongoose";
 import { createBaseSchema, BaseDocument } from "../../../core/database/base.schema";
 
-// ─────────────────────────────────────────────────────────────────────────────
 // ATTENDANCE LOCK STATUS ENUM
-// ─────────────────────────────────────────────────────────────────────────────
 
 export enum AttendanceLockStatus {
   UNLOCKED = "UNLOCKED",
@@ -11,11 +9,9 @@ export enum AttendanceLockStatus {
   OPEN     = "OPEN",     // period open for correction — unlock in progress
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // ATTENDANCE LOCK MODEL
 // Asserts if a branch's attendance has been finalized/locked for a monthly period.
 // Payroll runs check this status before proceeding.
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface AttendanceLockDocument extends BaseDocument {
   branchId: mongoose.Types.ObjectId;

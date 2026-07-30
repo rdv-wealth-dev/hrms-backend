@@ -1,9 +1,7 @@
 import mongoose from "mongoose";
 import { createBaseSchema, BaseDocument } from "../../core/database/base.schema";
 
-// ─────────────────────────────────────────────────────────────────────────────
 // OVERTIME STATUS ENUM
-// ─────────────────────────────────────────────────────────────────────────────
 
 export enum OTStatus {
   PENDING  = "PENDING",
@@ -11,10 +9,8 @@ export enum OTStatus {
   REJECTED = "REJECTED",
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // OVERTIME DOCUMENT MODEL
 // Records hours worked and payment computed for approved overtime requests
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface OvertimeDocument extends BaseDocument {
   employeeId: mongoose.Types.ObjectId;
