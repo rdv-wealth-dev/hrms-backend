@@ -10,9 +10,7 @@ import { TaxDeclarationModel, TaxRegime } from "./statutory-config.model";
 import { OvertimeModel, OTStatus } from "./overtime.model";
 import { AttendanceLockModel, AttendanceLockStatus } from "../attendance/core/attendance-lock.model";
 
-// ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
-// ─────────────────────────────────────────────────────────────────────────────
 
 const PF_EMPLOYEE_RATE     = 0.12;
 const PF_EMPLOYER_EPF_RATE = 0.0367;  // 3.67% → EPF account
@@ -26,10 +24,8 @@ const ESI_EMPLOYEE_RATE = 0.0075;
 const ESI_EMPLOYER_RATE = 0.0325;
 const ESI_WAGE_CEILING  = 21_000;
 
-// ─────────────────────────────────────────────────────────────────────────────
 // ATTENDANCE LOCK ASSERTION
 // Called at the start of generatePayslips — hard stop if not locked
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function assertAttendanceLocked(
   tenantId: string,
@@ -53,11 +49,9 @@ export async function assertAttendanceLocked(
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // BUILD ATTENDANCE SUMMARY
 // Fixed the N+1 bug: bulk-fetch ALL leave requests + types ONCE,
 // then do O(1) map lookups per attendance record.
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function buildAttendanceSummary(
   tenantId:   string,
@@ -73,7 +67,7 @@ export async function buildAttendanceSummary(
   const tenantOid   = new mongoose.Types.ObjectId(tenantId);
   const employeeOid = new mongoose.Types.ObjectId(employeeId);
 
-  // ── 1. Fetch all attendance records for this employee this month ──────────
+  // ── 1. Fetch all attendance records for this employee this month 
   const records = await AttendanceModel.find({
     tenantId:       tenantOid,
     employeeId:     employeeOid,
@@ -81,7 +75,7 @@ export async function buildAttendanceSummary(
     isDeleted:      false,
   }).lean();
 
-  // ── 2. Bulk-fetch ALL approved leave requests covering this month ──────────
+  // ── 2. Bulk-fetch ALL approved leave requests covering this month 
   // Single query replaces per-record queries — eliminates N+1
   const leaveRequests = await LeaveRequestModel.find({
     tenantId:   tenantOid,
@@ -92,7 +86,7 @@ export async function buildAttendanceSummary(
     isDeleted:  false,
   }).select("leaveTypeId fromDate toDate").lean();
 
-  // ── 3. Bulk-fetch all referenced leave types in one query ─────────────────
+  // ── 3. Bulk-fetch all referenced leave types in one query 
   const leaveTypeIds = [
     ...new Set(leaveRequests.map((lr) => lr.leaveTypeId.toString())),
   ];
@@ -107,7 +101,7 @@ export async function buildAttendanceSummary(
 
   const leaveTypeMap = new Map(leaveTypes.map((lt) => [lt._id.toString(), lt]));
 
-  // ── 4. Expand each leave request into individual date keys ────────────────
+  // ── 4. Expand each leave request into individual date keys 
   // O(1) lookup: "is this date a paid leave day?"
   const leaveDayMap = new Map<string, { isPaid: boolean }>();
 
@@ -126,7 +120,7 @@ export async function buildAttendanceSummary(
     }
   }
 
-  // ── 5. Build summary ──────────────────────────────────────────────────────
+  // ── 5. Build summary
   const summary: AttendanceSummarySnapshot = {
     totalDaysInMonth,
     presentDays:    0,
@@ -170,7 +164,7 @@ export async function buildAttendanceSummary(
     }
   }
 
-  // ── 6. Unaccounted days guard ─────────────────────────────────────────────
+  // ── 6. Unaccounted days guard
   // If attendance closeout job missed days, treat as absent (payroll safety)
   const accountedDays =
     summary.presentDays +
@@ -184,7 +178,7 @@ export async function buildAttendanceSummary(
   const unaccountedDays = Math.max(0, totalDaysInMonth - accountedDays);
   summary.absentDays += unaccountedDays;
 
-  // ── 7. Payable days formula ───────────────────────────────────────────────
+  // ── 7. Payable days formula
   // Present + Late (worked the day, just late) + Half days (×0.5)
   // + Paid leave + Holidays + Week offs
   // Absent + Unpaid leave = LOP → NOT included in payable days
@@ -201,9 +195,7 @@ export async function buildAttendanceSummary(
   return summary;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // PRO-RATE EARNINGS
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function proRateEarnings(
   lineItems:        SalaryLineItem[],
@@ -222,10 +214,8 @@ export function proRateEarnings(
   }));
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // PF — EPF Act 1952
 // Returns full breakdown: employee + EPF + EPS + admin + EDLI
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function calculatePF(
   wagesForStatutory: number,
@@ -256,9 +246,7 @@ export function calculatePF(
   return { employee, employerEPF, employerEPS, adminCharge, edliCharge, totalEmployer };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // ESIC — ESI Act 1948
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function calculateESI(
   grossMonthly: number,
@@ -273,11 +261,9 @@ export function calculateESI(
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // PROFESSIONAL TAX — DB-driven state slabs
 // HR manages slabs via /api/v1/payroll/statutory/pt
 // Returns 0 if no config found for state (Delhi, Gujarat, UP, MP etc.)
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function calculatePT(
   tenantId:      string,
@@ -308,10 +294,8 @@ export async function calculatePT(
   return slab?.ptAmount ?? 0;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // LWF — Labour Welfare Fund
 // Deducted only in months HR configures (typically June + December)
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function calculateLWF(
   tenantId:      string,
@@ -340,12 +324,10 @@ export async function calculateLWF(
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // TDS / INCOME TAX — full 12-step engine
 // Old regime: HRA exemption + 80C/80D/80CCD/home loan + standard deduction
 // New regime: standard deduction only (₹75,000 FY2024-25)
 // Monthly TDS = remaining annual liability / months remaining in FY
-// ─────────────────────────────────────────────────────────────────────────────
 
 const NEW_REGIME_SLABS = [
   { min: 0,          max: 300_000,    rate: 0.00 },
@@ -430,7 +412,7 @@ export async function calculateTDS(
 
   if (!tdsEnabled || annualCtc <= 0) return zero;
 
-  // ── Fetch employee tax declaration ────────────────────────────────────────
+  // ── Fetch employee tax declaration 
   const declaration = await TaxDeclarationModel.findOne({
     tenantId:      new mongoose.Types.ObjectId(tenantId),
     employeeId:    new mongoose.Types.ObjectId(employeeId),
@@ -440,10 +422,10 @@ export async function calculateTDS(
 
   const regime = declaration?.regime ?? TaxRegime.NEW;
 
-  // ── STEP 1: Start with annual CTC as gross income ─────────────────────────
+  // ── STEP 1: Start with annual CTC as gross income 
   let taxableIncome = annualCtc;
 
-  // ── STEP 2: Old regime exemptions ────────────────────────────────────────
+  // ── STEP 2: Old regime exemptions
   if (regime === TaxRegime.OLD && declaration) {
     const hraExemption = computeHRAExemption(
       basicMonthly,
@@ -457,10 +439,10 @@ export async function calculateTDS(
     taxableIncome -= (declaration.ltaAmount ?? 0);
   }
 
-  // ── STEP 3: Standard deduction ────────────────────────────────────────────
+  // ── STEP 3: Standard deduction
   taxableIncome -= regime === TaxRegime.NEW ? 75_000 : 50_000;
 
-  // ── STEP 4: 80C — Old regime only, max ₹1,50,000 ─────────────────────────
+  // ── STEP 4: 80C — Old regime only, max ₹1,50,000
   if (regime === TaxRegime.OLD && declaration) {
     const sec80C = Math.min(
       (declaration.section80C ?? 0) + pfEmployeeAnnual,
@@ -469,45 +451,43 @@ export async function calculateTDS(
     taxableIncome -= sec80C;
   }
 
-  // ── STEP 5: 80D — Old regime only ────────────────────────────────────────
+  // ── STEP 5: 80D — Old regime only 
   if (regime === TaxRegime.OLD && declaration?.section80D) {
     taxableIncome -= Math.min(declaration.section80D, 50_000);
   }
 
-  // ── STEP 6: 80CCD(1B) NPS — both regimes, max ₹50,000 ───────────────────
+  // ── STEP 6: 80CCD(1B) NPS — both regimes, max ₹50,000 
   if (declaration?.section80CCD1B) {
     taxableIncome -= Math.min(declaration.section80CCD1B, 50_000);
   }
 
-  // ── STEP 7: Home loan interest — Old regime only, max ₹2,00,000 ──────────
+  // ── STEP 7: Home loan interest — Old regime only, max ₹2,00,000 
   if (regime === TaxRegime.OLD && declaration?.homeLoanInterest) {
     taxableIncome -= Math.min(declaration.homeLoanInterest, 200_000);
   }
 
   taxableIncome = Math.max(0, Math.round(taxableIncome));
 
-  // ── STEP 8: Compute slab tax ──────────────────────────────────────────────
+  // ── STEP 8: Compute slab tax 
   const slabs = regime === TaxRegime.NEW ? NEW_REGIME_SLABS : OLD_REGIME_SLABS;
   let annualTax = computeSlabTax(taxableIncome, slabs);
 
-  // ── STEP 9: Surcharge ────────────────────────────────────────────────────
+  // ── STEP 9: Surcharge 
   annualTax += computeSurcharge(taxableIncome, annualTax);
 
-  // ── STEP 10: Health & Education Cess 4% ──────────────────────────────────
+  // ── STEP 10: Health & Education Cess 4% 
   const cess             = Math.round(annualTax * 0.04);
   const annualTaxWithCess = annualTax + cess;
 
-  // ── STEP 11: Monthly TDS = remaining liability / remaining months ─────────
+  // ── STEP 11: Monthly TDS = remaining liability / remaining months 
   // Adjusts automatically when employee submits new declaration mid-year
   const monthlyTDS = Math.round(annualTaxWithCess / Math.max(monthsRemaining, 1));
 
   return { annualTaxableIncome: taxableIncome, annualTax, annualTaxWithCess, monthlyTDS, regime };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // OVERTIME AGGREGATION
 // Pull total approved OT amount for this employee this month
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function getApprovedOTAmount(
   tenantId:   string,
@@ -532,20 +512,16 @@ export async function getApprovedOTAmount(
   return result[0]?.totalOT ?? 0;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // GRATUITY MONTHLY PROVISION
 // Employer cost accrual — NOT deducted from employee salary
 // Formula: (Basic + DA) × 15 / 26 / 12
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function calculateMonthlyGratuityProvision(basicPlusDA: number): number {
   return Math.round((basicPlusDA * 15) / 26 / 12);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // NEGATIVE SALARY GUARD
 // Hard block — never let a negative net pay reach disbursement
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function assertPositiveNetPay(
   employeeId:      string,
@@ -562,10 +538,8 @@ export function assertPositiveNetPay(
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // FINANCIAL YEAR HELPERS
 // India FY: April–March. Auto-detected from payroll month/year.
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function getFinancialYear(year: number, month: number): string {
   // month >= 4 (April onwards) → FY starts this calendar year

@@ -51,25 +51,70 @@ const OvertimeSchema = createBaseSchema<OvertimeDocument>(
       enum:    Object.values(OTType),
       default: OTType.REGULAR,
     },
-    standardMinutes: { type: Number, required: true },
-    workedMinutes:   { type: Number, required: true },
-    otMinutes:       { type: Number, required: true, min: 0 },
-    otHours:         { type: Number, required: true, min: 0 },
-    hourlyRate:      { type: Number, required: true, min: 0 },
-    otMultiplier:    { type: Number, required: true, default: 2.0 },
-    otAmount:        { type: Number, required: true, min: 0 },
+    standardMinutes: { 
+      type: Number, 
+      required: true 
+    },
+    workedMinutes: { 
+      type: Number, 
+      required: true 
+    },
+    otMinutes: { 
+      type: Number, 
+      required: true, 
+      min: 0 
+    },
+    otHours: { 
+      type: Number, 
+      required: true, 
+      min: 0 
+    },
+    hourlyRate: { 
+      type: Number, 
+      required: true, 
+      min: 0 
+    },
+    otMultiplier: { 
+      type: Number, 
+      required: true, 
+      default: 2.0 
+    },
+    otAmount: { 
+      type: Number, 
+      required: true, 
+      min: 0 
+    },
     status: {
       type:    String,
       enum:    Object.values(OTStatus),
       default: OTStatus.PENDING,
       index:   true,
     },
-    approvedBy:      { type: mongoose.Schema.Types.ObjectId },
-    approvedAt:      { type: Date },
-    rejectionReason: { type: String, trim: true },
-    month: { type: Number, required: true, min: 1, max: 12, index: true },
-    year:  { type: Number, required: true, index: true },
-    notes: { type: String, trim: true },
+    approvedBy: { 
+      type: mongoose.Schema.Types.ObjectId 
+    },
+    approvedAt: { 
+      type: Date 
+    },
+    rejectionReason: { 
+      type: String, trim: true 
+    },
+    month: { 
+      type: Number, 
+      required: true, 
+      min: 1, 
+      max: 12, 
+      index: true 
+    },
+    year: { 
+      type: Number, 
+      required: true, 
+      index: true 
+    },
+    notes: { 
+      type: String, 
+      trim: true 
+    },
   },
   { collection: "payroll_overtimes" }
 );
