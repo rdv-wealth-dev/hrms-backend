@@ -141,6 +141,9 @@ export interface TaxDeclarationDocument extends BaseDocument {
   section80D?:        number;
   section80CCD1B?:    number;
   homeLoanInterest?:  number;
+  submittedAt:        Date;
+  revisedAt?:         Date;
+  isProofSubmitted:   boolean;
 }
 
 const TaxDeclarationSchema = createBaseSchema<TaxDeclarationDocument>(
@@ -168,6 +171,9 @@ const TaxDeclarationSchema = createBaseSchema<TaxDeclarationDocument>(
     section80D:       { type: Number, default: 0 },
     section80CCD1B:   { type: Number, default: 0 },
     homeLoanInterest: { type: Number, default: 0 },
+    submittedAt:      { type: Date, default: Date.now },
+    revisedAt:        { type: Date },
+    isProofSubmitted: { type: Boolean, default: false },
   },
   { collection: "payroll_tax_declarations" }
 );
@@ -177,4 +183,41 @@ TaxDeclarationSchema.index({ tenantId: 1, employeeId: 1, financialYear: 1 }, { u
 export const TaxDeclarationModel = mongoose.model<TaxDeclarationDocument>(
   "TaxDeclaration",
   TaxDeclarationSchema
+);
+
+// =============================================================================
+// OVERTIME CONFIG
+// =============================================================================
+
+export interface OvertimeConfigDocument extends BaseDocument {
+  standardHoursPerDay:     number;
+  otMultiplier:            number;
+  holidayOtMultiplier:     number;
+  maxOtHoursPerDay:        number;
+  maxOtHoursPerWeek:       number;
+  otEligibleEmployeeTypes: string[];
+  isActive:                boolean;
+}
+
+const OvertimeConfigSchema = createBaseSchema<OvertimeConfigDocument>(
+  {
+    standardHoursPerDay:     { type: Number, default: 8   },
+    otMultiplier:            { type: Number, default: 2.0 },
+    holidayOtMultiplier:     { type: Number, default: 2.0 },
+    maxOtHoursPerDay:        { type: Number, default: 4   },
+    maxOtHoursPerWeek:       { type: Number, default: 50  },
+    otEligibleEmployeeTypes: {
+      type:    [String],
+      default: ["FULL_TIME", "CONTRACT"],
+    },
+    isActive: { type: Boolean, default: true },
+  },
+  { collection: "overtime_configs" }
+);
+
+OvertimeConfigSchema.index({ tenantId: 1, branchId: 1 });
+
+export const OvertimeConfigModel = mongoose.model<OvertimeConfigDocument>(
+  "OvertimeConfig",
+  OvertimeConfigSchema
 );
