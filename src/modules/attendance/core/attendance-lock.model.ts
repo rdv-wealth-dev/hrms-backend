@@ -8,6 +8,7 @@ import { createBaseSchema, BaseDocument } from "../../../core/database/base.sche
 export enum AttendanceLockStatus {
   UNLOCKED = "UNLOCKED",
   LOCKED   = "LOCKED",
+  OPEN     = "OPEN",     // period open for correction — unlock in progress
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -20,8 +21,12 @@ export interface AttendanceLockDocument extends BaseDocument {
   branchId: mongoose.Types.ObjectId;
   period:   string; // Format: "YYYY-MM" (e.g. "2026-07")
   status:   AttendanceLockStatus;
-  lockedBy?: mongoose.Types.ObjectId;
-  lockedAt?: Date;
+  lockedBy?:     mongoose.Types.ObjectId;
+  lockedAt?:     Date;
+  unlockedAt?:   Date;
+  unlockedBy?:   mongoose.Types.ObjectId;
+  unlockReason?: string;
+  payrollRunId?: mongoose.Types.ObjectId;  // set after markPaid — blocks future unlock
 }
 
 const AttendanceLockSchema = createBaseSchema<AttendanceLockDocument>(
@@ -51,6 +56,10 @@ const AttendanceLockSchema = createBaseSchema<AttendanceLockDocument>(
     lockedAt: {
       type: Date,
     },
+    unlockedAt:   { type: Date },
+    unlockedBy:   { type: mongoose.Schema.Types.ObjectId },
+    unlockReason: { type: String, trim: true },
+    payrollRunId: { type: mongoose.Schema.Types.ObjectId },
   },
   { collection: "attendance_locks" }
 );
