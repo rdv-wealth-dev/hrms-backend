@@ -213,3 +213,21 @@ export function normalizeToMidnight(date: Date): Date {
   d.setHours(0, 0, 0, 0);
   return d;
 }
+
+export function isCheckInLate(
+  shift:         any,
+  firstCheckIn:  Date | null,
+  graceUsed?:    number,
+  graceLimit?:   number
+): boolean {
+  if (!firstCheckIn) return false;
+  const [shiftHour, shiftMin] = shift.startTime.split(":").map(Number);
+  const shiftStart = new Date(firstCheckIn);
+  shiftStart.setHours(shiftHour, shiftMin, 0, 0);
+
+  const hasGraceLeft = !graceLimit || (graceUsed ?? 0) < graceLimit;
+  const effectiveGraceMinutes = hasGraceLeft ? shift.gracePeriodMinutes : 0;
+  const lateThreshold = new Date(shiftStart.getTime() + effectiveGraceMinutes * 60000);
+
+  return firstCheckIn > lateThreshold;
+}

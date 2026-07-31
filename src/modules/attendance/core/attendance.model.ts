@@ -48,6 +48,7 @@ export interface AttendanceDocument extends BaseDocument {
     regularizationReason?: string;
     notes?:          string;
     overtimeId?: mongoose.Types.ObjectId;  // populated after OT computation
+    isLate?:         boolean;
 }
 
 const AttendanceSessionSchema = new mongoose.Schema(
@@ -140,6 +141,10 @@ const AttendanceSchema = createBaseSchema<AttendanceDocument>(
           type:    mongoose.Schema.Types.ObjectId,
           ref:     "Overtime",
           default: null,
+        },
+        isLate: {
+          type:    Boolean,
+          default: false,
         },
     },
         {collection : "attendance"}

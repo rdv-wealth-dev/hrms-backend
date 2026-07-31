@@ -6,7 +6,7 @@ import { CreateRegularizationInput, ReviewRegularizationInput } from "../core/at
 import { AppError } from "../../../core/errors/app.error";
 import { RequestContext } from "../../../core/interfaces/request-context.interface";
 import { SessionType, PunchSource } from "../core/attendance.model";
-import { calculateWorkedMinutes, calculateAttendanceStatus } from "../attendance.util";
+import { calculateWorkedMinutes, calculateAttendanceStatus, isCheckInLate } from "../attendance.util";
 import { ShiftModel } from "../shifts/shift.model";
 import { UserModel } from "../../user/user.model";
 
@@ -137,6 +137,7 @@ export class RegularizationService {
             attendance.firstCheckIn ?? null,
             attendance.workedMinutes,
           );
+          attendance.isLate = isCheckInLate(shift, attendance.firstCheckIn ?? null);
         }
 
         attendance.isRegularized = true;
