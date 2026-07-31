@@ -231,3 +231,23 @@ export function isCheckInLate(
 
   return firstCheckIn > lateThreshold;
 }
+
+export function checkIfCheckOutEarly(
+  shift:          any,
+  lastCheckOut:   Date | null,
+  attendanceDate: Date
+): boolean {
+  if (!lastCheckOut) return false;
+
+  const [startHour, startMin] = shift.startTime.split(":").map(Number);
+  const [endHour, endMin] = shift.endTime.split(":").map(Number);
+
+  const shiftEnd = new Date(attendanceDate);
+  shiftEnd.setHours(endHour, endMin, 0, 0);
+
+  if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
+    shiftEnd.setDate(shiftEnd.getDate() + 1);
+  }
+
+  return lastCheckOut < shiftEnd;
+}

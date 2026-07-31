@@ -10,7 +10,8 @@ import {
     calculateAttendanceStatus,
     calculateWorkedMinutes,
     normalizeToMidnight,
-    isCheckInLate
+    isCheckInLate,
+    checkIfCheckOutEarly
 } from "../attendance.util"
 import { UserModel } from "../../user/user.model";
 import { BranchModel } from "../../branch/branch.model";
@@ -187,6 +188,11 @@ export class AttendanceService {
       graceUsed,
       shift.graceLimitPerMonth
     );
+    attendance.isCheckOutEarly = checkIfCheckOutEarly(
+      shift,
+      attendance.lastCheckOut ?? null,
+      attendance.attendanceDate
+    );
 
     // If check-in was within grace period, increment the monthly counter
     if (input.type === SessionType.CHECK_IN && attendance.status === AttendanceStatus.PRESENT) {
@@ -316,6 +322,7 @@ export class AttendanceService {
     attendance.status = input.status as AttendanceStatus ??
       calculateAttendanceStatus(shift, attendance.firstCheckIn ?? null, attendance.workedMinutes);
     attendance.isLate = isCheckInLate(shift, attendance.firstCheckIn ?? null);
+    attendance.isCheckOutEarly = checkIfCheckOutEarly(shift, attendance.lastCheckOut ?? null, attendance.attendanceDate);
     attendance.isRegularized = true;
     if (input.notes) attendance.notes = input.notes;
 

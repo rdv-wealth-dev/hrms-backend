@@ -49,6 +49,7 @@ export interface AttendanceDocument extends BaseDocument {
     notes?:          string;
     overtimeId?: mongoose.Types.ObjectId;  // populated after OT computation
     isLate?:         boolean;
+    isCheckOutEarly?: boolean;
 }
 
 const AttendanceSessionSchema = new mongoose.Schema(
@@ -143,6 +144,10 @@ const AttendanceSchema = createBaseSchema<AttendanceDocument>(
           default: null,
         },
         isLate: {
+          type:    Boolean,
+          default: false,
+        },
+        isCheckOutEarly: {
           type:    Boolean,
           default: false,
         },
