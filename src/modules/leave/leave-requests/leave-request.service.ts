@@ -14,6 +14,7 @@ import { RequestContext } from "../../../core/interfaces/request-context.interfa
 import { calculateLeaveDays, applySandwichPolicy, buildApprovalChain, } from "../leave.util";
 import { AttendanceModel } from "../../attendance/core/attendance.model";
 import { normalizeToMidnight } from "../../attendance/attendance.util";
+import { auditService } from "../../audit/audit.service";
 
 export class LeaveRequestService {
   private reqRepo = new LeaveRequestRepository();
@@ -243,6 +244,19 @@ export class LeaveRequestService {
     }
 
     await this.reqRepo.save(request);
+
+    await auditService.logAction({
+      tenantId: context.tenantId,
+      userId: context.userId,
+      userEmail: "",
+      module: "leave",
+      action: input.status === "APPROVED" ? "APPROVE" : "REJECT",
+      resourceType: "LeaveRequest",
+      resourceId: id,
+      oldValue: { status: "PENDING" },
+      newValue: { status: input.status },
+    });
+
     return this.reqRepo.findById(context, id);
   }
 
