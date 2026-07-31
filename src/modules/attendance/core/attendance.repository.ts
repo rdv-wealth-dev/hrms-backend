@@ -45,7 +45,9 @@ export class AttendanceRepository {
       employeeId:     new mongoose.Types.ObjectId(employeeId),
       attendanceDate: { $gte: fromDate, $lte: toDate },
       isDeleted:      false,
-    }).sort({ attendanceDate: -1 });
+    })
+      .sort({ attendanceDate: -1 })
+      .populate("shiftId", "name code startTime endTime");
   }
 
   //Admin report — filtered, paginated
@@ -103,6 +105,24 @@ export class AttendanceRepository {
       {
         $unwind: {
           path: "$departmentDetail",
+          preserveNullAndEmptyArrays: true
+        }
+      }
+    );
+
+    // 3b. Lookup shift details
+    pipeline.push(
+      {
+        $lookup: {
+          from: "shifts",
+          localField: "shiftId",
+          foreignField: "_id",
+          as: "shiftDetail"
+        }
+      },
+      {
+        $unwind: {
+          path: "$shiftDetail",
           preserveNullAndEmptyArrays: true
         }
       }
@@ -187,8 +207,12 @@ export class AttendanceRepository {
         departmentId: populatedDept
       };
 
+      const shift = record.shiftDetail;
+      const populatedShift = shift ? { _id: shift._id, name: shift.name, code: shift.code, startTime: shift.startTime, endTime: shift.endTime } : null;
+
       return {
         ...record,
+        shiftId: populatedShift,
         employeeId: employeeIdObj,
         employee: {
           id: emp._id,
