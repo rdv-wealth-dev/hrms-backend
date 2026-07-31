@@ -1,5 +1,5 @@
 import { CountryModule } from "../../shared/country-registry/countryModule.interface";
-import { statutoryFields } from "./statutoryFields";
+import { statutoryFields } from "./documents.config";
 import { calculatePF, calculateESI } from "./payrollRules";
 
 export const IndiaModule: CountryModule = {
@@ -9,3 +9,6 @@ export const IndiaModule: CountryModule = {
   calculateESI,
 };
 export * from "./validators";
+export * from "./rates.config";
+export * from "./documents.config";
+export * from "./payrollRules";

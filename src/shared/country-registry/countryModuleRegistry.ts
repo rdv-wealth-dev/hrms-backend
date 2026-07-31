@@ -13,6 +13,13 @@ const moduleCache = new LRUCache<string, CountryModule>({
 // Seed India module into cache
 moduleCache.set("IN", IndiaModule);
 
+export class UnsupportedCountryError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnsupportedCountryError";
+  }
+}
+
 export function getCountryModule(countryCode: string): CountryModule {
   const code = (countryCode || "IN").toUpperCase();
   const cached = moduleCache.get(code);
@@ -20,10 +27,9 @@ export function getCountryModule(countryCode: string): CountryModule {
 
   const module = registry.get(code);
   if (!module) {
-    // Fallback to IN to ensure backwards compatibility
-    const defaultModule = registry.get("IN")!;
-    moduleCache.set(code, defaultModule);
-    return defaultModule;
+    throw new UnsupportedCountryError(
+      `No country module registered for "${code}". Supported: ${[...registry.keys()].join(", ")}`
+    );
   }
 
   moduleCache.set(code, module);
