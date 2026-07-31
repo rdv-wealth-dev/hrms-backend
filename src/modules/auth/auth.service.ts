@@ -2,6 +2,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { v4 as uuid } from "uuid";
 import mongoose from "mongoose";
+import { auditService } from "../audit/audit.service";
+import { SessionEventType } from "../audit/session-log.model";
 
 import { UserRepository } from "../user/user.repository";
 import { OrganizationRepository } from "../organization/organization.repository";
@@ -252,67 +254,88 @@ export class AuthService {
     input: LoginInput,
     meta?: { ip?: string; device?: string; rememberDevice?: boolean }
   ) {
+    let user;
+    try {
+      // 1. Find user by email — never reveal whether the email exists
+      user = await this.userRepo.findByEmail(input.email);
+      if (!user) {
+        throw new AppError("Invalid email or password", 401);
+      }
 
-    // 1. Find user by email — never reveal whether the email exists
-    const user = await this.userRepo.findByEmail(input.email);
-    if (!user) {
-      throw new AppError("Invalid email or password", 401);
-    }
-
-    // 2. Check account is active
-    if (!user.isActive) {
-      throw new AppError(
-        "Account is deactivated. Contact your administrator.",
-        401
-      );
-    }
-
-    // 3. Check email is verified
-    if (!user.isEmailVerified) {
-      throw new AppError(
-        "Please verify your email address before logging in. Check your inbox for the verification link.",
-        403
-      );
-    }
-
-    // 4. Check DB-level lockout (complements Redis rate limiter on route layer)
-    const lockout = await this.userRepo.isLockedOut(user._id.toString());
-    if (lockout.locked) {
-      const mins = Math.ceil(lockout.remainingSecs / 60);
-      throw new AppError(
-        `Too many failed login attempts. Account locked for ${mins} minute(s). Try again later or reset your password.`,
-        429,
-        undefined,
-        [{ remainingSecs: lockout.remainingSecs, lockoutActive: true }]
-      );
-    }
-
-    // 5. Compare password
-    const isPasswordValid = await bcrypt.compare(
-      input.password,
-      user.passwordHash
-    );
-    if (!isPasswordValid) {
-      // Increment attempt counter — may trigger a 15-min lockout at 5 failures
-      const attempts  = await this.userRepo.incrementLoginAttempts(user._id.toString());
-      const MAX       = 5;
-      const remaining = Math.max(MAX - attempts, 0);
-
-      if (remaining === 0) {
+      // 2. Check account is active
+      if (!user.isActive) {
         throw new AppError(
-          "Too many failed attempts. Account locked for 15 minutes.",
-          429,
-          undefined,
-          [{ lockoutActive: true, remainingSecs: 900 }]
+          "Account is deactivated. Contact your administrator.",
+          401
         );
       }
 
-      throw new AppError(
-        `Invalid email or password. ${remaining} attempt(s) remaining before lockout.`,
-        401,
-        undefined,
-        [{ attemptsRemaining: remaining }]
+      // 3. Check email is verified
+      if (!user.isEmailVerified) {
+        throw new AppError(
+          "Please verify your email address before logging in. Check your inbox for the verification link.",
+          403
+        );
+      }
+
+      // 4. Check DB-level lockout (complements Redis rate limiter on route layer)
+      const lockout = await this.userRepo.isLockedOut(user._id.toString());
+      if (lockout.locked) {
+        const mins = Math.ceil(lockout.remainingSecs / 60);
+        throw new AppError(
+          `Too many failed login attempts. Account locked for ${mins} minute(s). Try again later or reset your password.`,
+          429,
+          undefined,
+          [{ remainingSecs: lockout.remainingSecs, lockoutActive: true }]
+        );
+      }
+
+      // 5. Compare password
+      const isPasswordValid = await bcrypt.compare(
+        input.password,
+        user.passwordHash
       );
+      if (!isPasswordValid) {
+        // Increment attempt counter — may trigger a 15-min lockout at 5 failures
+        const attempts  = await this.userRepo.incrementLoginAttempts(user._id.toString());
+        const MAX       = 5;
+        const remaining = Math.max(MAX - attempts, 0);
+
+        if (remaining === 0) {
+          throw new AppError(
+            "Too many failed attempts. Account locked for 15 minutes.",
+            429,
+            undefined,
+            [{ lockoutActive: true, remainingSecs: 900 }]
+          );
+        }
+
+        throw new AppError(
+          `Invalid email or password. ${remaining} attempt(s) remaining before lockout.`,
+          401,
+          undefined,
+          [{ attemptsRemaining: remaining }]
+        );
+      }
+
+      // Log successful login session event before signing tokens
+      await auditService.logSessionEvent({
+        tenantId: user.tenantId.toString(),
+        userId: user._id.toString(),
+        email: user.email,
+        eventType: SessionEventType.LOGIN,
+        ipAddress: meta?.ip,
+      });
+
+    } catch (error) {
+      // Log session event for failed logins
+      await auditService.logSessionEvent({
+        email: input.email,
+        eventType: SessionEventType.FAILED_LOGIN,
+        failureReason: error instanceof Error ? error.message : "Invalid credentials",
+        ipAddress: meta?.ip,
+      });
+      throw error;
     }
 
     // 6. Check if password reset is required (HR-invited employees)
@@ -437,6 +460,14 @@ export class AuthService {
         user._id.toString(),
         user.tenantId.toString()
       );
+
+      // Log session event for token refresh
+      await auditService.logSessionEvent({
+        tenantId: user.tenantId.toString(),
+        userId: user._id.toString(),
+        email: user.email,
+        eventType: SessionEventType.TOKEN_REFRESH,
+      });
 
       return {
         accessToken: newAccessToken,
