@@ -51,72 +51,163 @@ export class AttendanceRepository {
   //Admin report — filtered, paginated
   async findReport(
     context:  RequestContext,
-    filters:  Record<string, unknown>,
-    page:     number,
-    pageSize: number
+    query:    any
   ) {
-    const query: Record<string, unknown> = {
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
+    const tenantIdObj = new mongoose.Types.ObjectId(context.tenantId);
+    
+    // 1. Initial Match Stage (Matches tenantId, date range, status, and direct employeeId)
+    const matchStage: any = {
+      tenantId:  tenantIdObj,
       isDeleted: false,
-      ...filters,
+      attendanceDate: {
+        $gte: new Date(query.fromDate),
+        $lte: new Date(query.toDate),
+      }
     };
 
-    if (context.branchIds && context.branchIds.length > 0 && !filters.branchId) {
-      query.branchId = {
-        $in: context.branchIds.map((id) => new mongoose.Types.ObjectId(id)),
-      };
+    if (query.status) {
+      matchStage.status = query.status;
     }
 
+    if (query.employeeId) {
+      matchStage.employeeId = new mongoose.Types.ObjectId(query.employeeId);
+    }
+
+    const pipeline: any[] = [
+      { $match: matchStage }
+    ];
+
+    // 2. Lookup employee detail
+    pipeline.push(
+      {
+        $lookup: {
+          from: "employees",
+          localField: "employeeId",
+          foreignField: "_id",
+          as: "employeeDetail"
+        }
+      },
+      { $unwind: "$employeeDetail" }
+    );
+
+    // 3. Lookup department details for the employee
+    pipeline.push(
+      {
+        $lookup: {
+          from: "departments",
+          localField: "employeeDetail.departmentId",
+          foreignField: "_id",
+          as: "departmentDetail"
+        }
+      },
+      {
+        $unwind: {
+          path: "$departmentDetail",
+          preserveNullAndEmptyArrays: true
+        }
+      }
+    );
+
+    // 4. Match filters on the lookup details (branchId, departmentId, designationId, search)
+    const filterMatch: any = {};
+
+    if (query.branchId) {
+      const branchIdObj = new mongoose.Types.ObjectId(query.branchId);
+      filterMatch.$or = [
+        { branchId: branchIdObj },
+        { "employeeDetail.branchId": branchIdObj }
+      ];
+    } else if (context.branchIds && context.branchIds.length > 0) {
+      const allowedIds = context.branchIds.map((id) => new mongoose.Types.ObjectId(id));
+      filterMatch.$or = [
+        { branchId: { $in: allowedIds } },
+        { "employeeDetail.branchId": { $in: allowedIds } }
+      ];
+    }
+
+    if (query.departmentId) {
+      filterMatch["employeeDetail.departmentId"] = new mongoose.Types.ObjectId(query.departmentId);
+    }
+
+    if (query.designationId) {
+      filterMatch["employeeDetail.designationId"] = new mongoose.Types.ObjectId(query.designationId);
+    }
+
+    if (query.search) {
+      const searchRegex = new RegExp(query.search, "i");
+      filterMatch.$or = [
+        { "employeeDetail.firstName": searchRegex },
+        { "employeeDetail.lastName": searchRegex },
+        { "employeeDetail.employeeCode": searchRegex },
+        { "employeeDetail.email": searchRegex }
+      ];
+    }
+
+    if (Object.keys(filterMatch).length > 0) {
+      pipeline.push({ $match: filterMatch });
+    }
+
+    // 5. Sort
+    pipeline.push({ $sort: { attendanceDate: -1 } });
+
+    // 6. Facet for pagination
+    const page = query.pageNumber ?? 1;
+    const pageSize = Math.min(query.pageSize ?? 20, 100);
     const skip = (page - 1) * pageSize;
-    const safe = Math.min(pageSize, 100);
 
-    const [data, totalRecords] = await Promise.all([
-      AttendanceModel.find(query)
-        .sort({ attendanceDate: -1 })
-        .skip(skip)
-        .limit(safe)
-        .populate({
-          path: "employeeId",
-          select: "employeeCode firstName lastName email departmentId avatarUrl",
-          populate: {
-            path: "departmentId",
-            select: "name code"
-          }
-        })
-        .lean(),
-      AttendanceModel.countDocuments(query),
-    ]);
+    pipeline.push({
+      $facet: {
+        metadata: [{ $count: "total" }],
+        data: [
+          { $skip: skip },
+          { $limit: pageSize }
+        ]
+      }
+    });
 
-    // Filter out attendance records with invalid/deleted employees and format response
-    const formattedData = data
-      .filter((record: any) => record.employeeId) // Remove records with null/invalid employeeId
-      .map((record: any) => {
-        const emp = record.employeeId;
-        const fullName = `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim();
-        return {
-          ...record,
-          employeeId: {
-            ...emp,
-            fullName,
-          },
-          employee: {
-            id: emp._id,
-            employeeCode: emp.employeeCode,
-            firstName: emp.firstName,
-            lastName: emp.lastName,
-            email: emp.email,
-            fullName,
-            avatarUrl: emp.avatarUrl,
-            department: emp.departmentId,
-          },
-        };
-      });
+    const result = await AttendanceModel.aggregate(pipeline);
+    const totalRecords = result[0]?.metadata[0]?.total ?? 0;
+    const data = result[0]?.data ?? [];
 
-    return { 
-      data: formattedData, 
-      totalRecords, 
-      pageNumber: page, 
-      pageSize: safe 
+    // Format response data to match exactly original controller mapping structure
+    const formattedData = data.map((record: any) => {
+      const emp = record.employeeDetail;
+      const dept = record.departmentDetail;
+      
+      const fullName = `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim();
+      const populatedDept = dept ? { _id: dept._id, name: dept.name, code: dept.code } : null;
+
+      const employeeIdObj = {
+        _id: emp._id,
+        employeeCode: emp.employeeCode,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        email: emp.email,
+        avatarUrl: emp.avatarUrl,
+        departmentId: populatedDept
+      };
+
+      return {
+        ...record,
+        employeeId: employeeIdObj,
+        employee: {
+          id: emp._id,
+          employeeCode: emp.employeeCode,
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          email: emp.email,
+          fullName,
+          avatarUrl: emp.avatarUrl,
+          department: populatedDept,
+        },
+      };
+    });
+
+    return {
+      data: formattedData,
+      totalRecords,
+      pageNumber: page,
+      pageSize,
     };
   }
 

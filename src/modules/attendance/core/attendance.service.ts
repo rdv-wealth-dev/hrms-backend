@@ -352,11 +352,9 @@ export class AttendanceService {
   // Admin — report/list
   async getReport(
     context: RequestContext,
-    filters: Record<string, unknown>,
-    page: number,
-    pageSize: number
+    query:   any
   ) {
-    return this.attRepo.findReport(context, filters, page, pageSize);
+    return this.attRepo.findReport(context, query);
   }
 
   // Admin utility - check for orphaned attendance records

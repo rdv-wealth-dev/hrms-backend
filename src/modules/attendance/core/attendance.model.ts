@@ -37,6 +37,7 @@ export interface AttendanceSession {
 
 export interface AttendanceDocument extends BaseDocument {
     employeeId:      mongoose.Types.ObjectId;
+    branchId:        mongoose.Types.ObjectId;
     shiftId:         mongoose.Types.ObjectId;
     attendanceDate:  Date;        // normalized to midnight — one doc per employee per day
     sessions:        AttendanceSession[];
@@ -93,6 +94,12 @@ const AttendanceSchema = createBaseSchema<AttendanceDocument>(
         employeeId : {
             type : mongoose.Schema.Types.ObjectId,
             ref : "Employee",
+            required : true,
+            index : true,
+        },
+        branchId : {
+            type : mongoose.Schema.Types.ObjectId,
+            ref : "Branch",
             required : true,
             index : true,
         },

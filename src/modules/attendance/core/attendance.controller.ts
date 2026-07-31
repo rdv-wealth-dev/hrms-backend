@@ -108,19 +108,7 @@ export class AttendanceController {
     ): Promise<void> {
         try {
             const query = AttendanceReportQueryDto.parse(req.query);
-            const filters: Record<string, unknown> = {
-                attendanceDate: {
-                    $gte: new Date(query.fromDate),
-                    $lte: new Date(query.toDate),
-                },
-            };
-            if (query.employeeId) filters.employeeId = query.employeeId;
-            if (query.branchId) filters.branchId = query.branchId;
-            if (query.status) filters.status = query.status;
-
-            const result = await attService.getReport(
-                req.context, filters, query.pageNumber ?? 1, query.pageSize ?? 20
-            );
+            const result = await attService.getReport(req.context, query);
             res.status(200).json(
                 buildSuccessResponse(result, "Attendance report fetched")
             );

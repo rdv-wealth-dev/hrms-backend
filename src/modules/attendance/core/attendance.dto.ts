@@ -73,13 +73,15 @@ export type UpdateShiftInput = z.infer<typeof UpdateShiftDto>;
 //ATTENDANCE REPORT QUERY 
 
 export const AttendanceReportQueryDto = z.object({
-  fromDate    : dateSchema,
-  toDate      : dateSchema,
-  employeeId  : objectIdSchema.optional(),
-  branchId    : objectIdSchema.optional(),
-  departmentId: objectIdSchema.optional(),
-  status      : z.enum(["PRESENT","LATE","HALF_DAY","ABSENT","ON_LEAVE","HOLIDAY","WEEK_OFF"]).optional(),
-  pageNumber  : z.string().optional().transform(v => v ? parseInt(v) : 1),
-  pageSize    : z.string().optional().transform(v => v ? parseInt(v) : 20),
+  fromDate     : dateSchema,
+  toDate       : dateSchema,
+  employeeId   : objectIdSchema.optional(),
+  branchId     : objectIdSchema.optional(),
+  departmentId : objectIdSchema.optional(),
+  designationId: objectIdSchema.optional(),
+  search       : z.string().optional(),
+  status       : z.enum(["PRESENT","LATE","HALF_DAY","ABSENT","ON_LEAVE","HOLIDAY","WEEK_OFF"]).optional(),
+  pageNumber   : z.string().optional().transform(v => v ? parseInt(v) : 1),
+  pageSize     : z.string().optional().transform(v => v ? parseInt(v) : 20),
 });
 export type AttendanceReportQuery = z.infer<typeof AttendanceReportQueryDto>;
