@@ -3,6 +3,8 @@ import { AuthService } from "./auth.service";
 import { OrganizationRepository } from "../organization/organization.repository";
 import { buildSuccessResponse } from "../../core/database/base.schema";
 import { AppError } from "../../core/errors/app.error";
+import { auditService } from "../audit/audit.service";
+import { SessionEventType } from "../audit/session-log.model";
 
 const authService = new AuthService();
 
@@ -147,11 +149,20 @@ export class AuthController {
 
   // POST /api/v1/auth/logout
   async logout(
-    _req: Request,
+    req:  Request,
     res:  Response,
     next: NextFunction
   ): Promise<void> {
     try {
+      if (req.context) {
+        await auditService.logSessionEvent({
+          tenantId: req.context.tenantId,
+          userId: req.context.userId,
+          email: "",
+          eventType: SessionEventType.LOGOUT,
+        });
+      }
+
       // Token discarded on client side
       // Redis jti blacklist added in Phase 12
       res.status(200).json(
