@@ -26,7 +26,7 @@ export function applySecurityMiddleware(app: Application): void {
   app.use(cors({
     origin: "*",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Tenant-Slug"],
   }));
 
   // Body parser — 100 kb cap prevents Large-Payload DoS attacks
