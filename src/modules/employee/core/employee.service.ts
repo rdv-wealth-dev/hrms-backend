@@ -30,6 +30,9 @@ import { s3Service } from "../../../service/s3.service";
 import { recalculateProfileCompletion } from "../profile/profile-completion.util";
 import { ShiftRepository } from "../../attendance/shifts/shift.repository";
 import { parseImportFile, buildExportBuffer } from "./employee.utils";
+import { v4 as uuidv4 } from "uuid";
+import { ImportSessionModel } from "../core/import-session.model";
+import { ExportSessionModel } from "../core/export-session.model";
 
 // Helper — mask account number showing only last 4 digits
 function maskAccountNumber(acc: string): string {
@@ -1176,12 +1179,275 @@ export class EmployeeService {
       ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
       : "text/csv";
 
+    const fileName = `employees_export_${Date.now()}.${format}`;
+
+    // Log the export in ExportSession audit
+    const auditRecord = new ExportSessionModel({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      userId: new mongoose.Types.ObjectId(context.userId),
+      filters: filters || {},
+      fieldsIncluded: ["firstName", "lastName", "email", "phone", "branchName", "departmentName", "designationName", "joiningDate", "employeeType", "gender", "dateOfBirth", "pan", "aadhaar", "countryCode"],
+      fileName,
+      createdBy: new mongoose.Types.ObjectId(context.userId),
+      updatedBy: new mongoose.Types.ObjectId(context.userId),
+    });
+    await auditRecord.save();
+
     // 3. Return CSR-compliant data object
     return {
-      fileName: `employees_export_${Date.now()}.${format}`,
+      fileName,
       mimeType,
       fileData: fileBuffer.toString("base64"),
       totalRecords: employees.length,
     };
+  }
+
+  async validateImport(context: RequestContext, file: Express.Multer.File) {
+    if (!file || !file.buffer) {
+      throw new AppError("Import file buffer is missing", 400);
+    }
+
+    const sessionId = uuidv4();
+
+    // Create session in 'validating' state
+    const session = new ImportSessionModel({
+      sessionId,
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      status: 'validating',
+      fileName: file.originalname,
+      rows: [],
+      createdBy: new mongoose.Types.ObjectId(context.userId),
+      updatedBy: new mongoose.Types.ObjectId(context.userId),
+    });
+
+    await session.save();
+
+    // Enqueue the background processing job
+    const { addImportJob } = require("./import-queue");
+    await addImportJob({
+      sessionId,
+      context,
+      fileBufferBase64: file.buffer.toString("base64"),
+      fileName: file.originalname,
+    });
+
+    return {
+      sessionId,
+      fileName: file.originalname,
+      status: session.status,
+    };
+  }
+
+  async processValidation(context: RequestContext, sessionId: string, buffer: Buffer, fileName: string) {
+    const fileType = fileName.endsWith(".xlsx") ? "xlsx" : "csv";
+    const parsedData = await parseImportFile(context, buffer, fileType);
+
+    // Determine row statuses and actions
+    const sessionRows = parsedData.validRecords.map((rec, i) => {
+      const rowNumber = i + 2; // row 1 is header
+      const rowErrors = parsedData.errors.filter(e => e.rowNumber === rowNumber);
+      const rowWarnings = parsedData.warnings.filter(e => e.rowNumber === rowNumber);
+
+      let status: 'valid' | 'warning' | 'error' = 'valid';
+      let action: 'create' | 'update' | 'skip' = 'create';
+      const messages: string[] = [];
+
+      if (rowErrors.length > 0) {
+        status = 'error';
+        action = 'skip';
+        messages.push(...rowErrors.map(e => e.reason));
+      } else if (rowWarnings.length > 0) {
+        status = 'warning';
+        action = 'create';
+        messages.push(...rowWarnings.map(e => e.reason));
+      }
+
+      return {
+        rowNumber,
+        rawData: rec,
+        mappedData: rec,
+        status,
+        action,
+        messages,
+      };
+    });
+
+    // Handle rows that had errors during initial parsing
+    const invalidRowErrors = parsedData.errors.filter(e => !parsedData.validRecords.some((_, i) => (i + 2) === e.rowNumber));
+    for (const err of invalidRowErrors) {
+      sessionRows.push({
+        rowNumber: err.rowNumber,
+        rawData: {},
+        mappedData: {},
+        status: 'error',
+        action: 'skip',
+        messages: [err.reason],
+      });
+    }
+
+    sessionRows.sort((a, b) => a.rowNumber - b.rowNumber);
+
+    const hasErrors = sessionRows.some(r => r.status === 'error');
+
+    await ImportSessionModel.updateOne(
+      { sessionId },
+      {
+        $set: {
+          status: hasErrors ? 'failed' : 'ready',
+          rows: sessionRows,
+        }
+      }
+    );
+  }
+
+  async getImportPreview(context: RequestContext, sessionId: string, pageNumber: number = 1, pageSize: number = 20) {
+    const session = await ImportSessionModel.findOne({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      sessionId,
+    }).lean();
+
+    if (!session) {
+      throw new AppError("Import session not found", 404);
+    }
+
+    const startIndex = (pageNumber - 1) * pageSize;
+    const paginatedRows = session.rows.slice(startIndex, startIndex + pageSize);
+
+    return {
+      sessionId: session.sessionId,
+      fileName: session.fileName,
+      status: session.status,
+      totalRows: session.rows.length,
+      pageNumber,
+      pageSize,
+      rows: paginatedRows,
+    };
+  }
+
+  async commitImport(context: RequestContext, sessionId: string) {
+    const session = await ImportSessionModel.findOne({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      sessionId,
+    });
+
+    if (!session) {
+      throw new AppError("Import session not found", 404);
+    }
+
+    if (session.status === 'committed') {
+      throw new AppError("Import session has already been committed", 400);
+    }
+
+    if (session.status === 'failed') {
+      throw new AppError("Cannot commit an import session that has validation errors", 400);
+    }
+
+    const validRows = session.rows.filter(r => r.status !== 'error' && r.action === 'create');
+    const validRecords = validRows.map(r => r.rawData);
+
+    if (!validRecords.length) {
+      throw new AppError("No valid employee records to commit", 400);
+    }
+
+    const dbResult = await this.empRepo.bulkCreate(context, validRecords);
+
+    // Create user accounts + send welcome emails
+    for (const emp of dbResult.records) {
+      try {
+        const rawToken    = crypto.randomBytes(32).toString("hex");
+        const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+        const userAccount = new UserModel({
+          tenantId:  new mongoose.Types.ObjectId(context.tenantId),
+          email:     emp.email.toLowerCase(),
+          passwordHash: null,
+          firstName: emp.firstName,
+          lastName:  emp.lastName,
+          role:      "EMPLOYEE",
+          isOrgAdmin: false,
+          isActive:  false,
+          isEmailVerified: false,
+          branchIds: [emp.branchId],
+          employeeId: emp._id,
+          accountActivationToken:   hashedToken,
+          accountActivationExpires: new Date(Date.now() + 72 * 60 * 60 * 1000),
+        });
+
+        await userAccount.save();
+
+        const activationUrl = `${env.frontendUrl}/activate-account?token=${rawToken}`;
+        emailService.sendEmail(
+          emp.email,
+          `${emp.firstName} ${emp.lastName}`,
+          `Welcome to HRMS — Activate your account`,
+          `
+          <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
+            <h2>Welcome to the team, ${emp.firstName}!</h2>
+            <p>Your HRMS account has been created. Click below to set your password.</p>
+            <a href="${activationUrl}"
+               style="display:inline-block; padding:12px 28px; background:#2886CE;
+                      color:white; text-decoration:none; border-radius:4px; font-weight:bold;">
+              Activate My Account
+            </a>
+            <p style="color:#888; font-size:12px; margin-top:24px;">
+              This link expires in 72 hours.
+            </p>
+          </div>
+          `
+        ).catch(() => {});
+
+      } catch (userError) {
+        console.error(`Failed to create user account for ${emp.email}:`, userError);
+      }
+
+      // Recalculate profile completion async
+      recalculateProfileCompletion(context.tenantId, emp._id.toString()).catch(() => {});
+    }
+
+    session.status = 'committed';
+    await session.save();
+
+    return {
+      sessionId: session.sessionId,
+      status: session.status,
+      totalRows: session.rows.length,
+      insertedCount: dbResult.insertedCount,
+    };
+  }
+
+  async getImportExportHistory(context: RequestContext) {
+    const tenantIdObj = new mongoose.Types.ObjectId(context.tenantId);
+
+    const imports = await ImportSessionModel.find({ tenantId: tenantIdObj })
+      .select("sessionId fileName status rows createdAt")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const exports = await ExportSessionModel.find({ tenantId: tenantIdObj })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const importHistory = imports.map(imp => ({
+      type: "import",
+      id: imp.sessionId,
+      fileName: imp.fileName,
+      status: imp.status,
+      totalRows: imp.rows.length,
+      successCount: imp.rows.filter(r => r.status === 'valid').length,
+      warningCount: imp.rows.filter(r => r.status === 'warning').length,
+      errorCount: imp.rows.filter(r => r.status === 'error').length,
+      timestamp: imp.createdAt,
+    }));
+
+    const exportHistory = exports.map(exp => ({
+      type: "export",
+      id: exp._id,
+      fileName: exp.fileName,
+      filters: exp.filters,
+      fieldsCount: exp.fieldsIncluded.length,
+      timestamp: exp.createdAt,
+    }));
+
+    return [...importHistory, ...exportHistory].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
 }

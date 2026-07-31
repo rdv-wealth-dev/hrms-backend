@@ -9,6 +9,7 @@ import { LWFConfigModel } from "./statutory-config.model";
 import { TaxDeclarationModel, TaxRegime } from "./statutory-config.model";
 import { OvertimeModel, OTStatus } from "./overtime.model";
 import { AttendanceLockModel, AttendanceLockStatus } from "../attendance/core/attendance-lock.model";
+import { getCountryModule } from "../../shared/country-registry/countryModuleRegistry";
 
 // CONSTANTS
 
@@ -219,7 +220,8 @@ export function proRateEarnings(
 
 export function calculatePF(
   wagesForStatutory: number,
-  pfEnabled:         boolean
+  pfEnabled:         boolean,
+  countryCode:       string = "IN"
 ): {
   employee:      number;
   employerEPF:   number;
@@ -228,37 +230,28 @@ export function calculatePF(
   edliCharge:    number;
   totalEmployer: number;
 } {
-  const zero = {
+  const module = getCountryModule(countryCode);
+  if (module.calculatePF) {
+    return module.calculatePF(wagesForStatutory, pfEnabled);
+  }
+  return {
     employee: 0, employerEPF: 0, employerEPS: 0,
     adminCharge: 0, edliCharge: 0, totalEmployer: 0,
   };
-
-  if (!pfEnabled || wagesForStatutory <= 0) return zero;
-
-  const pfBase      = Math.min(wagesForStatutory, PF_WAGE_CEILING);
-  const employee    = Math.round(pfBase * PF_EMPLOYEE_RATE);
-  const employerEPF = Math.round(pfBase * PF_EMPLOYER_EPF_RATE);
-  const employerEPS = Math.min(Math.round(pfBase * PF_EPS_RATE), EPS_CAP);
-  const adminCharge = Math.round(pfBase * PF_ADMIN_RATE);
-  const edliCharge  = Math.round(pfBase * PF_EDLI_RATE);
-  const totalEmployer = employerEPF + employerEPS + adminCharge + edliCharge;
-
-  return { employee, employerEPF, employerEPS, adminCharge, edliCharge, totalEmployer };
 }
 
 // ESIC — ESI Act 1948
 
 export function calculateESI(
   grossMonthly: number,
-  esiEnabled:   boolean
+  esiEnabled:   boolean,
+  countryCode:  string = "IN"
 ): { employee: number; employer: number } {
-  if (!esiEnabled || grossMonthly <= 0 || grossMonthly > ESI_WAGE_CEILING) {
-    return { employee: 0, employer: 0 };
+  const module = getCountryModule(countryCode);
+  if (module.calculateESI) {
+    return module.calculateESI(grossMonthly, esiEnabled);
   }
-  return {
-    employee: Math.round(grossMonthly * ESI_EMPLOYEE_RATE),
-    employer: Math.round(grossMonthly * ESI_EMPLOYER_RATE),
-  };
+  return { employee: 0, employer: 0 };
 }
 
 // PROFESSIONAL TAX — DB-driven state slabs

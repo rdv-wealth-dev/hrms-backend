@@ -126,6 +126,32 @@ router.get(
   controller.downloadImportTemplate.bind(controller)
 );
 
+// Preview-Before-Commit Import endpoints
+router.post(
+  "/import/validate",
+  checkPermission("employee.create"),
+  uploadCsvOrExcel("file"),
+  controller.validateImport.bind(controller)
+);
+
+router.get(
+  "/import/:sessionId/preview",
+  checkPermission("employee.read"),
+  controller.getImportPreview.bind(controller)
+);
+
+router.post(
+  "/import/:sessionId/commit",
+  checkPermission("employee.create"),
+  controller.commitImport.bind(controller)
+);
+
+router.get(
+  "/audit/import-export-history",
+  checkPermission("employee.read"),
+  controller.getImportExportHistory.bind(controller)
+);
+
 router.get(
   "/:id",
   checkPermission("employee.read"),

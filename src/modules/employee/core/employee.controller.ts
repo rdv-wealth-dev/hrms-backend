@@ -611,6 +611,63 @@ export class EmployeeController {
       );
     } catch (e) { next(e); }
   }
+
+  async validateImport(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      if (!req.file) {
+        throw new AppError("No import file uploaded", 400);
+      }
+      const result = await empService.validateImport(req.context, req.file);
+      res.status(200).json(
+        buildSuccessResponse(result, "Import file validated. Review preview details.")
+      );
+    } catch (e) { next(e); }
+  }
+
+  async getImportPreview(
+    req: Request<{ sessionId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const pageNumber = req.query.pageNumber ? parseInt(req.query.pageNumber as string, 10) : 1;
+      const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string, 10) : 20;
+      const result = await empService.getImportPreview(req.context, req.params.sessionId, pageNumber, pageSize);
+      res.status(200).json(
+        buildSuccessResponse(result, "Import preview page fetched")
+      );
+    } catch (e) { next(e); }
+  }
+
+  async commitImport(
+    req: Request<{ sessionId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.commitImport(req.context, req.params.sessionId);
+      res.status(200).json(
+        buildSuccessResponse(result, "Employees imported successfully")
+      );
+    } catch (e) { next(e); }
+  }
+
+  async getImportExportHistory(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.getImportExportHistory(req.context);
+      res.status(200).json(
+        buildSuccessResponse(result, "Import and export history logs retrieved successfully")
+      );
+    } catch (e) { next(e); }
+  }
 }
 
 

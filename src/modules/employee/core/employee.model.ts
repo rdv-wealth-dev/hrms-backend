@@ -78,6 +78,8 @@ export interface EmployeeDocument extends BaseDocument {
   pan?:          string;      // encrypted at write, masked on read
   aadhaar?:      string;      // encrypted at write, masked on read
   passportNo?:   string;
+  countryCode:   string;
+
 
   // Organisation
   departmentId:  mongoose.Types.ObjectId;
@@ -194,6 +196,8 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
     pan:         { type: String, trim: true, uppercase: true },
     aadhaar:     { type: String, trim: true },
     passportNo:  { type: String, trim: true },
+    countryCode: { type: String, default: "IN", uppercase: true, trim: true },
+
 
     // Organisation
     departmentId: {

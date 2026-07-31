@@ -8,6 +8,7 @@ import { DepartmentModel } from "../../department/department.model";
 import { DesignationModel } from "../../designation/designation.model";
 import { BranchModel } from "../../branch/branch.model";
 import { getNextEmployeeCode } from "./employee-counter.util";
+import { getCountryModule } from "../../../shared/country-registry/countryModuleRegistry";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -27,6 +28,7 @@ export interface BulkImportRow {
   dateOfBirth?:    string;
   pan?:            string;
   aadhaar?:        string;
+  countryCode?:    string;
 }
 
 export interface ImportError {
@@ -184,6 +186,10 @@ async function findOrCreateDepartment(
     updatedBy: userId,
   });
 
+  // Invalidate master data cache
+  const { invalidateMasterDataCache } = require("./master-data-cache");
+  invalidateMasterDataCache(tenantId.toString());
+
   // Add to map so subsequent rows in the same import reuse it
   const normalized = normalize(cleanName);
   nameMap.set(normalized, { id: newDept._id, name: cleanName });
@@ -273,6 +279,10 @@ async function findOrCreateDesignation(
     updatedBy:   userId,
   });
 
+  // Invalidate master data cache
+  const { invalidateMasterDataCache } = require("./master-data-cache");
+  invalidateMasterDataCache(tenantId.toString());
+
   const normalized = normalize(cleanName);
   nameMap.set(normalized, { id: newDesig._id, name: cleanName, departmentId });
   createdNames.push(cleanName);
@@ -307,15 +317,12 @@ export async function parseImportFile(
   const tenantIdObj = new mongoose.Types.ObjectId(context.tenantId);
   const userIdObj   = new mongoose.Types.ObjectId(context.userId);
 
-  // ── Load all existing master data in bulk (3 queries total) ──────────────
-  const [branches, departments, designations] = await Promise.all([
-    BranchModel.find({ tenantId: tenantIdObj, isDeleted: false })
-      .select("_id name").lean(),
-    DepartmentModel.find({ tenantId: tenantIdObj, isDeleted: false })
-      .select("_id name code").lean(),
-    DesignationModel.find({ tenantId: tenantIdObj, isDeleted: false })
-      .select("_id name code departmentId").lean(),
-  ]);
+  // ── Load all existing master data via cache ──
+  const { getMasterDataMaps } = require("./master-data-cache");
+  const cacheData = await getMasterDataMaps(context.tenantId);
+  const branches = cacheData.branches;
+  const departments = cacheData.departments;
+  const designations = cacheData.designations;
 
   // Build normalized lookup maps
   const branchMap      = buildNameMap(branches);
@@ -332,8 +339,8 @@ export async function parseImportFile(
   }
 
   // Track existing codes to avoid collision during auto-create
-  const existingDeptCodes  = new Set(departments.map(d => (d as any).code as string));
-  const existingDesigCodes = new Set(designations.map(d => (d as any).code as string));
+  const existingDeptCodes  = new Set<string>(departments.map((d: any) => d.code as string));
+  const existingDesigCodes = new Set<string>(designations.map((d: any) => d.code as string));
 
   // Track auto-created names for response summary
   const createdDepts:  string[] = [];
@@ -464,6 +471,36 @@ export async function parseImportFile(
       });
     }
 
+    // ── Statutory validations via plugin ──
+    const countryCode = (row.countryCode?.trim() || "IN").toUpperCase();
+    const countryModule = getCountryModule(countryCode);
+    let statutoryValid = true;
+
+    for (const field of countryModule.statutoryFields) {
+      const val = (row as any)[field.key]?.trim();
+      if (val) {
+        const checkResult = field.validate(val);
+        if (typeof checkResult === "string") {
+          errors.push({
+            rowNumber,
+            email:    emailClean,
+            reason:   `Invalid ${field.label} format: ${checkResult}`,
+            severity: "ERROR",
+          });
+          statutoryValid = false;
+        }
+      } else if (field.required) {
+        errors.push({
+          rowNumber,
+          email:    emailClean,
+          reason:   `${field.label} is required for country ${countryCode}`,
+          severity: "ERROR",
+        });
+        statutoryValid = false;
+      }
+    }
+    if (!statutoryValid) continue;
+
     // ── Build employee document ────────────────────────────────────────────
     const employeeCode = await getNextEmployeeCode(context.tenantId);
     const newEmpId     = new mongoose.Types.ObjectId();
@@ -492,6 +529,7 @@ export async function parseImportFile(
         : undefined,
       pan:          row.pan?.trim().toUpperCase() || undefined,
       aadhaar:      row.aadhaar?.trim() || undefined,
+      countryCode,
       isActive:     true,
       onboardingStep:    1,
       onboardingComplete: false,
@@ -711,6 +749,7 @@ async function parseCSV(buffer: Buffer): Promise<BulkImportRow[]> {
           dateOfBirth:     data.dateOfBirth     || data.dob           || data["Date of Birth"],
           pan:             data.pan             || data["PAN"],
           aadhaar:         data.aadhaar         || data["Aadhaar"],
+          countryCode:     data.countryCode     || data.country        || data["Country"] || data["Country Code"],
         });
       })
       .on("end",   () => resolve(results))
@@ -761,6 +800,7 @@ async function parseExcel(buffer: Buffer): Promise<BulkImportRow[]> {
       dateOfBirth:     rowObj["date of birth"] || rowObj["dateofbirth"]     || rowObj["dob"],
       pan:             rowObj["pan"],
       aadhaar:         rowObj["aadhaar"],
+      countryCode:     rowObj["country code"]  || rowObj["countrycode"]     || rowObj["country"] || rowObj["country_code"],
     });
   });
 

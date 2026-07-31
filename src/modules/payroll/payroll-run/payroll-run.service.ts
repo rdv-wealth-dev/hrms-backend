@@ -289,11 +289,11 @@ export class PayrollRunService {
         // STEP 8: PF — on pro-rated wages
         const wagesRatio    = attendanceSummary.payableDays / attendanceSummary.totalDaysInMonth;
         const proRatedWages = Math.round(structure.wagesForStatutory * wagesRatio);
-        const pf            = calculatePF(proRatedWages, !!statutory.pfEnabled);
+        const pf            = calculatePF(proRatedWages, !!statutory.pfEnabled, employee.countryCode || "IN");
         const pfEmployeeAnnual = pf.employee * 12;
 
         // STEP 9: ESIC — on pro-rated gross
-        const esi = calculateESI(grossEarned, !!statutory.esiEnabled);
+        const esi = calculateESI(grossEarned, !!statutory.esiEnabled, employee.countryCode || "IN");
 
         // STEP 10: Professional Tax — DB-driven state slabs
         const pt = await calculatePT(
