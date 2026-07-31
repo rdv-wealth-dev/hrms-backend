@@ -1073,32 +1073,82 @@ export class EmployeeService {
     }
 
     const fileType = file.originalname.endsWith(".xlsx") ? "xlsx" : "csv";
-    
-    // 1. Parse CSV/Excel buffer into structured objects/documents
     const parsedData = await parseImportFile(context, file.buffer, fileType);
 
     if (!parsedData.validRecords.length) {
-      throw ValidationFailedError("No valid employee records found in file", parsedData.errors);
+      throw ValidationFailedError(
+        "No valid employee records found in file",
+        parsedData.errors
+      );
     }
 
-    // 2. Delegate bulk persistence to Repository
-    const dbResult = await this.empRepo.bulkCreate(
-      context,
-      parsedData.validRecords
-    );
+    // Bulk insert employee records
+    const dbResult = await this.empRepo.bulkCreate(context, parsedData.validRecords);
 
-    // Recalculate Profile Completion status asynchronously for imported employees
-    const { recalculateProfileCompletion } = require("../profile/profile-completion.util");
+    // For each inserted employee — create user account + send activation email
+    // Done after bulkCreate so we have the _id for each record
     for (const emp of dbResult.records) {
+      try {
+        const rawToken    = crypto.randomBytes(32).toString("hex");
+        const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+        const userAccount = new UserModel({
+          tenantId:  new mongoose.Types.ObjectId(context.tenantId),
+          email:     emp.email.toLowerCase(),
+          passwordHash: null,
+          firstName: emp.firstName,
+          lastName:  emp.lastName,
+          role:      "EMPLOYEE",
+          isOrgAdmin: false,
+          isActive:  false,
+          isEmailVerified: false,
+          branchIds: [emp.branchId],
+          employeeId: emp._id,
+          accountActivationToken:   hashedToken,
+          accountActivationExpires: new Date(Date.now() + 72 * 60 * 60 * 1000),
+        });
+
+        await userAccount.save();
+
+        // Send activation email — fire and forget, don't block import
+        const activationUrl = `${env.frontendUrl}/activate-account?token=${rawToken}`;
+        emailService.sendEmail(
+          emp.email,
+          `${emp.firstName} ${emp.lastName}`,
+          `Welcome to HRMS — Activate your account`,
+          `
+          <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
+            <h2>Welcome to the team, ${emp.firstName}!</h2>
+            <p>Your HRMS account has been created. Click below to set your password.</p>
+            <a href="${activationUrl}"
+               style="display:inline-block; padding:12px 28px; background:#2886CE;
+                      color:white; text-decoration:none; border-radius:4px; font-weight:bold;">
+              Activate My Account
+            </a>
+            <p style="color:#888; font-size:12px; margin-top:24px;">
+              This link expires in 72 hours.
+            </p>
+          </div>
+          `
+        ).catch(() => {}); // never fail the import because of email
+
+      } catch (userError) {
+        // User account creation failure must not fail the whole import
+        // Employee record exists — HR can manually trigger activation later
+        console.error(`Failed to create user account for ${emp.email}:`, userError);
+      }
+
+      // Recalculate profile completion async
       recalculateProfileCompletion(context.tenantId, emp._id.toString()).catch(() => {});
     }
 
-    // 3. Return aggregated summary
     return {
       totalProcessed: parsedData.totalRows,
-      insertedCount: dbResult.insertedCount,
-      failedCount: parsedData.errors.length,
-      errors: parsedData.errors,
+      insertedCount:  dbResult.insertedCount,
+      failedCount:    parsedData.errors.length,
+      errors:         parsedData.errors,
+      warnings:       parsedData.warnings,   // ← ADD
+      created:        parsedData.created,    // ← ADD
     };
   }
 

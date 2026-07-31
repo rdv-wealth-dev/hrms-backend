@@ -3,6 +3,7 @@ import { EmployeeService } from "./employee.service";
 import { buildSuccessResponse } from "../../../core/database/base.schema";
 import { ListEmployeesQueryDto, CalendarEventsQueryDto, CropAvatarDto } from "./employee.dto";
 import { AppError } from "../../../core/errors/app.error";
+import { parseImportFile, buildExportBuffer, buildImportTemplate } from "./employee.utils";
 
 const empService = new EmployeeService();
 
@@ -588,6 +589,27 @@ export class EmployeeController {
     } catch (error) {
       next(error);
     }
+  }
+
+  async downloadImportTemplate(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const format = req.query.format === "csv" ? "csv" : "xlsx";
+      const buffer = await buildImportTemplate(format);
+      const mimeType = format === "xlsx"
+        ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        : "text/csv";
+      res.status(200).json(
+        buildSuccessResponse({
+          fileName: `employee_import_template.${format}`,
+          mimeType,
+          fileData: buffer.toString("base64"),
+        }, "Import template generated")
+      );
+    } catch (e) { next(e); }
   }
 }
 

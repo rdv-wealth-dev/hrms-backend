@@ -119,6 +119,13 @@ router.get(
   controller.exportEmployees.bind(controller)
 );
 
+// GET /api/v1/employees/import-template?format=xlsx
+router.get(
+  "/import-template",
+  checkPermission("employee.read"),
+  controller.downloadImportTemplate.bind(controller)
+);
+
 router.get(
   "/:id",
   checkPermission("employee.read"),
