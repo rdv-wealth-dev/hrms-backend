@@ -19,6 +19,7 @@ import profileRoutes from "./modules/profile/profile.routes";
 import payrollRoutes from "./modules/payroll/payroll.routes";
 import eventRoutes from "./modules/event/event.routes";
 import onboardingWizardRoutes from "./modules/employee/onboarding/onboarding-wizard.routes";
+import auditRoutes from "./modules/audit/audit.routes";
 
 const app: Application = express();
 
@@ -48,6 +49,7 @@ app.use("/api/v1/leave", authenticate, tenantLimiter, leaveRoutes);
 app.use("/api/v1/profile", authenticate, tenantLimiter, profileRoutes);
 app.use("/api/v1/payroll", authenticate, tenantLimiter, payrollRoutes);
 app.use("/api/v1/events", authenticate, tenantLimiter, eventRoutes);
+app.use("/api/v1/audit", authenticate, tenantLimiter, auditRoutes);
 
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({
