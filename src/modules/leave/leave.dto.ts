@@ -8,30 +8,30 @@ import {
 
 //Leave Type DTOs
 export const CreateLeaveTypeDto = z.object({
-  name:                  safeStringSchema(2, 100),
-  code:                  z.string().trim().toUpperCase().min(1).max(10),
-  description:           safeStringSchema(0, 500).optional().default(""),
-  isPaid:                z.boolean().optional().default(true),
-  annualQuota:           z.number().min(0),
+  name: safeStringSchema(2, 100),
+  code: z.string().trim().toUpperCase().min(1).max(10),
+  description: safeStringSchema(0, 500).optional().default(""),
+  isPaid: z.boolean().optional().default(true),
+  annualQuota: z.number().min(0),
   branchOverrides: z.array(z.object({
-    branchId:    objectIdSchema,
+    branchId: objectIdSchema,
     annualQuota: z.number().min(0),
   })).optional().default([]),
-  accrualFrequency:      z.enum([
+  accrualFrequency: z.enum([
     "MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY",
     "WEEKLY", "BI_WEEKLY", "SEMI_MONTHLY", "DAILY", "HOURLY",
     "ON_JOINING", "MANUAL", "NONE"
   ]).optional().default("NONE"),
   accrualAmountPerCycle: z.number().min(0).optional().default(0),
-  maxCarryForwardDays:   z.number().min(0).optional().default(0),
-  maxConsecutiveDays:    z.number().min(0).optional().default(0),
-  advanceNoticeDays:     z.number().min(0).optional().default(0),
-  minAdvanceNoticeDays:  z.number().min(0).optional().default(0),
-  requiresApproval:      z.boolean().optional().default(true),
-  approvalLevels:        z.number().min(1).max(3).optional().default(1),
-  allowNegativeBalance:  z.boolean().optional().default(false),
-  probationEligible:     z.boolean().optional().default(false),
-  applySandwichPolicy:   z.boolean().optional().default(false),
+  maxCarryForwardDays: z.number().min(0).optional().default(0),
+  maxConsecutiveDays: z.number().min(0).optional().default(0),
+  advanceNoticeDays: z.number().min(0).optional().default(0),
+  minAdvanceNoticeDays: z.number().min(0).optional().default(0),
+  requiresApproval: z.boolean().optional().default(true),
+  approvalLevels: z.number().min(1).max(3).optional().default(1),
+  allowNegativeBalance: z.boolean().optional().default(false),
+  probationEligible: z.boolean().optional().default(false),
+  applySandwichPolicy: z.boolean().optional().default(false),
 });
 
 export type CreateLeaveTypeInput = z.infer<typeof CreateLeaveTypeDto>;
@@ -42,17 +42,17 @@ export type UpdateLeaveTypeInput = z.infer<typeof UpdateLeaveTypeDto>;
 //Leave Request DTOs
 export const CreateLeaveRequestDto = z.object({
   leaveTypeId: objectIdSchema,
-  fromDate:    dateSchema,
-  toDate:      dateSchema,
+  fromDate: dateSchema,
+  toDate: dateSchema,
   fromSession: z.enum(["FULL_DAY", "FIRST_HALF", "SECOND_HALF"]).optional().default("FULL_DAY"),
-  toSession:   z.enum(["FULL_DAY", "FIRST_HALF", "SECOND_HALF"]).optional().default("FULL_DAY"),
-  reason:      safeStringSchema(5, 500),
+  toSession: z.enum(["FULL_DAY", "FIRST_HALF", "SECOND_HALF"]).optional().default("FULL_DAY"),
+  reason: safeStringSchema(5, 500),
 });
 
 export type CreateLeaveRequestInput = z.infer<typeof CreateLeaveRequestDto>;
 
 export const ReviewLeaveRequestDto = z.object({
-  status:         z.enum(["APPROVED", "REJECTED"]),
+  status: z.enum(["APPROVED", "REJECTED"]),
   reviewComments: safeStringSchema(0, 500).optional(),
 });
 
@@ -66,15 +66,15 @@ export type CancelLeaveRequestInput = z.infer<typeof CancelLeaveRequestDto>;
 
 //Holiday DTOs
 export const CreateHolidayDto = z.object({
-  name:        safeStringSchema(2, 200),
-  date:        dateSchema,
-  type:        z.enum(["NATIONAL", "RESTRICTED", "REGIONAL"]).optional().default("NATIONAL"),
-  scope:       z.enum(["GLOBAL", "COUNTRY", "STATE", "BRANCH"]).optional().default("BRANCH"),
-  isOptional:  z.boolean().optional().default(false),
+  name: safeStringSchema(2, 200),
+  date: dateSchema,
+  type: z.enum(["NATIONAL", "RESTRICTED", "REGIONAL"]).optional().default("NATIONAL"),
+  scope: z.enum(["GLOBAL", "COUNTRY", "STATE", "BRANCH"]).optional().default("BRANCH"),
+  isOptional: z.boolean().optional().default(false),
   description: safeStringSchema(0, 500).optional(),
-  branchId:    objectIdSchema.optional(),              // required when scope = BRANCH
+  branchId: objectIdSchema.optional(),              // required when scope = BRANCH
   countryCode: countryCodeSchema.optional(),           // required when scope = COUNTRY or STATE
-  stateCode:   z.string().trim().toUpperCase().max(10).optional(),  // required when scope = STATE
+  stateCode: z.string().trim().toUpperCase().max(10).optional(),  // required when scope = STATE
 });
 
 export type CreateHolidayInput = z.infer<typeof CreateHolidayDto>;
@@ -84,13 +84,13 @@ export type UpdateHolidayInput = z.infer<typeof UpdateHolidayDto>;
 
 //Query DTOs
 export const LeaveReportQueryDto = z.object({
-  fromDate:    dateSchema.optional(),
-  toDate:      dateSchema.optional(),
-  employeeId:  objectIdSchema.optional(),
+  fromDate: dateSchema.optional(),
+  toDate: dateSchema.optional(),
+  employeeId: objectIdSchema.optional(),
   leaveTypeId: objectIdSchema.optional(),
-  status:      z.enum(["PENDING","APPROVED","REJECTED","CANCELLED"]).optional(),
-  pageNumber:  z.string().optional().transform(v => v ? parseInt(v) : 1),
-  pageSize:    z.string().optional().transform(v => v ? parseInt(v) : 20),
+  status: z.enum(["PENDING", "APPROVED", "REJECTED", "CANCELLED"]).optional(),
+  pageNumber: z.string().optional().transform(v => v ? parseInt(v) : 1),
+  pageSize: z.string().optional().transform(v => v ? parseInt(v) : 20),
 });
 
 export type LeaveReportQuery = z.infer<typeof LeaveReportQueryDto>;

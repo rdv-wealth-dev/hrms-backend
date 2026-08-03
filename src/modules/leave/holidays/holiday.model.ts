@@ -2,56 +2,56 @@ import mongoose from "mongoose";
 import { createOrgLevelSchema, OrgLevelDocument } from "../../../core/database/base.schema";
 
 export enum HolidayType {
-    NATIONAL   = "NATIONAL",
+    NATIONAL = "NATIONAL",
     RESTRICTED = "RESTRICTED",   // optional/floater holidays employees can choose from
-    REGIONAL   = "REGIONAL",
+    REGIONAL = "REGIONAL",
 }
 
 // Scope determines which inheritance layer this holiday belongs to.
 // Resolution priority: BRANCH (highest) → STATE → COUNTRY → GLOBAL (lowest)
 export enum HolidayScope {
-    GLOBAL  = "GLOBAL",   // System/platform baseline — seeded at org onboarding
+    GLOBAL = "GLOBAL",   // System/platform baseline — seeded at org onboarding
     COUNTRY = "COUNTRY",  // National-level holidays (e.g. India's Republic Day)
-    STATE   = "STATE",    // State/province-level (e.g. Karnataka Rajyotsava)
-    BRANCH  = "BRANCH",   // Branch-specific override — highest priority
+    STATE = "STATE",    // State/province-level (e.g. Karnataka Rajyotsava)
+    BRANCH = "BRANCH",   // Branch-specific override — highest priority
 }
 
 export interface HolidayDocument extends OrgLevelDocument {
-    name:         string;         // "Diwali", "Republic Day"
-    date:         Date;           // normalized to midnight
-    type:         HolidayType;
-    scope:        HolidayScope;   // which inheritance layer this holiday belongs to
-    isOptional:   boolean;        // if true, employee must opt-in to take this off
+    name: string;         // "Diwali", "Republic Day"
+    date: Date;           // normalized to midnight
+    type: HolidayType;
+    scope: HolidayScope;   // which inheritance layer this holiday belongs to
+    isOptional: boolean;        // if true, employee must opt-in to take this off
     description?: string;
-    branchId?:    mongoose.Types.ObjectId;  // populated when scope = BRANCH
+    branchId?: mongoose.Types.ObjectId;  // populated when scope = BRANCH
     countryCode?: string;                   // ISO 3166-1 alpha-2, set for COUNTRY and STATE scope
-    stateCode?:   string;                   // Normalized ISO state code (e.g. "KA", "MH"), set for STATE scope
+    stateCode?: string;                   // Normalized ISO state code (e.g. "KA", "MH"), set for STATE scope
 }
 
 const HolidaySchema = createOrgLevelSchema<HolidayDocument>(
     {
         name: {
-            type:      String,
-            required:  true,
-            trim:      true,
+            type: String,
+            required: true,
+            trim: true,
             maxlength: 200,
         },
         date: {
-            type:     Date,
+            type: Date,
             required: true,
         },
         type: {
-            type:    String,
-            enum:    Object.values(HolidayType),
+            type: String,
+            enum: Object.values(HolidayType),
             default: HolidayType.NATIONAL,
         },
         scope: {
-            type:    String,
-            enum:    Object.values(HolidayScope),
+            type: String,
+            enum: Object.values(HolidayScope),
             default: HolidayScope.BRANCH,
         },
         isOptional: {
-            type:    Boolean,
+            type: Boolean,
             default: false,
         },
         description: {
@@ -62,13 +62,13 @@ const HolidaySchema = createOrgLevelSchema<HolidayDocument>(
             type: mongoose.Schema.Types.ObjectId,
         },
         countryCode: {
-            type:      String,
-            trim:      true,
+            type: String,
+            trim: true,
             uppercase: true,
         },
         stateCode: {
-            type:      String,
-            trim:      true,
+            type: String,
+            trim: true,
             uppercase: true,
         },
     },

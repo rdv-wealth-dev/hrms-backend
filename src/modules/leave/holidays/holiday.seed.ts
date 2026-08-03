@@ -12,7 +12,7 @@ import { logger } from "../../../config/logger";
 export async function seedStatutoryNationalHolidays(
   tenantId:    string,
   countryCode: string = "IN",
-  stateCode?:  string | null,
+  stateCode?:  string | null | undefined,
   createdBy:   string = "system"
 ): Promise<void> {
   const cc = countryCode.toUpperCase();

@@ -1,10 +1,10 @@
 // src/modules/leave/holidays/holiday-resolution.engine.ts
 
 import { invalidateCacheKey } from "../../../service/cache.service";
-import { HolidayScope }       from "./holiday.model";
+import { HolidayScope } from "./holiday.model";
 import { normalizeStateCode } from "./utils/state-code-mapper.util";
 
-// ─── CACHE KEY HELPERS ───────────────────────────────────────────────────────
+//CACHE KEY HELPERS
 
 const CACHE_PREFIX = "holiday";
 
@@ -15,7 +15,7 @@ const CACHE_PREFIX = "holiday";
 export function buildHolidayCacheKey(
   tenantId: string,
   branchId: string,
-  year:     number
+  year: number
 ): string {
   return `${CACHE_PREFIX}:${tenantId}:${branchId}:${year}`;
 }
@@ -26,12 +26,12 @@ export function buildHolidayCacheKey(
 export function invalidateHolidayCache(
   tenantId: string,
   branchId: string,
-  year:     number
+  year: number
 ): void {
   invalidateCacheKey(buildHolidayCacheKey(tenantId, branchId, year));
 }
 
-// ─── SCOPE INFERENCE ─────────────────────────────────────────────────────────
+// SCOPE INFERENCE 
 
 /**
  * Infers the effective HolidayScope for a document.
@@ -42,44 +42,44 @@ export function inferHolidayScope(h: any): HolidayScope {
   return h.branchId ? HolidayScope.BRANCH : HolidayScope.COUNTRY;
 }
 
-// ─── PRIORITY TABLE ──────────────────────────────────────────────────────────
+//PRIORITY TABLE 
 
 const SCOPE_PRECEDENCE: Record<HolidayScope, number> = {
-  [HolidayScope.GLOBAL]:  1,
+  [HolidayScope.GLOBAL]: 1,
   [HolidayScope.COUNTRY]: 2,
-  [HolidayScope.STATE]:   3,
-  [HolidayScope.BRANCH]:  4,
+  [HolidayScope.STATE]: 3,
+  [HolidayScope.BRANCH]: 4,
 };
 
-// ─── TYPES ───────────────────────────────────────────────────────────────────
+// TYPES
 
 export interface ResolvedHoliday {
-  _id:          string;
-  name:         string;
-  date:         Date;
-  type:         string;
-  scope:        HolidayScope;
-  isOptional:   boolean;
+  _id: string;
+  name: string;
+  date: Date;
+  type: string;
+  scope: HolidayScope;
+  isOptional: boolean;
   description?: string;
-  branchId?:    string | null;
+  branchId?: string | null;
   countryCode?: string | null;
-  stateCode?:   string | null;
+  stateCode?: string | null;
 }
 
-// ─── MERGE ENGINE ────────────────────────────────────────────────────────────
+// MERGE ENGINE
 
 /**
  * In-Memory Resolution Engine: Filters and resolves overlapping holiday calendars
  * based on location hierarchy precedence (BRANCH > STATE > COUNTRY > GLOBAL).
  */
 export function mergeHolidayLayers(
-  holidays:          any[],
+  holidays: any[],
   targetCountryCode: string,
-  targetStateCode?:  string | null,
-  targetBranchId?:   string | null
+  targetStateCode?: string | null,
+  targetBranchId?: string | null
 ): ResolvedHoliday[] {
   const normalizedTargetState = normalizeStateCode(targetStateCode, targetCountryCode);
-  const targetBranchStr       = targetBranchId ? targetBranchId.toString() : null;
+  const targetBranchStr = targetBranchId ? targetBranchId.toString() : null;
 
   // 1. Filter relevant candidate documents
   const applicableHolidays = holidays.filter((h) => {
@@ -123,16 +123,16 @@ export function mergeHolidayLayers(
   // 3. Return resolved active holidays (mapped to match Mongoose schema property naming conventions)
   return Array.from(resolvedMap.values())
     .map(({ holiday }) => ({
-      _id:         holiday._id.toString(),
-      name:        holiday.name,
-      date:        holiday.date,
-      scope:       inferHolidayScope(holiday),
-      isOptional:  !!holiday.isOptional,
+      _id: holiday._id.toString(),
+      name: holiday.name,
+      date: holiday.date,
+      scope: inferHolidayScope(holiday),
+      isOptional: !!holiday.isOptional,
       description: holiday.description,
-      branchId:    holiday.branchId ? holiday.branchId.toString() : null,
+      branchId: holiday.branchId ? holiday.branchId.toString() : null,
       countryCode: holiday.countryCode || null,
-      stateCode:   normalizeStateCode(holiday.stateCode, targetCountryCode),
-      type:        holiday.type || "NATIONAL",
+      stateCode: normalizeStateCode(holiday.stateCode, targetCountryCode),
+      type: holiday.type || "NATIONAL",
     }))
     .sort((a, b) => a.date.getTime() - b.date.getTime());
 }

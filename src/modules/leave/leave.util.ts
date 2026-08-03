@@ -7,13 +7,13 @@ import { isWeeklyOffDay, CustomWeekOffRule } from "../attendance/engine/schedule
 // half-day sessions at the start and/or end of the range.
 
 export function calculateLeaveDays(
-  fromDate:    Date,
-  toDate:      Date,
+  fromDate: Date,
+  toDate: Date,
   fromSession: LeaveSessionType,
-  toSession:   LeaveSessionType
+  toSession: LeaveSessionType
 ): number {
   const from = new Date(fromDate);
-  const to   = new Date(toDate);
+  const to = new Date(toDate);
   from.setHours(0, 0, 0, 0);
   to.setHours(0, 0, 0, 0);
 
@@ -32,7 +32,7 @@ export function calculateLeaveDays(
   let days = totalCalendarDays;
 
   if (fromSession !== LeaveSessionType.FULL_DAY) days -= 0.5;
-  if (toSession   !== LeaveSessionType.FULL_DAY) days -= 0.5;
+  if (toSession !== LeaveSessionType.FULL_DAY) days -= 0.5;
 
   return days;
 }
@@ -42,8 +42,8 @@ export function calculateLeaveDays(
 
 export function calculateAccrualForPeriod(
   leaveType: LeaveTypeDocument,
-  fromDate:  Date,
-  asOfDate:  Date
+  fromDate: Date,
+  asOfDate: Date
 ): number {
   if (
     leaveType.accrualFrequency === LeaveAccrualFrequency.NONE ||
@@ -53,7 +53,7 @@ export function calculateAccrualForPeriod(
   }
 
   const start = new Date(fromDate);
-  const asOf  = new Date(asOfDate);
+  const asOf = new Date(asOfDate);
 
   if (asOf < start) return 0;
 
@@ -96,7 +96,7 @@ export function calculateAccrualForPeriod(
 // Applies carry-forward cap from the previous year's leftover balance.
 
 export function calculateCarryForward(
-  leaveType:             LeaveTypeDocument,
+  leaveType: LeaveTypeDocument,
   previousYearAvailable: number
 ): number {
   if (previousYearAvailable <= 0) return 0;
@@ -105,10 +105,10 @@ export function calculateCarryForward(
 
 // Recomputes the `available` field from allocated/carriedForward/used/pending.
 export function recalculateAvailable(balance: {
-  allocated:      number;
+  allocated: number;
   carriedForward: number;
-  used:           number;
-  pending:        number;
+  used: number;
+  pending: number;
 }): number {
   return (balance.allocated + balance.carriedForward) - balance.used - balance.pending;
 }
@@ -118,11 +118,11 @@ export function recalculateAvailable(balance: {
 // toDate) with no working day gap, that holiday/weekoff also gets deducted.
 
 export function applySandwichPolicy(
-  baseDays:      number,
-  fromDate:      Date,
-  toDate:        Date,
+  baseDays: number,
+  fromDate: Date,
+  toDate: Date,
   weeklyOffDays: string[],
-  holidayDates:  Date[],
+  holidayDates: Date[],
   customWeekOffRules?: CustomWeekOffRule[] | null
 ): { totalDays: number; isSandwiched: boolean } {
 
@@ -189,7 +189,7 @@ export function buildApprovalChain(approvalLevels: number): Array<{
 
 export function resolveEntitlementForBranch(
   leaveType: { annualQuota: number; branchOverrides: Array<{ branchId: any; annualQuota: number }> },
-  branchId:  string
+  branchId: string
 ): number {
   const override = leaveType.branchOverrides.find(
     (o) => o.branchId.toString() === branchId

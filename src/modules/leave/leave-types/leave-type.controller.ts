@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { LeaveTypeService } from "../leave-types/leave-type.service";
+import { LeaveTypeService } from "./leave-type.service";
 import { buildSuccessResponse } from "../../../core/database/base.schema";
 
 const leaveTypeService = new LeaveTypeService();

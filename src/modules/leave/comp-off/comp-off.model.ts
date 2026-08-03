@@ -6,52 +6,52 @@ import {
 
 export enum CompOffSourceType {
   PUBLIC_HOLIDAY = "PUBLIC_HOLIDAY",
-  WEEKLY_OFF     = "WEEKLY_OFF",
+  WEEKLY_OFF = "WEEKLY_OFF",
 }
 
 export enum CompOffStatus {
   AVAILABLE = "AVAILABLE",
-  USED      = "USED",
-  EXPIRED   = "EXPIRED",
+  USED = "USED",
+  EXPIRED = "EXPIRED",
 }
 
 export interface CompOffDocument extends BaseDocument {
-  employeeId:            mongoose.Types.ObjectId;
-  workDate:              Date;             // the holiday/weekoff date they actually worked
-  sourceType:            CompOffSourceType;
-  creditedDate:          Date;
-  expiryDate:            Date;             // configurable per tenant — comp-off lapses after N days
-  status:                CompOffStatus;
+  employeeId: mongoose.Types.ObjectId;
+  workDate: Date;             // the holiday/weekoff date they actually worked
+  sourceType: CompOffSourceType;
+  creditedDate: Date;
+  expiryDate: Date;             // configurable per tenant — comp-off lapses after N days
+  status: CompOffStatus;
   usedInLeaveRequestId?: mongoose.Types.ObjectId;  // linked once redeemed
 }
 
 const CompOffSchema = createBaseSchema<CompOffDocument>(
   {
     employeeId: {
-      type:     mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
-      index:    true,
+      index: true,
     },
     workDate: {
-      type:     Date,
+      type: Date,
       required: true,
     },
     sourceType: {
-      type:     String,
-      enum:     Object.values(CompOffSourceType),
+      type: String,
+      enum: Object.values(CompOffSourceType),
       required: true,
     },
     creditedDate: {
-      type:    Date,
+      type: Date,
       default: Date.now,
     },
     expiryDate: {
-      type:     Date,
+      type: Date,
       required: true,
     },
     status: {
-      type:    String,
-      enum:    Object.values(CompOffStatus),
+      type: String,
+      enum: Object.values(CompOffStatus),
       default: CompOffStatus.AVAILABLE,
     },
     usedInLeaveRequestId: {

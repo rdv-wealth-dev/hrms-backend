@@ -23,7 +23,7 @@ export class HolidayService {
     const normalizedDate = new Date(input.date);
     normalizedDate.setUTCHours(0, 0, 0, 0);
 
-    const scope           = (input.scope ?? HolidayScope.BRANCH) as HolidayScope;
+    const scope = (input.scope ?? HolidayScope.BRANCH) as HolidayScope;
     const normalizedState = normalizeStateCode(input.stateCode);
 
     // Scope-aware conflict check:
@@ -47,18 +47,18 @@ export class HolidayService {
     }
 
     const created = await this.holidayRepo.create(context, {
-      tenantId:    new mongoose.Types.ObjectId(context.tenantId) as any,
-      name:        input.name,
-      date:        normalizedDate,
-      type:        input.type as any,
-      scope:       scope as any,
-      isOptional:  input.isOptional,
+      tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+      name: input.name,
+      date: normalizedDate,
+      type: input.type as any,
+      scope: scope as any,
+      isOptional: input.isOptional,
       description: input.description,
-      branchId:    input.branchId
+      branchId: input.branchId
         ? new mongoose.Types.ObjectId(input.branchId) as any
         : undefined,
       countryCode: input.countryCode?.toUpperCase(),
-      stateCode:   normalizedState ?? undefined,
+      stateCode: normalizedState ?? undefined,
     });
 
     // Cache invalidation strategy:
@@ -91,10 +91,10 @@ export class HolidayService {
     const checkDate = input.date ? new Date(input.date) : holiday.date;
     checkDate.setUTCHours(0, 0, 0, 0);
 
-    const checkScope       = (input.scope ?? holiday.scope ?? HolidayScope.BRANCH) as HolidayScope;
+    const checkScope = (input.scope ?? holiday.scope ?? HolidayScope.BRANCH) as HolidayScope;
     const checkCountryCode = input.countryCode ?? holiday.countryCode;
-    const checkStateCode   = normalizeStateCode(input.stateCode ?? holiday.stateCode);
-    const checkBranchId    = input.branchId ?? holiday.branchId?.toString();
+    const checkStateCode = normalizeStateCode(input.stateCode ?? holiday.stateCode);
+    const checkBranchId = input.branchId ?? holiday.branchId?.toString();
 
     // Scope-aware conflict check — exclude self
     const conflict = await this.holidayRepo.findDuplicate(
@@ -115,9 +115,9 @@ export class HolidayService {
     }
 
     const updateData: Record<string, unknown> = { ...input };
-    if (input.date)        updateData.date        = checkDate;
-    if (input.branchId)    updateData.branchId    = new mongoose.Types.ObjectId(input.branchId);
-    if (input.stateCode)   updateData.stateCode   = normalizeStateCode(input.stateCode);
+    if (input.date) updateData.date = checkDate;
+    if (input.branchId) updateData.branchId = new mongoose.Types.ObjectId(input.branchId);
+    if (input.stateCode) updateData.stateCode = normalizeStateCode(input.stateCode);
     if (input.countryCode) updateData.countryCode = input.countryCode.toUpperCase();
 
     const updated = await this.holidayRepo.updateById(context, id, updateData);
@@ -157,19 +157,19 @@ export class HolidayService {
   // Walks GLOBAL → COUNTRY → STATE → BRANCH and returns the highest-priority
   // entry per date. Result is LRU-cached per tenantId + branchId + year (30 min TTL).
   async resolveHolidaysForBranch(
-    context:  RequestContext,
+    context: RequestContext,
     branchId: string,
-    year:     number
+    year: number
   ): Promise<ResolvedHoliday[]> {
     const cacheKey = buildHolidayCacheKey(context.tenantId, branchId, year);
 
     return getOrSetCache(cacheKey, async () => {
       // Load org locale for countryCode
-      const org         = await OrganizationModel.findById(context.tenantId).select("locale");
+      const org = await OrganizationModel.findById(context.tenantId).select("locale");
       const countryCode = (org?.locale as any)?.countryCode ?? "IN";
 
       // Load branch address for stateCode (free-text — normalizeStateCode handles conversion)
-      const branch    = await BranchModel.findById(branchId).select("address");
+      const branch = await BranchModel.findById(branchId).select("address");
       const stateCode = (branch?.address as any)?.state ?? null;
 
       // Fetch across all 4 scope levels (bypasses BaseRepository branch filter)

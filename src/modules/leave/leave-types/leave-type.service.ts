@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
-import { LeaveTypeRepository } from "../leave-types/leave-type.repository";
+import { LeaveTypeRepository } from "./leave-type.repository";
 import { CreateLeaveTypeInput, UpdateLeaveTypeInput } from "../leave.dto";
 import { AppError } from "../../../core/errors/app.error";
 import { RequestContext } from "../../../core/interfaces/request-context.interface";
-import { LeaveAccrualFrequency } from "../leave-types/leave-type.model";
+import { LeaveAccrualFrequency } from "./leave-type.model";
 
 export class LeaveTypeService {
     private leaveTypeRepo = new LeaveTypeRepository();
@@ -104,18 +104,18 @@ export class LeaveTypeService {
 
 function getCyclesPerYear(freq: LeaveAccrualFrequency): number {
     switch (freq) {
-        case LeaveAccrualFrequency.MONTHLY:      return 12;
-        case LeaveAccrualFrequency.QUARTERLY:    return 4;
-        case LeaveAccrualFrequency.HALF_YEARLY:  return 2;
-        case LeaveAccrualFrequency.YEARLY:       return 1;
-        case LeaveAccrualFrequency.WEEKLY:       return 52;
-        case LeaveAccrualFrequency.BI_WEEKLY:    return 26;
+        case LeaveAccrualFrequency.MONTHLY: return 12;
+        case LeaveAccrualFrequency.QUARTERLY: return 4;
+        case LeaveAccrualFrequency.HALF_YEARLY: return 2;
+        case LeaveAccrualFrequency.YEARLY: return 1;
+        case LeaveAccrualFrequency.WEEKLY: return 52;
+        case LeaveAccrualFrequency.BI_WEEKLY: return 26;
         case LeaveAccrualFrequency.SEMI_MONTHLY: return 24;
-        case LeaveAccrualFrequency.DAILY:        return 365;
-        case LeaveAccrualFrequency.HOURLY:       return 2080;
-        case LeaveAccrualFrequency.ON_JOINING:   return 1;
-        case LeaveAccrualFrequency.MANUAL:       return 0;
-        case LeaveAccrualFrequency.NONE:         return 0;
-        default:                                 return 0;
+        case LeaveAccrualFrequency.DAILY: return 365;
+        case LeaveAccrualFrequency.HOURLY: return 2080;
+        case LeaveAccrualFrequency.ON_JOINING: return 1;
+        case LeaveAccrualFrequency.MANUAL: return 0;
+        case LeaveAccrualFrequency.NONE: return 0;
+        default: return 0;
     }
 }

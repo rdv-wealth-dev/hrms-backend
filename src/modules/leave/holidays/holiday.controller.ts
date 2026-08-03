@@ -9,7 +9,7 @@ import { seedStatutoryNationalHolidays } from "./holiday.seed";
 import { clearLookupCache } from "../../../service/cache.service";
 
 const holidayService = new HolidayService();
-const compOffService  = new CompOffService();
+const compOffService = new CompOffService();
 
 export class HolidayController {
 
@@ -111,7 +111,7 @@ export class HolidayController {
       // no longer accept countryCode from the request.
       const stateCode = req.query.stateCode as string | undefined;
 
-      await seedStatutoryNationalHolidays(req.context.tenantId, countryCode, stateCode, req.context.userId);
+      await seedStatutoryNationalHolidays(req.context.tenantId, countryCode as string, stateCode ?? undefined, req.context.userId);
       clearLookupCache();
 
       const regionMsg = stateCode
@@ -121,4 +121,4 @@ export class HolidayController {
       res.status(200).json(buildSuccessResponse(null, `Statutory holidays for ${regionMsg} seeded successfully`));
     } catch (error) { next(error); }
   }
-}
+}

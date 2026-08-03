@@ -1,11 +1,9 @@
-// src/modules/leave/holidays/utils/state-code-mapper.util.ts
-
 import { STATE_CODE_DICTIONARY } from "../config/state-mapper.config";
 
-/**
- * Normalizes state inputs into standard 2-letter state codes.
- * e.g., "Tamil Nadu", "TamilNadu", "TN" -> "TN"
- */
+
+//  Normalizes state inputs into standard 2-letter state codes.
+// e.g., "Tamil Nadu", "TamilNadu", "TN" -> "TN"
+
 export const normalizeStateCode = (
   stateInput?: string | null,
   countryCode: string = "IN"

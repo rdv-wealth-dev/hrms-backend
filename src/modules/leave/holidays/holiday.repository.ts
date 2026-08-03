@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import { BaseRepository }     from "../../../repositories/base.repository";
+import { BaseRepository } from "../../../repositories/base.repository";
 import { HolidayDocument, HolidayModel, HolidayScope } from "../holidays/holiday.model";
-import { RequestContext }     from "../../../core/interfaces/request-context.interface";
+import { RequestContext } from "../../../core/interfaces/request-context.interface";
 import { normalizeStateCode } from "./utils/state-code-mapper.util";
 
 export class HolidayRepository extends BaseRepository<HolidayDocument> {
@@ -16,11 +16,11 @@ export class HolidayRepository extends BaseRepository<HolidayDocument> {
     //   BRANCH-scope holidays for other branches are hidden.
     async findForYear(context: RequestContext, year: number) {
         const from = new Date(year, 0, 1);
-        const to   = new Date(year, 11, 31, 23, 59, 59);
+        const to = new Date(year, 11, 31, 23, 59, 59);
 
         const baseFilter: Record<string, unknown> = {
-            tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-            date:      { $gte: from, $lte: to },
+            tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            date: { $gte: from, $lte: to },
             isDeleted: false,
         };
 
@@ -51,24 +51,24 @@ export class HolidayRepository extends BaseRepository<HolidayDocument> {
     // Legacy document support: includes { scope: { $exists: false } } fallback
     // to catch documents created before the scope field existed.
     async findHolidaysForResolution(
-        tenantId:    string,
-        year:        number,
+        tenantId: string,
+        year: number,
         countryCode: string,
-        stateCode:   string | null,
-        branchId:    string
+        stateCode: string | null,
+        branchId: string
     ) {
-        const startOfYear     = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
-        const endOfYear       = new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999));
-        const tenantOId       = new mongoose.Types.ObjectId(tenantId);
-        const branchOId       = new mongoose.Types.ObjectId(branchId);
+        const startOfYear = new Date(Date.UTC(year, 0, 1, 0, 0, 0));
+        const endOfYear = new Date(Date.UTC(year, 11, 31, 23, 59, 59, 999));
+        const tenantOId = new mongoose.Types.ObjectId(tenantId);
+        const branchOId = new mongoose.Types.ObjectId(branchId);
         const normalizedState = normalizeStateCode(stateCode);
-        const cc              = countryCode.toUpperCase();
+        const cc = countryCode.toUpperCase();
 
         const orClauses: any[] = [
             // Explicit scope matches
             { scope: HolidayScope.GLOBAL },
             { scope: HolidayScope.COUNTRY, countryCode: cc },
-            { scope: HolidayScope.BRANCH,  branchId: branchOId },
+            { scope: HolidayScope.BRANCH, branchId: branchOId },
 
             // Legacy fallback — documents saved before scope field was introduced
             { scope: { $exists: false }, branchId: null },
@@ -78,17 +78,17 @@ export class HolidayRepository extends BaseRepository<HolidayDocument> {
         // STATE scope only added when a normalized state code is available
         if (normalizedState) {
             orClauses.push({
-                scope:       HolidayScope.STATE,
+                scope: HolidayScope.STATE,
                 countryCode: cc,
-                stateCode:   normalizedState,
+                stateCode: normalizedState,
             });
         }
 
         return HolidayModel.find({
-            tenantId:  tenantOId,
-            date:      { $gte: startOfYear, $lte: endOfYear },
+            tenantId: tenantOId,
+            date: { $gte: startOfYear, $lte: endOfYear },
             isDeleted: false,
-            $or:       orClauses,
+            $or: orClauses,
         }).lean();
     }
 
@@ -100,16 +100,16 @@ export class HolidayRepository extends BaseRepository<HolidayDocument> {
     //   BRANCH  → tenantId + date + branchId
     //   GLOBAL  → tenantId + date
     async findDuplicate(
-        tenantId:     string,
-        date:         Date,
-        scope:        HolidayScope,
-        excludeId?:   string,
+        tenantId: string,
+        date: Date,
+        scope: HolidayScope,
+        excludeId?: string,
         countryCode?: string | null,
-        stateCode?:   string | null,
-        branchId?:    string | null
+        stateCode?: string | null,
+        branchId?: string | null
     ): Promise<HolidayDocument | null> {
         const query: Record<string, unknown> = {
-            tenantId:  new mongoose.Types.ObjectId(tenantId),
+            tenantId: new mongoose.Types.ObjectId(tenantId),
             date,
             scope,
             isDeleted: false,
@@ -124,7 +124,7 @@ export class HolidayRepository extends BaseRepository<HolidayDocument> {
             query.countryCode = countryCode?.toUpperCase();
         } else if (scope === HolidayScope.STATE) {
             query.countryCode = countryCode?.toUpperCase();
-            query.stateCode   = normalizeStateCode(stateCode);
+            query.stateCode = normalizeStateCode(stateCode);
         } else if (scope === HolidayScope.BRANCH && branchId) {
             query.branchId = new mongoose.Types.ObjectId(branchId);
         }
