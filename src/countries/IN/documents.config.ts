@@ -1,4 +1,4 @@
-import { StatutoryFieldConfig } from "../../shared/country-registry/countryModule.interface";
+import { StatutoryFieldConfig } from "../../core/plugins/country-plugin.interface";
 import { validatePAN, validateAadhaar, maskPAN, maskAadhaar } from "./validators";
 
 export const statutoryFields: StatutoryFieldConfig[] = [

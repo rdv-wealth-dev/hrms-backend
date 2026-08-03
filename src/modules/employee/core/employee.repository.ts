@@ -3,7 +3,6 @@ import { BaseRepository } from "../../../repositories/base.repository"
 import { EmployeeDocument, EmployeeModel } from "../core/employee.model";
 import { RequestContext } from "../../../core/interfaces/request-context.interface";
 import { EmployeeBankAccountDocument, EmployeeBankAccountModel, } from "../sub-records/employee-bank-account.model";
-import { EmployeeDocumentRecord, EmployeeDocumentModel, } from "../sub-records/employee-document.model";
 
 export class EmployeeRepository
   extends BaseRepository<EmployeeDocument> {
@@ -121,46 +120,6 @@ export class EmployeeRepository
     );
   }
 
-  //Document methods
-  async addDocument(
-    data: Partial<EmployeeDocumentRecord>
-  ): Promise<EmployeeDocumentRecord> {
-    return new EmployeeDocumentModel(data).save();
-  }
-
-  async getDocuments(
-    context: RequestContext,
-    employeeId: string
-  ): Promise<EmployeeDocumentRecord[]> {
-    return EmployeeDocumentModel.find({
-      tenantId: new mongoose.Types.ObjectId(context.tenantId),
-      employeeId: new mongoose.Types.ObjectId(employeeId),
-      isDeleted: false,
-    }).sort({ createdAt: -1 });
-  }
-
-  async deleteDocument(id: string): Promise<void> {
-    await EmployeeDocumentModel.findByIdAndUpdate(
-      id,
-      { isDeleted: true }
-    );
-  }
-
-  async getPendingDocuments(context: RequestContext) {
-    return EmployeeDocumentModel.find({
-      tenantId: new mongoose.Types.ObjectId(context.tenantId),
-      isVerified: false,
-      isDeleted: false,
-    }).populate("employeeId", "employeeCode firstName lastName").sort({ createdAt: 1 });
-  }
-
-  async verifyDocument(id: string, isVerified: boolean, verifiedBy: string) {
-    return EmployeeDocumentModel.findByIdAndUpdate(
-      id,
-      { isVerified, updatedBy: new mongoose.Types.ObjectId(verifiedBy) },
-      { new: true }
-    );
-  }
 
   /**
    * Bulk insert employees in a single transaction or batch operation.

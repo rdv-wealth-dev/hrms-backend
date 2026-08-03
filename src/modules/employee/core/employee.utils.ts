@@ -8,7 +8,7 @@ import { DepartmentModel } from "../../department/department.model";
 import { DesignationModel } from "../../designation/designation.model";
 import { BranchModel } from "../../branch/branch.model";
 import { getNextEmployeeCode } from "./employee-counter.util";
-import { getCountryModule } from "../../../shared/country-registry/countryModuleRegistry";
+import { getCountryModule } from "../../../core/plugins/country-registry";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { EmployeeModel } from "../core/employee.model";
-import { EmployeeDocumentModel } from "../sub-records/employee-document.model";
+import { EmployeeDocumentModel } from "../../employee-documents/employee-document.model";
 import { EmployeeBankAccountModel } from "../sub-records/employee-bank-account.model";
 import { OrganizationModel } from "../../organization/organization.model";
 

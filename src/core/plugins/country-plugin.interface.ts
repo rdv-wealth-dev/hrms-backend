@@ -6,7 +6,7 @@ export interface StatutoryFieldConfig {
   mask: (value: string) => string;
 }
 
-export interface CountryModule {
+export interface CountryPlugin {
   countryCode: string;
   statutoryFields: StatutoryFieldConfig[];
   calculatePF?: (wages: number, pfEnabled: boolean) => {

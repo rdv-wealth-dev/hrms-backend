@@ -13,7 +13,7 @@ import { ErrorCode } from "../../../core/errors/error-codes";
 import { RequestContext } from "../../../core/interfaces/request-context.interface";
 import { recalculateProfileCompletion } from "../profile/profile-completion.util";
 import { OrganizationModel } from "../../organization/organization.model";
-import { EmployeeDocumentModel } from "../sub-records/employee-document.model";
+import { EmployeeDocumentModel } from "../../employee-documents/employee-document.model";
 
 export class OnboardingWizardService {
   private familyRepo = new EmployeeFamilyRepository();

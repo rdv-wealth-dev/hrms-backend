@@ -6,17 +6,14 @@ import {
   UpdateEmployeeInput,
   UpdateEmployeeStatusInput,
   AddBankAccountInput,
-  AddDocumentInput,
   ListEmployeesQuery,
-  RequestUploadUrlInput,
-  VerifyDocumentInput,
-  assertValidDocumentFile,
   CalendarEventsQuery,
   CalendarEvent,
   CropAvatarInput,
 } from "./employee.dto";
 
 import { EmployeeModel } from "../core/employee.model";
+import { EmployeeDocumentModel } from "../../employee-documents/employee-document.model";
 import { AppError, ValidationFailedError } from "../../../core/errors/app.error";
 import { RequestContext } from "../../../core/interfaces/request-context.interface";
 import { buildPagedResponse } from "../../../core/database/base.schema";
@@ -320,121 +317,6 @@ export class EmployeeService {
   }
 
 
-  // Step 1 — HR/employee requests a pre-signed URL before uploading anything
-  async requestDocumentUploadUrl(
-    context: RequestContext,
-    employeeId: string,
-    input: RequestUploadUrlInput
-  ) {
-    const employee = await this.empRepo.findById(context, employeeId);
-    if (!employee) throw new AppError("Employee not found", 404);
-
-    assertValidDocumentFile(input.mimeType, 1); // type check up-front (size unknown until upload)
-
-    const org = await OrganizationModel.findById(context.tenantId).select("slug");
-    const slug = org?.slug ?? context.tenantId;
-
-    const s3Key = s3Service.buildDocumentKey(slug, employeeId, input.documentType, input.fileName);
-    const { uploadUrl, expiresIn } = await s3Service.getUploadUrl(s3Key, input.mimeType);
-
-    return {
-      uploadUrl,
-      expiresIn,
-      s3Key,            // client must send this back in step 2 after uploading
-      documentType: input.documentType,
-      fileName: input.fileName
-    };
-  }
-
-  // Step 3 — get a fresh viewing URL for an already-uploaded document
-  async getDocumentDownloadUrl(
-    context: RequestContext,
-    employeeId: string,
-    docId: string
-  ) {
-    const employee = await this.empRepo.findById(context, employeeId);
-    if (!employee) throw new AppError("Employee not found", 404);
-
-    const documents = await this.empRepo.getDocuments(context, employeeId);
-    const doc = documents.find(d => d._id.toString() === docId);
-    if (!doc) throw new AppError("Document not found", 404);
-
-    const downloadUrl = await s3Service.getDownloadUrl(doc.s3Key);
-    return { downloadUrl, fileName: doc.fileName, expiresIn: 900 };
-
-  }
-
-  async requestMyUploadUrl(
-    context: RequestContext, 
-    input: RequestUploadUrlInput
-  ) {
-    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
-    return this.requestDocumentUploadUrl(context, employeeId, input);
-  }
-
-  async addMyDocument(
-    context: RequestContext, 
-    input: AddDocumentInput
-  ) {
-    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
-    return this.addDocument(context, employeeId, input);
-  }
-
-  async getMyDownloadUrl(
-    context: RequestContext, docId: string
-  ) {
-    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
-    return this.getDocumentDownloadUrl(context, employeeId, docId);
-  }
-
-  // Server-side Direct upload for S3 and DB document storage
-  async uploadDocumentDirectly(
-    context: RequestContext,
-    employeeId: string,
-    file: Express.Multer.File,
-    documentType: string
-  ) {
-    const employee = await this.empRepo.findById(context, employeeId);
-    if (!employee) throw new AppError("Employee not found", 404);
-
-    assertValidDocumentFile(file.mimetype, file.size);
-
-    const org = await OrganizationModel.findById(context.tenantId).select("slug");
-    const slug = org?.slug ?? context.tenantId;
-
-    const s3Key = s3Service.buildDocumentKey(slug, employeeId, documentType, file.originalname);
-
-    // Upload file buffer to S3 directly
-    await s3Service.uploadObject(s3Key, file.buffer, file.mimetype);
-
-    // Save metadata record
-    const doc = await this.empRepo.addDocument({
-      tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
-      branchId: employee.branchId as any,
-      employeeId: new mongoose.Types.ObjectId(employeeId) as any,
-      documentType: documentType as any,
-      fileName: file.originalname,
-      s3Key: s3Key,
-      mimeType: file.mimetype,
-      sizeBytes: file.size,
-      uploadedBy: new mongoose.Types.ObjectId(context.userId) as any,
-      isVerified: false,
-      createdBy: new mongoose.Types.ObjectId(context.userId) as any,
-      updatedBy: new mongoose.Types.ObjectId(context.userId) as any,
-    });
-
-    await recalculateProfileCompletion(context.tenantId, employeeId);
-    return doc;
-  }
-
-  async uploadMyDocumentDirectly(
-    context: RequestContext,
-    file: Express.Multer.File,
-    documentType: string
-  ) {
-    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
-    return this.uploadDocumentDirectly(context, employeeId, file, documentType);
-  }
 
   async uploadAvatar(
     context: RequestContext,
@@ -515,7 +397,11 @@ export class EmployeeService {
     }
 
     // Get documents
-    const documents = await this.empRepo.getDocuments(context, id);
+    const documents = await EmployeeDocumentModel.find({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      employeeId: new mongoose.Types.ObjectId(id),
+      isDeleted: false,
+    }).sort({ createdAt: -1 });
 
     // Get bank accounts (with masked account numbers)
     const bankAccountsRaw = await this.empRepo.getBankAccounts(context, id);
@@ -828,36 +714,6 @@ export class EmployeeService {
     return { message: "Bank account removed successfully" };
   }
 
-  // Documents
-  async addDocument(
-    context: RequestContext,
-    employeeId: string,
-    input: AddDocumentInput
-  ) {
-    const employee = await this.empRepo.findById(context, employeeId);
-    if (!employee) throw new AppError("Employee not found", 404);
-
-    assertValidDocumentFile(input.mimeType, input.sizeBytes);
-
-    const doc = await this.empRepo.addDocument({
-      tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
-      branchId: employee.branchId as any,
-      employeeId: new mongoose.Types.ObjectId(employeeId) as any,
-      documentType: input.documentType as any,
-      fileName: input.fileName,
-      s3Key: input.s3Key,
-      mimeType: input.mimeType,
-      sizeBytes: input.sizeBytes,
-      uploadedBy: new mongoose.Types.ObjectId(context.userId) as any,
-      expiryDate: input.expiryDate ? new Date(input.expiryDate) : undefined,
-      isVerified: false,
-      createdBy: new mongoose.Types.ObjectId(context.userId) as any,
-      updatedBy: new mongoose.Types.ObjectId(context.userId) as any,
-    });
-
-    await recalculateProfileCompletion(context.tenantId, employeeId);
-    return doc;
-  }
 
   async getMyBankAccounts(context: RequestContext) {
     const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
@@ -874,15 +730,6 @@ export class EmployeeService {
     return this.deleteBankAccount(context, employeeId, bankId);
   }
 
-  async getMyDocuments(context: RequestContext) {
-    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
-    return this.getDocuments(context, employeeId);
-  }
-
-  async deleteMyDocument(context: RequestContext, docId: string) {
-    const employeeId = await this.resolveOwnEmployeeIdForSelfService(context);
-    return this.deleteDocument(context, employeeId, docId);
-  }
 
   // Shared resolver — same logic as getMyProfile's inline lookup, extracted
   private async resolveOwnEmployeeIdForSelfService(context: RequestContext): Promise<string> {
@@ -897,28 +744,6 @@ export class EmployeeService {
     return user.employeeId.toString();
   }
 
-  async getDocuments(
-    context: RequestContext,
-    employeeId: string
-  ) {
-    const employee = await this.empRepo.findById(context, employeeId);
-    if (!employee) throw new AppError("Employee not found", 404);
-
-    return this.empRepo.getDocuments(context, employeeId);
-  }
-
-  async deleteDocument(
-    context: RequestContext,
-    employeeId: string,
-    docId: string
-  ) {
-    const employee = await this.empRepo.findById(context, employeeId);
-    if (!employee) throw new AppError("Employee not found", 404);
-
-    await this.empRepo.deleteDocument(docId);
-    await recalculateProfileCompletion(context.tenantId, employeeId);
-    return { message: "Document removed successfully" };
-  }
 
   // documents 
 
@@ -1057,15 +882,6 @@ export class EmployeeService {
     return events;
   }
 
-  async getPendingDocuments(context: RequestContext) {
-    return this.empRepo.getPendingDocuments(context);
-  }
-
-  async verifyDocument(context: RequestContext, docId: string, input: VerifyDocumentInput) {
-    const doc = await this.empRepo.verifyDocument(docId, input.isVerified, context.userId);
-    if (!doc) throw new AppError("Document not found", 404);
-    return doc;
-  }
 
   /**
    * Import Employees: Parses file -> Validates records -> Calls Repository

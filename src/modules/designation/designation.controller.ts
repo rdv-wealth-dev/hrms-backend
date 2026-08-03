@@ -25,7 +25,7 @@ export class DesignationController {
       next(error);
     }
   }
-
+  
   // GET /api/v1/designations
   async list(
     req:  Request,

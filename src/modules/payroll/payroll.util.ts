@@ -9,7 +9,7 @@ import { LWFConfigModel } from "./statutory-config.model";
 import { TaxDeclarationModel, TaxRegime } from "./statutory-config.model";
 import { OvertimeModel, OTStatus } from "./overtime.model";
 import { AttendanceLockModel, AttendanceLockStatus } from "../attendance/core/attendance-lock.model";
-import { getCountryModule } from "../../shared/country-registry/countryModuleRegistry";
+import { getCountryModule } from "../../core/plugins/country-registry";
 
 // CONSTANTS
 

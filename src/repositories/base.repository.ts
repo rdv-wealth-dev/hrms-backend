@@ -13,27 +13,27 @@ import { buildPagedResponse } from "../core/database/base.schema";
 
 export interface PaginationOptions {
   pageNumber: number;
-  pageSize:   number;
+  pageSize: number;
 }
 
 export interface FindOptions<T> {
-  sort?:       Record<string, 1 | -1>;
+  sort?: Record<string, 1 | -1>;
   projection?: ProjectionType<T>;
-  populate?:   string | string[];
-  baseUrl?:    string;
-  lean?:       boolean;
+  populate?: string | string[];
+  baseUrl?: string;
+  lean?: boolean;
 }
 
 export class BaseRepository<T extends Document> {
-  constructor(protected readonly model: Model<T>) {}
+  constructor(protected readonly model: Model<T>) { }
 
   protected buildTenantFilter(
     context: RequestContext,
-    filter:  FilterQuery<T> = {}
+    filter: FilterQuery<T> = {}
   ): FilterQuery<T> {
     const tenantFilter: FilterQuery<T> = {
       ...filter,
-      tenantId:  context.tenantId,
+      tenantId: context.tenantId,
       isDeleted: false,
     } as FilterQuery<T>;
 
@@ -47,17 +47,17 @@ export class BaseRepository<T extends Document> {
   }
 
   async findAll(
-    context:    RequestContext,
-    filter:     FilterQuery<T> = {},
+    context: RequestContext,
+    filter: FilterQuery<T> = {},
     pagination: PaginationOptions = { pageNumber: 1, pageSize: 10 },
-    options:    FindOptions<T> = {}
+    options: FindOptions<T> = {}
   ) {
     const tenantFilter = this.buildTenantFilter(context, filter);
 
     const { pageNumber, pageSize } = pagination;
     const safePgSize = Math.min(pageSize, 100); // LPDOS guard — max 100 per page
-    const skip       = (pageNumber - 1) * safePgSize;
-    const sort       = options.sort ?? { createdAt: -1 };
+    const skip = (pageNumber - 1) * safePgSize;
+    const sort = options.sort ?? { createdAt: -1 };
 
 
     const [data, totalRecords] = await Promise.all([
@@ -72,17 +72,17 @@ export class BaseRepository<T extends Document> {
     ]);
 
     return buildPagedResponse({
-      data:         data as T[],
+      data: data as T[],
       pageNumber,
-      pageSize:     safePgSize,
+      pageSize: safePgSize,
       totalRecords,
-      baseUrl:      options.baseUrl ?? "",
+      baseUrl: options.baseUrl ?? "",
     });
   }
 
   async findOne(
     context: RequestContext,
-    filter:  FilterQuery<T>,
+    filter: FilterQuery<T>,
     options: FindOptions<T> = {}
   ): Promise<any | null> {
     const tenantFilter = this.buildTenantFilter(context, filter);
@@ -97,14 +97,14 @@ export class BaseRepository<T extends Document> {
 
   async findById(
     context: RequestContext,
-    id:      string,
+    id: string,
     options: FindOptions<T> = {}
   ): Promise<any | null> {
     let query = this.model
       .findOne(
         {
-          _id:       id,
-          tenantId:  context.tenantId,
+          _id: id,
+          tenantId: context.tenantId,
           isDeleted: false,
         } as FilterQuery<T>,
         options.projection
@@ -119,11 +119,11 @@ export class BaseRepository<T extends Document> {
 
   async create(
     context: RequestContext,
-    data:    Partial<T>
+    data: Partial<T>
   ): Promise<T> {
     const doc = new this.model({
       ...data,
-      tenantId:  context.tenantId,
+      tenantId: context.tenantId,
       createdBy: context.userId,
       updatedBy: context.userId,
     });
@@ -132,11 +132,11 @@ export class BaseRepository<T extends Document> {
 
   async createMany(
     context: RequestContext,
-    data:    Partial<T>[]
+    data: Partial<T>[]
   ): Promise<T[]> {
     const docs = data.map((item) => ({
       ...item,
-      tenantId:  context.tenantId,
+      tenantId: context.tenantId,
       createdBy: context.userId,
       updatedBy: context.userId,
     }));
@@ -145,14 +145,14 @@ export class BaseRepository<T extends Document> {
 
   async updateById(
     context: RequestContext,
-    id:      string,
-    data:    UpdateQuery<T>,
+    id: string,
+    data: UpdateQuery<T>,
     options: QueryOptions = { new: true }
   ): Promise<T | null> {
     return this.model.findOneAndUpdate(
       {
-        _id:       id,
-        tenantId:  context.tenantId,
+        _id: id,
+        tenantId: context.tenantId,
         isDeleted: false,
       } as FilterQuery<T>,
       {
@@ -165,8 +165,8 @@ export class BaseRepository<T extends Document> {
 
   async updateMany(
     context: RequestContext,
-    filter:  FilterQuery<T>,
-    data:    UpdateQuery<T>
+    filter: FilterQuery<T>,
+    data: UpdateQuery<T>
   ): Promise<{ modifiedCount: number }> {
     const tenantFilter = this.buildTenantFilter(context, filter);
     const result = await this.model.updateMany(tenantFilter, {
@@ -176,15 +176,15 @@ export class BaseRepository<T extends Document> {
     return { modifiedCount: result.modifiedCount };
   }
 
-// soft delete , don't hard delete 
+  // soft delete , don't hard delete 
   async softDeleteById(
     context: RequestContext,
-    id:      string
+    id: string
   ): Promise<T | null> {
     return this.model.findOneAndUpdate(
       {
-        _id:       id,
-        tenantId:  context.tenantId,
+        _id: id,
+        tenantId: context.tenantId,
         isDeleted: false,
       } as FilterQuery<T>,
       {
@@ -195,10 +195,10 @@ export class BaseRepository<T extends Document> {
     );
   }
 
-// count
+  // count
   async count(
     context: RequestContext,
-    filter:  FilterQuery<T> = {}
+    filter: FilterQuery<T> = {}
   ): Promise<number> {
     const tenantFilter = this.buildTenantFilter(context, filter);
     return this.model.countDocuments(tenantFilter);
@@ -207,7 +207,7 @@ export class BaseRepository<T extends Document> {
 
   async exists(
     context: RequestContext,
-    filter:  FilterQuery<T>
+    filter: FilterQuery<T>
   ): Promise<boolean> {
     const tenantFilter = this.buildTenantFilter(context, filter);
     const doc = await this.model
@@ -218,7 +218,7 @@ export class BaseRepository<T extends Document> {
   }
 
   async findOneGlobal(
-    filter:  FilterQuery<T>,
+    filter: FilterQuery<T>,
     options: FindOptions<T> = {}
   ): Promise<any | null> {
     let query = this.model
@@ -234,12 +234,12 @@ export class BaseRepository<T extends Document> {
   }
 
   async aggregate(
-    context:  RequestContext,
+    context: RequestContext,
     pipeline: PipelineStage[]
   ): Promise<unknown[]> {
     const tenantStage: PipelineStage = {
       $match: {
-        tenantId:  new mongoose.Types.ObjectId(context.tenantId),
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
         isDeleted: false,
       },
     };

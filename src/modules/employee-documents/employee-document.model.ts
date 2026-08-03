@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { createBaseSchema, BaseDocument } from "../../../core/database/base.schema";
+import { createBaseSchema, BaseDocument } from "../../core/database/base.schema";
 
 export enum DocumentType {
   PAN             = "PAN",
