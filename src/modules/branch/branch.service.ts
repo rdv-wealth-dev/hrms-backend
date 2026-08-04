@@ -59,7 +59,7 @@ export class BranchService {
       tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
       name: input.name,
       code: input.code,
-      isHeadOffice: false,
+      isHeadOffice: existingBranches.length === 0,
       isActive: true,
       parentBranchId: input.parentBranchId
         ? new mongoose.Types.ObjectId(input.parentBranchId) as any
