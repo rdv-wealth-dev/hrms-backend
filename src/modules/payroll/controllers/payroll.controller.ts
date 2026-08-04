@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { SalaryComponentService } from "../sub-modules/salary-components/salary-component.service";
-import { SalaryStructureService } from "../sub-modules/salary-structures/salary-structure.service";
-import { PayrollRunService } from "../sub-modules/payroll-run/payroll-run.service";
-import { PayslipService } from "../sub-modules/payslip/payslip.service";
+import { SalaryComponentService } from "../services/salary-component.service";
+import { SalaryStructureService } from "../services/salary-structure.service";
+import { PayrollRunService } from "../services/payroll-run.service";
+import { PayslipService } from "../services/payslip.service";
 import { buildSuccessResponse } from "../../../shared/database/base.schema";
 import { AttendanceLockService } from "../../attendance/services/attendance-lock.service";
 import { OvertimeService } from "../services/overtime.service";

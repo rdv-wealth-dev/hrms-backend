@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { AttendanceRepository } from "../repositories/attendance.repository";
-import { ShiftRepository } from "../sub-modules/shifts/shift.repository";
+import { ShiftRepository } from "../repositories/shift.repository";
 import { AttendanceModel, AttendanceStatus, PunchSource, SessionType } from "../models/attendance.model";
 import { PunchInput, ManualAttendanceInput } from "../dto/attendance.dto";
 import { AppError } from "../../../shared/errors/app.error";

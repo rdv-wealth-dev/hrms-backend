@@ -13,8 +13,8 @@
  *   • (future) payroll engine     — counts working days
  */
 
-import { ShiftDocument } from "../sub-modules/shifts/shift.model";
-import { ShiftRotationPlanDocument, RotationSlot, CycleDuration } from "../sub-modules/rotation-plans/shift-rotation-plan.model";
+import { ShiftDocument } from "../models/shift.model";
+import { ShiftRotationPlanDocument, RotationSlot, CycleDuration } from "../models/shift-rotation-plan.model";
 import { HolidayDocument } from "../../leave/sub-modules/holidays/holiday.model";
 
 // ─── TYPES

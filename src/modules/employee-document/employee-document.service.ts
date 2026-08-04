@@ -7,7 +7,7 @@ import { UserModel } from "../user/user.model";
 import { s3Service } from "../../shared/services/storage.service";
 import { AppError } from "../../shared/errors/app.error";
 import { RequestContext } from "../../shared/types/request-context.interface";
-import { recalculateProfileCompletion } from "../employee/sub-modules/profile/profile-completion.util";
+import { recalculateProfileCompletion } from "../employee/utils/profile-completion.util";
 import { CountryRegistry } from "../../domain/localization/country.registry";
 import {
   AddDocumentInput,

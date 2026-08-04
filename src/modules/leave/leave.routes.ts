@@ -14,7 +14,7 @@ import {
 import { HolidayController } from "./sub-modules/holidays/holiday.controller";
 import { CreateHolidayDto, UpdateHolidayDto } from "./dto/leave.dto";
 
-import { requireCompleteProfile } from "../employee/sub-modules/profile/profile-completion.middleware";
+import { requireCompleteProfile } from "../employee/middlewares/profile-completion.middleware";
 
 const router = Router();
 const typeCtrl = new LeaveTypeController();

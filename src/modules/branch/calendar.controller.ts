@@ -4,7 +4,7 @@ import { BranchModel } from "./branch.model";
 import { OrganizationModel } from "../organization/organization.model";
 import { HolidayModel } from "../leave/sub-modules/holidays/holiday.model";
 import { HolidayService } from "../leave/sub-modules/holidays/holiday.service";
-import { ShiftRotationPlanModel } from "../attendance/sub-modules/rotation-plans/shift-rotation-plan.model";
+import { ShiftRotationPlanModel } from "../attendance/models/shift-rotation-plan.model";
 import { EmployeeModel } from "../employee/models/employee.model";
 import { UserModel } from "../user/user.model";
 import {
@@ -17,7 +17,7 @@ import {
 import { buildSuccessResponse } from "../../shared/database/base.schema";
 import { AppError } from "../../shared/errors/app.error";
 import { normalizeToMidnight } from "../attendance/attendance.util";
-import { ShiftRepository } from "../attendance/sub-modules/shifts/shift.repository";
+import { ShiftRepository } from "../attendance/repositories/shift.repository";
 
 const shiftRepo = new ShiftRepository();
 const holidayService = new HolidayService();

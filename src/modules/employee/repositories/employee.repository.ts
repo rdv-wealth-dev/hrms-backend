@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { BaseRepository } from "../../../shared/database/base.repository"
 import { EmployeeDocument, EmployeeModel } from "../models/employee.model";
 import { RequestContext } from "../../../shared/types/request-context.interface";
-import { EmployeeBankAccountDocument, EmployeeBankAccountModel, } from "../sub-modules/sub-records/employee-bank-account.model";
+import { EmployeeBankAccountDocument, EmployeeBankAccountModel, } from "../models/employee-bank-account.model";
 
 export class EmployeeRepository
   extends BaseRepository<EmployeeDocument> {

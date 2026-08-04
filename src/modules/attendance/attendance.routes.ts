@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { AttendanceController } from "./controllers/attendance.controller";
-import { ShiftController } from "./sub-modules/shifts/shift.controller";
-import { RegularizationController } from "./sub-modules/regularizations/regularization.controller";
-import { ShiftRotationPlanController } from "./sub-modules/rotation-plans/shift-rotation-plan.controller";
+import { ShiftController } from "./controllers/shift.controller";
+import { RegularizationController } from "./controllers/regularization.controller";
+import { ShiftRotationPlanController } from "./controllers/shift-rotation-plan.controller";
 import { authenticate } from "../../shared/middlewares/auth.middleware";
 import { checkPermission } from "../../shared/middlewares/rbac.middleware";
 import { validateBody } from "../../shared/validators/validate.middleware";
@@ -10,15 +10,15 @@ import {
   PunchDto, ManualAttendanceDto, CreateShiftDto, UpdateShiftDto, CreateRegularizationDto,
   ReviewRegularizationDto,
 } from "./dto/attendance.dto";
-import { AssignShiftDto } from "./sub-modules/shifts/shift-assignment.dto";
-import { CreateShiftRotationPlanDto, UpdateShiftRotationPlanDto, AssignRotationPlanDto } from "./sub-modules/rotation-plans/shift-rotation-plan.dto";
+import { AssignShiftDto } from "./dto/shift-assignment.dto";
+import { CreateShiftRotationPlanDto, UpdateShiftRotationPlanDto, AssignRotationPlanDto } from "./dto/shift-rotation-plan.dto";
 import { buildSuccessResponse } from "../../shared/database/base.schema";
 import { AttendanceSummaryService } from "./services/attendance-summary.service";
 import { closeOutAttendanceForDate } from "./jobs/attendance-closeout.job";
 import { UserModel } from "../user/user.model";
 import { AppError } from "../../shared/errors/app.error";
 
-import { requireCompleteProfile } from "../employee/sub-modules/profile/profile-completion.middleware";
+import { requireCompleteProfile } from "../employee/middlewares/profile-completion.middleware";
 
 const router = Router();
 const attCtrl = new AttendanceController();

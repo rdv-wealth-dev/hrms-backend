@@ -3,7 +3,7 @@ import compression from "compression";
 import { applySecurityMiddleware } from "./shared/middlewares/security.middleware";
 import { requestIdMiddleware } from "./shared/middlewares/request-id.middleware";
 import { globalErrorHandler } from "./shared/errors/error.middleware";
-import { requireCompleteProfile } from "./modules/employee/sub-modules/profile/profile-completion.middleware";
+import { requireCompleteProfile } from "./modules/employee/middlewares/profile-completion.middleware";
 import { authenticate } from "./shared/middlewares/auth.middleware";
 import { createTenantRateLimiter } from "./shared/middlewares/rate-limiter.middleware";
 import authRoutes from "./modules/auth";
@@ -18,7 +18,7 @@ import leaveRoutes from "./modules/leave";
 import profileRoutes from "./modules/profile";
 import payrollRoutes from "./modules/payroll";
 import eventRoutes from "./modules/event";
-import onboardingWizardRoutes from "./modules/employee/sub-modules/onboarding/onboarding-wizard.routes";
+import onboardingWizardRoutes from "./modules/employee/onboarding-wizard.routes";
 import auditRoutes from "./modules/audit";
 import employeeDocumentRoutes from "./modules/employee-document/employee-document.routes";
 

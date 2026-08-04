@@ -13,7 +13,7 @@ import {
   TaxDeclarationDto,
 } from "./dto/payroll.dto";
 
-import { requireCompleteProfile } from "../employee/sub-modules/profile/profile-completion.middleware";
+import { requireCompleteProfile } from "../employee/middlewares/profile-completion.middleware";
 
 const router = Router();
 const ctrl = new PayrollController();

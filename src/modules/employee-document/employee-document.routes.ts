@@ -4,7 +4,7 @@ import { authenticate } from "../../shared/middlewares/auth.middleware";
 import { checkPermission } from "../../shared/middlewares/rbac.middleware";
 import { validateBody } from "../../shared/validators/validate.middleware";
 import { uploadSingleFile } from "../../shared/middlewares/upload.middleware";
-import { requireCompleteProfile } from "../employee/sub-modules/profile/profile-completion.middleware";
+import { requireCompleteProfile } from "../employee/middlewares/profile-completion.middleware";
 import {
   AddDocumentDto,
   RequestUploadUrlDto,

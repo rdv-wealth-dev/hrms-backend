@@ -38,7 +38,11 @@ export const validateQuery = (schema: ZodSchema) => {
     next: NextFunction
   ): void => {
     try {
-      req.query = schema.parse(req.query) as typeof req.query;
+      const parsed = schema.parse(req.query);
+      for (const key in req.query) {
+        delete req.query[key];
+      }
+      Object.assign(req.query, parsed);
       next();
     } catch (error) {
       if (error instanceof ZodError) {
@@ -63,7 +67,11 @@ export const validateParams = (schema: ZodSchema) => {
     next: NextFunction
   ): void => {
     try {
-      req.params = schema.parse(req.params) as typeof req.params;
+      const parsed = schema.parse(req.params);
+      for (const key in req.params) {
+        delete req.params[key];
+      }
+      Object.assign(req.params, parsed);
       next();
     } catch (error) {
       if (error instanceof ZodError) {

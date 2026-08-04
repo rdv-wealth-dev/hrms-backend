@@ -15,7 +15,7 @@ import { UserModel } from "../user/user.model";
 import { RoleModel } from "../role/role.model";
 import { AppError } from "../../shared/errors/app.error";
 
-import { requireCompleteProfile } from "./sub-modules/profile/profile-completion.middleware";
+import { requireCompleteProfile } from "./middlewares/profile-completion.middleware";
 
 const router = Router();
 const controller = new EmployeeController();

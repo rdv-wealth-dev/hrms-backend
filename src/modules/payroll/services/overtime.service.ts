@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { OvertimeModel, OvertimeDocument, OTStatus, OTType } from "../models/overtime.model";
 import { OvertimeConfigModel } from "../models/statutory-config.model";
 import { AttendanceModel } from "../../attendance/models/attendance.model";
-import { SalaryStructureRepository } from "../sub-modules/salary-structures/salary-structure.repository";
+import { SalaryStructureRepository } from "../repositories/salary-structure.repository";
 import { AppError } from "../../../shared/errors/app.error";
 import { RequestContext } from "../../../shared/types/request-context.interface";
 import { EmployeeModel } from "../../employee/models/employee.model";
