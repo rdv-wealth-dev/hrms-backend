@@ -401,7 +401,7 @@ export class AuthService {
         lastName:         user.lastName,
         role:             user.role,
         isOrgAdmin:       user.isOrgAdmin,
-        branchIds:        user.branchIds,
+        branchIds:        (user.branchIds || []).map((b: any) => b.toString()),
         tenantId:         user.tenantId,
         employeeId:       user.employeeId,
         lastLoginAt:      user.lastLoginAt,    // previous session — show on dashboard

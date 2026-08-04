@@ -53,7 +53,7 @@ export interface UserDocument extends OrgLevelDocument {
     isOrgAdmin: boolean;
     isActive: boolean;
     isEmailVerified: boolean;
-    branchIds: mongoose.Types.ObjectId[];
+    branchIds: string[];
     tenantId: mongoose.Types.ObjectId;
     employeeId: mongoose.Types.ObjectId;
     lastLoginAt?: Date;
@@ -230,7 +230,7 @@ UserSchema.methods.toSafeObject = function () {
     isActive: this.isActive,
     isEmailVerified: this.isEmailVerified,
     requiresPasswordReset: this.requiresPasswordReset,
-    branchIds: this.branchIds,
+    branchIds: (this.branchIds || []).map((b: any) => b.toString()),
     tenantId: this.tenantId,
     employeeId: this.employeeId,
     lastLoginAt: this.lastLoginAt,
