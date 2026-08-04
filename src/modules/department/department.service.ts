@@ -3,7 +3,8 @@ import { DepartmentRepository } from "./department.repository";
 import { CreateDepartmentInput, UpdateDepartmentInput, } from "./department.dto";
 import { AppError } from "../../shared/errors/app.error";
 import { RequestContext } from "../../shared/types/request-context.interface";
-import { PaginationOptions,} from "../../shared/database/base.repository"
+import { PaginationOptions,} from "../../shared/database/base.repository";
+import { BranchRepository } from "../branch/branch.repository";
 
 export class DepartmentService {
   private deptRepo = new DepartmentRepository();
@@ -22,9 +23,22 @@ export class DepartmentService {
       );
     }
 
+    let branchId = input.branchId;
+    if (!branchId) {
+      const branchRepo = new BranchRepository();
+      const headOffice = await branchRepo.findHeadOffice(context.tenantId);
+      if (!headOffice) {
+        throw new AppError(
+          "No head office branch found for organization. Please complete onboarding first.",
+          400
+        );
+      }
+      branchId = headOffice._id.toString();
+    }
+
     const department = await this.deptRepo.create(context, {
       tenantId:    new mongoose.Types.ObjectId(context.tenantId) as any,
-      branchId:    new mongoose.Types.ObjectId(input.branchId)   as any,
+      branchId:    new mongoose.Types.ObjectId(branchId)   as any,
       name:        input.name,
       code:        input.code,
       description: input.description ?? "",

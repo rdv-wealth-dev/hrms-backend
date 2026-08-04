@@ -11,7 +11,10 @@ export const CreateDepartmentDto = z.object({
     .min(2, "Code must be at least 2 characters")
     .max(20, "Code must not exceed 20 characters"),
   description: safeStringSchema(0, 500).optional().default(""),
-  branchId:    objectIdSchema,
+  branchId: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    objectIdSchema.optional()
+  ),
   parentId:    objectIdSchema.optional(),
 });
 

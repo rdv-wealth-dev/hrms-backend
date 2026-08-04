@@ -3,7 +3,8 @@ import { DesignationRepository } from "./designation.repository";
 import { CreateDesignationInput, UpdateDesignationInput, } from "./designation.dto";
 import { AppError } from "../../shared/errors/app.error";
 import { RequestContext } from "../../shared/types/request-context.interface";
-import { PaginationOptions } from "../../shared/database/base.repository"
+import { PaginationOptions } from "../../shared/database/base.repository";
+import { BranchRepository } from "../branch/branch.repository";
 
 export class DesignationService {
   private desgRepo = new DesignationRepository();
@@ -21,9 +22,22 @@ export class DesignationService {
       );
     }
 
+    let branchId = input.branchId;
+    if (!branchId) {
+      const branchRepo = new BranchRepository();
+      const headOffice = await branchRepo.findHeadOffice(context.tenantId);
+      if (!headOffice) {
+        throw new AppError(
+          "No head office branch found for organization. Please complete onboarding first.",
+          400
+        );
+      }
+      branchId = headOffice._id.toString();
+    }
+
     const designation = await this.desgRepo.create(context, {
       tenantId:     new mongoose.Types.ObjectId(context.tenantId) as any,
-      branchId:     new mongoose.Types.ObjectId(input.branchId)   as any,
+      branchId:     new mongoose.Types.ObjectId(branchId)   as any,
       departmentId: new mongoose.Types.ObjectId(input.departmentId) as any,
       name:         input.name,
       code:         input.code,

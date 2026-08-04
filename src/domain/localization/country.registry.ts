@@ -5,8 +5,8 @@ import { AppError } from "../../shared/errors/app.error";
 const registry = new Map<string, CountryPlugin>();
 
 const moduleCache = new LRUCache<string, CountryPlugin>({
-  max: 50,              // only a handful of countries will ever exist
-  ttl: 1000 * 60 * 60,  // 1 hour
+  max: 50, // only a handful of countries will ever exist
+  ttl: 1000 * 60 * 60, // 1 hour
 });
 
 export class UnsupportedCountryError extends AppError {

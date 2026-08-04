@@ -23,6 +23,7 @@ import { OrganizationModel } from "../../organization/organization.model";
 import { SalaryStructureService } from "../../payroll/services/salary-structure.service";
 import { emailService } from "../../../shared/services/email.service";
 import { env } from "../../../config/env.config";
+import { BranchRepository } from "../../branch/branch.repository";
 import { s3Service } from "../../../shared/services/storage.service";
 import { recalculateProfileCompletion } from "../utils/profile-completion.util";
 import { ShiftRepository } from "../../attendance/repositories/shift.repository";
@@ -89,9 +90,22 @@ export class EmployeeService {
       if (defaultShift) resolvedShiftId = defaultShift._id.toString();
     }
 
+    let branchId = input.branchId;
+    if (!branchId) {
+      const branchRepo = new BranchRepository();
+      const headOffice = await branchRepo.findHeadOffice(context.tenantId);
+      if (!headOffice) {
+        throw new AppError(
+          "No head office branch found for organization. Please complete onboarding first.",
+          400
+        );
+      }
+      branchId = headOffice._id.toString();
+    }
+
     const employee = await this.empRepo.create(context, {
       tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
-      branchId: new mongoose.Types.ObjectId(input.branchId) as any,
+      branchId: new mongoose.Types.ObjectId(branchId) as any,
       departmentId: new mongoose.Types.ObjectId(input.departmentId) as any,
       designationId: new mongoose.Types.ObjectId(input.designationId) as any,
       shiftId: resolvedShiftId ? new mongoose.Types.ObjectId(resolvedShiftId) as any : undefined,

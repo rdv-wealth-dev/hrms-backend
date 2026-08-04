@@ -13,7 +13,10 @@ export const CreateDesignationDto = z.object({
     .max(20, "Code must not exceed 20 characters"),
   description:  safeStringSchema(0, 500).optional().default(""),
   departmentId: objectIdSchema,
-  branchId:     objectIdSchema,
+  branchId: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    objectIdSchema.optional()
+  ),
   level:        z.number().min(1).max(10).optional().default(1),
 });
 

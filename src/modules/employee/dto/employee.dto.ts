@@ -30,7 +30,10 @@ export const CreateEmployeeDto = withPhoneValidation(z.object({
   passportNo:    z.string().trim().optional(),
 
   // Organisation
-  branchId:      objectIdSchema,
+  branchId: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    objectIdSchema.optional()
+  ),
   departmentId:  objectIdSchema,
   designationId: objectIdSchema,
   managerId:     objectIdSchema.optional(),
