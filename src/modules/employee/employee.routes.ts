@@ -16,9 +16,12 @@ import { RoleModel } from "../role/role.model";
 import { AppError } from "../../shared/errors/app.error";
 
 import { requireCompleteProfile } from "./middlewares/profile-completion.middleware";
+import { EmployeeDocumentController } from "../employee-document/employee-document.controller";
+import { AddDocumentDto, RequestUploadUrlDto, UploadDocumentDto } from "../employee-document/employee-document.dto";
 
 const router = Router();
 const controller = new EmployeeController();
+const docController = new EmployeeDocumentController();
 
 // Owner (self) OR admin with employee.read may view the full profile.
 // This lets employees open their own complete-profile without admin perms.
@@ -182,6 +185,36 @@ router.delete(
 
 // ── Self-service routes (no permission needed, must be BEFORE /:id) ──
 
+// Employee Documents (Self-Service)
+router.get(
+  "/me/documents",
+  docController.getMyDocuments.bind(docController)
+);
+router.post(
+  "/me/documents",
+  validateBody(AddDocumentDto),
+  docController.addMyDocument.bind(docController)
+);
+router.delete(
+  "/me/documents/:docId",
+  docController.deleteMyDocument.bind(docController)
+);
+router.post(
+  "/me/documents/upload-url",
+  validateBody(RequestUploadUrlDto),
+  docController.requestMyUploadUrl.bind(docController)
+);
+router.get(
+  "/me/documents/:docId/download-url",
+  docController.getMyDownloadUrl.bind(docController)
+);
+router.post(
+  "/me/documents/upload",
+  uploadSingleFile("file"),
+  validateBody(UploadDocumentDto),
+  docController.uploadMyDocumentDirectly.bind(docController)
+);
+
 router.get(
   "/me/bank-accounts",
   controller.getMyBankAccounts.bind(controller)
@@ -236,5 +269,40 @@ router.patch(
   controller.uploadAvatar.bind(controller)
 );
 
+// ── Admin: Employee Documents (Gated by permissions) ──
+router.get(
+  "/:id/documents",
+  checkPermission("employee.read"),
+  docController.getDocuments.bind(docController)
+);
+router.post(
+  "/:id/documents",
+  checkPermission("employee.update"),
+  validateBody(AddDocumentDto),
+  docController.addDocument.bind(docController)
+);
+router.delete(
+  "/:id/documents/:docId",
+  checkPermission("employee.update"),
+  docController.deleteDocument.bind(docController)
+);
+router.post(
+  "/:id/documents/upload-url",
+  checkPermission("employee.update"),
+  validateBody(RequestUploadUrlDto),
+  docController.requestUploadUrl.bind(docController)
+);
+router.get(
+  "/:id/documents/:docId/download-url",
+  checkPermission("employee.read"),
+  docController.getDownloadUrl.bind(docController)
+);
+router.post(
+  "/:id/documents/upload",
+  checkPermission("employee.update"),
+  uploadSingleFile("file"),
+  validateBody(UploadDocumentDto),
+  docController.uploadDocumentDirectly.bind(docController)
+);
 
 export default router;
