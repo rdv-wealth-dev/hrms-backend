@@ -79,4 +79,11 @@ router.delete(
   controller.delete.bind(controller)
 );
 
+// POST /api/v1/branches/:id/seed
+router.post(
+  "/:id/seed",
+  checkPermission("branch.update"),
+  controller.seedBranchData.bind(controller)
+);
+
 export default router;

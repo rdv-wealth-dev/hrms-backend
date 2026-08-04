@@ -6,6 +6,8 @@ import { RequestContext } from "../../shared/types/request-context.interface";
 import { OrganizationRepository } from "../organization/organization.repository";
 import { geocodingService } from "../../shared/services/geocoding.service";
 import { seedStatutoryNationalHolidays } from "../../database/seeds/holiday.seed";
+import { seedLeaveTypes } from "../../database/seeds/leave-type.seed";
+import { seedShifts } from "../../database/seeds/shift.seed";
 
 export class BranchService {
   private branchRepo = new BranchRepository();
@@ -82,6 +84,10 @@ export class BranchService {
         console.error(`[BranchService] Auto-seeding failed for country "${input.address?.countryCode}":`, err.message);
       });
     }
+
+    const branchId = branch._id.toString();
+    await seedLeaveTypes(context.tenantId, branchId);
+    await seedShifts(context.tenantId, branchId);
 
     return branch;
   }
@@ -222,5 +228,19 @@ export class BranchService {
 
     await this.branchRepo.softDeleteById(id);
     return { message: "Branch deleted successfully" };
+  }
+
+  // Seed leave types and shifts for an existing branch
+  async seedBranchData(context: RequestContext, id: string) {
+    const branch = await this.branchRepo.findById(id);
+    if (!branch) {
+      throw new AppError("Branch not found", 404);
+    }
+    if (branch.tenantId.toString() !== context.tenantId) {
+      throw new AppError("Branch not found", 404);
+    }
+    await seedLeaveTypes(context.tenantId, id);
+    await seedShifts(context.tenantId, id);
+    return { message: "Leave types and shifts seeded successfully for the branch" };
   }
 }

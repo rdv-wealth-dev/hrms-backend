@@ -117,4 +117,24 @@ export class BranchController {
       next(error);
     }
   }
+
+  // POST /api/v1/branches/:id/seed
+  async seedBranchData(
+    req:  Request<{ id: string }>,
+    res:  Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { id } = req.params;
+      const result = await branchService.seedBranchData(
+        req.context,
+        id
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, "Branch master data seeded successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
 }
