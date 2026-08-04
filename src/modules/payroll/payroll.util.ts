@@ -13,17 +13,17 @@ import { getCountryModule } from "../../core/plugins/country-registry";
 
 // CONSTANTS
 
-const PF_EMPLOYEE_RATE     = 0.12;
+const PF_EMPLOYEE_RATE = 0.12;
 const PF_EMPLOYER_EPF_RATE = 0.0367;  // 3.67% → EPF account
-const PF_EPS_RATE          = 0.0833;  // 8.33% → EPS pension
-const PF_ADMIN_RATE        = 0.005;   // 0.50% admin charge
-const PF_EDLI_RATE         = 0.005;   // 0.50% EDLI insurance
-const PF_WAGE_CEILING      = 15_000;  // statutory ceiling
-const EPS_CAP              = 1_250;   // ₹15,000 × 8.33% = ₹1,250 max
+const PF_EPS_RATE = 0.0833;  // 8.33% → EPS pension
+const PF_ADMIN_RATE = 0.005;   // 0.50% admin charge
+const PF_EDLI_RATE = 0.005;   // 0.50% EDLI insurance
+const PF_WAGE_CEILING = 15_000;  // statutory ceiling
+const EPS_CAP = 1_250;   // ₹15,000 × 8.33% = ₹1,250 max
 
 const ESI_EMPLOYEE_RATE = 0.0075;
 const ESI_EMPLOYER_RATE = 0.0325;
-const ESI_WAGE_CEILING  = 21_000;
+const ESI_WAGE_CEILING = 21_000;
 
 // ATTENDANCE LOCK ASSERTION
 // Called at the start of generatePayslips — hard stop if not locked
@@ -31,8 +31,8 @@ const ESI_WAGE_CEILING  = 21_000;
 export async function assertAttendanceLocked(
   tenantId: string,
   branchId: string,
-  year:     number,
-  month:    number
+  year: number,
+  month: number
 ): Promise<void> {
   const period = `${year}-${String(month).padStart(2, "0")}`;
 
@@ -55,36 +55,36 @@ export async function assertAttendanceLocked(
 // then do O(1) map lookups per attendance record.
 
 export async function buildAttendanceSummary(
-  tenantId:   string,
+  tenantId: string,
   employeeId: string,
-  year:       number,
-  month:      number
+  year: number,
+  month: number
 ): Promise<AttendanceSummarySnapshot> {
 
-  const fromDate         = new Date(year, month - 1, 1);
-  const toDate           = new Date(year, month, 0, 23, 59, 59);
+  const fromDate = new Date(year, month - 1, 1);
+  const toDate = new Date(year, month, 0, 23, 59, 59);
   const totalDaysInMonth = new Date(year, month, 0).getDate();
 
-  const tenantOid   = new mongoose.Types.ObjectId(tenantId);
+  const tenantOid = new mongoose.Types.ObjectId(tenantId);
   const employeeOid = new mongoose.Types.ObjectId(employeeId);
 
   // ── 1. Fetch all attendance records for this employee this month 
   const records = await AttendanceModel.find({
-    tenantId:       tenantOid,
-    employeeId:     employeeOid,
+    tenantId: tenantOid,
+    employeeId: employeeOid,
     attendanceDate: { $gte: fromDate, $lte: toDate },
-    isDeleted:      false,
+    isDeleted: false,
   }).lean();
 
   // ── 2. Bulk-fetch ALL approved leave requests covering this month 
   // Single query replaces per-record queries — eliminates N+1
   const leaveRequests = await LeaveRequestModel.find({
-    tenantId:   tenantOid,
+    tenantId: tenantOid,
     employeeId: employeeOid,
-    status:     LeaveRequestStatus.APPROVED,
-    fromDate:   { $lte: toDate   },
-    toDate:     { $gte: fromDate },
-    isDeleted:  false,
+    status: LeaveRequestStatus.APPROVED,
+    fromDate: { $lte: toDate },
+    toDate: { $gte: fromDate },
+    isDeleted: false,
   }).select("leaveTypeId fromDate toDate").lean();
 
   // ── 3. Bulk-fetch all referenced leave types in one query 
@@ -94,10 +94,10 @@ export async function buildAttendanceSummary(
 
   const leaveTypes = leaveTypeIds.length
     ? await LeaveTypeModel.find({
-        _id: { $in: leaveTypeIds.map((id) => new mongoose.Types.ObjectId(id)) },
-      })
-        .select("isPaid")
-        .lean()
+      _id: { $in: leaveTypeIds.map((id) => new mongoose.Types.ObjectId(id)) },
+    })
+      .select("isPaid")
+      .lean()
     : [];
 
   const leaveTypeMap = new Map(leaveTypes.map((lt) => [lt._id.toString(), lt]));
@@ -111,7 +111,7 @@ export async function buildAttendanceSummary(
     if (!lt) continue;
 
     const cursor = new Date(lr.fromDate);
-    const end    = new Date(lr.toDate);
+    const end = new Date(lr.toDate);
 
     while (cursor <= end) {
       leaveDayMap.set(cursor.toISOString().slice(0, 10), {
@@ -124,28 +124,28 @@ export async function buildAttendanceSummary(
   // ── 5. Build summary
   const summary: AttendanceSummarySnapshot = {
     totalDaysInMonth,
-    presentDays:    0,
-    lateDays:       0,
-    halfDays:       0,
-    absentDays:     0,
-    onLeaveDays:    0,
-    paidLeaveDays:  0,
+    presentDays: 0,
+    lateDays: 0,
+    halfDays: 0,
+    absentDays: 0,
+    onLeaveDays: 0,
+    paidLeaveDays: 0,
     unpaidLeaveDays: 0,
-    holidayDays:    0,
-    weekOffDays:    0,
-    payableDays:    0,
+    holidayDays: 0,
+    weekOffDays: 0,
+    payableDays: 0,
   };
 
   for (const r of records) {
     const dateKey = (r.attendanceDate as Date).toISOString().slice(0, 10);
 
     switch (r.status) {
-      case "PRESENT":  summary.presentDays++;  break;
-      case "LATE":     summary.lateDays++;     break;
-      case "HALF_DAY": summary.halfDays++;     break;
-      case "ABSENT":   summary.absentDays++;   break;
-      case "HOLIDAY":  summary.holidayDays++;  break;
-      case "WEEK_OFF": summary.weekOffDays++;  break;
+      case "PRESENT": summary.presentDays++; break;
+      case "LATE": summary.lateDays++; break;
+      case "HALF_DAY": summary.halfDays++; break;
+      case "ABSENT": summary.absentDays++; break;
+      case "HOLIDAY": summary.holidayDays++; break;
+      case "WEEK_OFF": summary.weekOffDays++; break;
 
       case "ON_LEAVE": {
         summary.onLeaveDays++;
@@ -199,8 +199,8 @@ export async function buildAttendanceSummary(
 // PRO-RATE EARNINGS
 
 export function proRateEarnings(
-  lineItems:        SalaryLineItem[],
-  payableDays:      number,
+  lineItems: SalaryLineItem[],
+  payableDays: number,
   totalDaysInMonth: number
 ): PayslipEarning[] {
   const ratio =
@@ -211,7 +211,7 @@ export function proRateEarnings(
   return lineItems.map((item) => ({
     componentCode: item.componentCode,
     componentName: item.componentCode, // resolved to display name at service layer
-    amount:        Math.round(item.amount * ratio * 100) / 100,
+    amount: Math.round(item.amount * ratio * 100) / 100,
   }));
 }
 
@@ -220,19 +220,20 @@ export function proRateEarnings(
 
 export function calculatePF(
   wagesForStatutory: number,
-  pfEnabled:         boolean,
-  countryCode:       string = "IN"
+  pfEnabled: boolean,
+  countryCode: string = "IN",
+  pfOnActuals: boolean = false
 ): {
-  employee:      number;
-  employerEPF:   number;
-  employerEPS:   number;
-  adminCharge:   number;
-  edliCharge:    number;
+  employee: number;
+  employerEPF: number;
+  employerEPS: number;
+  adminCharge: number;
+  edliCharge: number;
   totalEmployer: number;
 } {
   const module = getCountryModule(countryCode);
   if (module.calculatePF) {
-    return module.calculatePF(wagesForStatutory, pfEnabled);
+    return module.calculatePF(wagesForStatutory, pfEnabled, pfOnActuals);
   }
   return {
     employee: 0, employerEPF: 0, employerEPS: 0,
@@ -244,12 +245,13 @@ export function calculatePF(
 
 export function calculateESI(
   grossMonthly: number,
-  esiEnabled:   boolean,
-  countryCode:  string = "IN"
+  esiEnabled: boolean,
+  countryCode: string = "IN",
+  bypassCeiling: boolean = false
 ): { employee: number; employer: number } {
   const module = getCountryModule(countryCode);
   if (module.calculateESI) {
-    return module.calculateESI(grossMonthly, esiEnabled);
+    return module.calculateESI(grossMonthly, esiEnabled, bypassCeiling);
   }
   return { employee: 0, employer: 0 };
 }
@@ -259,20 +261,20 @@ export function calculateESI(
 // Returns 0 if no config found for state (Delhi, Gujarat, UP, MP etc.)
 
 export async function calculatePT(
-  tenantId:      string,
-  grossMonthly:  number,
-  stateCode:     string,
-  ptEnabled:     boolean,
+  tenantId: string,
+  grossMonthly: number,
+  stateCode: string,
+  ptEnabled: boolean,
   financialYear: string
 ): Promise<number> {
   if (!ptEnabled || grossMonthly <= 0 || !stateCode) return 0;
 
   const config = await ProfessionalTaxConfigModel.findOne({
-    tenantId:      new mongoose.Types.ObjectId(tenantId),
-    stateCode:     stateCode.toUpperCase(),
+    tenantId: new mongoose.Types.ObjectId(tenantId),
+    stateCode: stateCode.toUpperCase(),
     financialYear,
-    isActive:      true,
-    isDeleted:     false,
+    isActive: true,
+    isDeleted: false,
   }).lean();
 
   if (!config || !config.slabs?.length) return 0;
@@ -291,21 +293,21 @@ export async function calculatePT(
 // Deducted only in months HR configures (typically June + December)
 
 export async function calculateLWF(
-  tenantId:      string,
-  stateCode:     string,
-  month:         number,
+  tenantId: string,
+  stateCode: string,
+  month: number,
   financialYear: string,
-  lwfEnabled:    boolean
+  lwfEnabled: boolean
 ): Promise<{ employee: number; employer: number }> {
   const zero = { employee: 0, employer: 0 };
   if (!lwfEnabled || !stateCode) return zero;
 
   const config = await LWFConfigModel.findOne({
-    tenantId:      new mongoose.Types.ObjectId(tenantId),
-    stateCode:     stateCode.toUpperCase(),
+    tenantId: new mongoose.Types.ObjectId(tenantId),
+    stateCode: stateCode.toUpperCase(),
     financialYear,
-    isActive:      true,
-    isDeleted:     false,
+    isActive: true,
+    isDeleted: false,
   }).lean();
 
   if (!config) return zero;
@@ -323,19 +325,19 @@ export async function calculateLWF(
 // Monthly TDS = remaining annual liability / months remaining in FY
 
 const NEW_REGIME_SLABS = [
-  { min: 0,          max: 300_000,    rate: 0.00 },
-  { min: 300_001,    max: 600_000,    rate: 0.05 },
-  { min: 600_001,    max: 900_000,    rate: 0.10 },
-  { min: 900_001,    max: 1_200_000,  rate: 0.15 },
-  { min: 1_200_001,  max: 1_500_000,  rate: 0.20 },
-  { min: 1_500_001,  max: Infinity,   rate: 0.30 },
+  { min: 0, max: 300_000, rate: 0.00 },
+  { min: 300_001, max: 600_000, rate: 0.05 },
+  { min: 600_001, max: 900_000, rate: 0.10 },
+  { min: 900_001, max: 1_200_000, rate: 0.15 },
+  { min: 1_200_001, max: 1_500_000, rate: 0.20 },
+  { min: 1_500_001, max: Infinity, rate: 0.30 },
 ];
 
 const OLD_REGIME_SLABS = [
-  { min: 0,          max: 250_000,    rate: 0.00 },
-  { min: 250_001,    max: 500_000,    rate: 0.05 },
-  { min: 500_001,    max: 1_000_000,  rate: 0.20 },
-  { min: 1_000_001,  max: Infinity,   rate: 0.30 },
+  { min: 0, max: 250_000, rate: 0.00 },
+  { min: 250_001, max: 500_000, rate: 0.05 },
+  { min: 500_001, max: 1_000_000, rate: 0.20 },
+  { min: 1_000_001, max: Infinity, rate: 0.30 },
 ];
 
 function computeSlabTax(
@@ -353,21 +355,21 @@ function computeSlabTax(
 
 function computeSurcharge(taxableIncome: number, tax: number): number {
   if (taxableIncome > 10_000_000) return Math.round(tax * 0.15);
-  if (taxableIncome > 5_000_000)  return Math.round(tax * 0.10);
+  if (taxableIncome > 5_000_000) return Math.round(tax * 0.10);
   return 0;
 }
 
 function computeHRAExemption(
-  basicMonthly:    number,
-  hraReceived:     number,
+  basicMonthly: number,
+  hraReceived: number,
   rentPaidMonthly: number,
-  isMetro:         boolean
+  isMetro: boolean
 ): number {
   if (rentPaidMonthly <= 0) return 0;
 
   const annualBasic = basicMonthly * 12;
-  const annualHRA   = hraReceived  * 12;
-  const annualRent  = rentPaidMonthly * 12;
+  const annualHRA = hraReceived * 12;
+  const annualRent = rentPaidMonthly * 12;
 
   const c1 = annualHRA;
   const c2 = isMetro ? annualBasic * 0.5 : annualBasic * 0.4;
@@ -378,39 +380,39 @@ function computeHRAExemption(
 
 export interface TDSResult {
   annualTaxableIncome: number;
-  annualTax:           number;
-  annualTaxWithCess:   number;
-  monthlyTDS:          number;
-  regime:              TaxRegime;
+  annualTax: number;
+  annualTaxWithCess: number;
+  monthlyTDS: number;
+  regime: TaxRegime;
 }
 
 export async function calculateTDS(
-  tenantId:          string,
-  employeeId:        string,
-  annualCtc:         number,
-  basicMonthly:      number,
-  hraMonthly:        number,
-  pfEmployeeAnnual:  number,
-  financialYear:     string,
-  tdsEnabled:        boolean,
-  monthsRemaining:   number
+  tenantId: string,
+  employeeId: string,
+  annualCtc: number,
+  basicMonthly: number,
+  hraMonthly: number,
+  pfEmployeeAnnual: number,
+  financialYear: string,
+  tdsEnabled: boolean,
+  monthsRemaining: number
 ): Promise<TDSResult> {
   const zero: TDSResult = {
     annualTaxableIncome: 0,
-    annualTax:           0,
-    annualTaxWithCess:   0,
-    monthlyTDS:          0,
-    regime:              TaxRegime.NEW,
+    annualTax: 0,
+    annualTaxWithCess: 0,
+    monthlyTDS: 0,
+    regime: TaxRegime.NEW,
   };
 
   if (!tdsEnabled || annualCtc <= 0) return zero;
 
   // ── Fetch employee tax declaration 
   const declaration = await TaxDeclarationModel.findOne({
-    tenantId:      new mongoose.Types.ObjectId(tenantId),
-    employeeId:    new mongoose.Types.ObjectId(employeeId),
+    tenantId: new mongoose.Types.ObjectId(tenantId),
+    employeeId: new mongoose.Types.ObjectId(employeeId),
     financialYear,
-    isDeleted:     false,
+    isDeleted: false,
   }).lean();
 
   const regime = declaration?.regime ?? TaxRegime.NEW;
@@ -424,7 +426,7 @@ export async function calculateTDS(
       basicMonthly,
       hraMonthly,
       declaration.rentPaidMonthly ?? 0,
-      declaration.isMetroCity     ?? false
+      declaration.isMetroCity ?? false
     );
     taxableIncome -= hraExemption;
     taxableIncome -= 19_200;  // Conveyance ₹1,600 × 12
@@ -469,7 +471,7 @@ export async function calculateTDS(
   annualTax += computeSurcharge(taxableIncome, annualTax);
 
   // ── STEP 10: Health & Education Cess 4% 
-  const cess             = Math.round(annualTax * 0.04);
+  const cess = Math.round(annualTax * 0.04);
   const annualTaxWithCess = annualTax + cess;
 
   // ── STEP 11: Monthly TDS = remaining liability / remaining months 
@@ -483,20 +485,20 @@ export async function calculateTDS(
 // Pull total approved OT amount for this employee this month
 
 export async function getApprovedOTAmount(
-  tenantId:   string,
+  tenantId: string,
   employeeId: string,
-  year:       number,
-  month:      number
+  year: number,
+  month: number
 ): Promise<number> {
   const result = await OvertimeModel.aggregate([
     {
       $match: {
-        tenantId:   new mongoose.Types.ObjectId(tenantId),
+        tenantId: new mongoose.Types.ObjectId(tenantId),
         employeeId: new mongoose.Types.ObjectId(employeeId),
         year,
         month,
-        status:     OTStatus.APPROVED,
-        isDeleted:  false,
+        status: OTStatus.APPROVED,
+        isDeleted: false,
       },
     },
     { $group: { _id: null, totalOT: { $sum: "$otAmount" } } },
@@ -517,9 +519,9 @@ export function calculateMonthlyGratuityProvision(basicPlusDA: number): number {
 // Hard block — never let a negative net pay reach disbursement
 
 export function assertPositiveNetPay(
-  employeeId:      string,
-  netPay:          number,
-  grossEarned:     number,
+  employeeId: string,
+  netPay: number,
+  grossEarned: number,
   totalDeductions: number
 ): void {
   if (netPay < 0) {
@@ -538,7 +540,7 @@ export function getFinancialYear(year: number, month: number): string {
   // month >= 4 (April onwards) → FY starts this calendar year
   // month < 4 (Jan–Mar) → FY started last calendar year
   const fyStart = month >= 4 ? year : year - 1;
-  const fyEnd   = String(fyStart + 1).slice(-2);
+  const fyEnd = String(fyStart + 1).slice(-2);
   return `${fyStart}-${fyEnd}`; // "2025-26"
 }
 

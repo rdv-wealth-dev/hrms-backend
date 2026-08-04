@@ -79,6 +79,7 @@ export interface EmployeeDocument extends BaseDocument {
   aadhaar?:      string;      // encrypted at write, masked on read
   passportNo?:   string;
   countryCode:   string;
+  pfOnActuals?:  boolean;
 
 
   // Organisation
@@ -197,6 +198,7 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
     aadhaar:     { type: String, trim: true },
     passportNo:  { type: String, trim: true },
     countryCode: { type: String, default: "IN", uppercase: true, trim: true },
+    pfOnActuals: { type: Boolean, default: false },
 
 
     // Organisation

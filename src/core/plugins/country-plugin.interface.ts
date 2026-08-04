@@ -9,7 +9,7 @@ export interface StatutoryFieldConfig {
 export interface CountryPlugin {
   countryCode: string;
   statutoryFields: StatutoryFieldConfig[];
-  calculatePF?: (wages: number, pfEnabled: boolean) => {
+  calculatePF?: (wages: number, pfEnabled: boolean, pfOnActuals?: boolean) => {
     employee: number;
     employerEPF: number;
     employerEPS: number;
@@ -17,7 +17,7 @@ export interface CountryPlugin {
     edliCharge: number;
     totalEmployer: number;
   };
-  calculateESI?: (wages: number, esiEnabled: boolean) => {
+  calculateESI?: (wages: number, esiEnabled: boolean, bypassCeiling?: boolean) => {
     employee: number;
     employer: number;
   };

@@ -120,6 +120,7 @@ export class EmployeeService {
       currentAddress: input.currentAddress,
       permanentAddress: input.permanentAddress,
       emergencyContacts: input.emergencyContacts ?? [],
+      pfOnActuals: input.pfOnActuals,
       isActive: true,
     });
 
@@ -481,6 +482,7 @@ export class EmployeeService {
         permanentAddress: employee.permanentAddress,
         emergencyContacts: employee.emergencyContacts,
         avatarUrl: employee.avatarUrl,
+        pfOnActuals: employee.pfOnActuals,
         createdAt: employee.createdAt,
         updatedAt: employee.updatedAt
       },

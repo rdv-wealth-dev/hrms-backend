@@ -36,6 +36,34 @@ const MONTH_NAMES = [
   "July","August","September","October","November","December",
 ];
 
+function getPrecedingMonthsOfContributionPeriod(year: number, month: number): { year: number; month: number }[] {
+  const result: { year: number; month: number }[] = [];
+  if (month >= 4 && month <= 9) {
+    // April to September
+    for (let m = 4; m < month; m++) {
+      result.push({ year, month: m });
+    }
+  } else {
+    // October to March
+    if (month >= 10 && month <= 12) {
+      for (let m = 10; m < month; m++) {
+        result.push({ year, month: m });
+      }
+    } else {
+      // Month is 1, 2, or 3 (Jan, Feb, Mar)
+      // Preceding months from previous calendar year (Oct, Nov, Dec)
+      result.push({ year: year - 1, month: 10 });
+      result.push({ year: year - 1, month: 11 });
+      result.push({ year: year - 1, month: 12 });
+      // Preceding months from current calendar year (Jan to month - 1)
+      for (let m = 1; m < month; m++) {
+        result.push({ year, month: m });
+      }
+    }
+  }
+  return result;
+}
+
 export class PayrollRunService {
   private runRepo       = new PayrollRunRepository();
   private payslipRepo   = new PayslipRepository();
@@ -286,14 +314,33 @@ export class PayrollRunService {
           amount:        li.amount,
         }));
 
-        // STEP 8: PF — on pro-rated wages
+        // STEP 8: ESIC — on pro-rated gross (LOP -> ESIC -> PF order)
+        let bypassEsiCeiling = false;
+        if (statutory.esiEnabled && grossEarned > 21000) {
+          const precedingMonths = getPrecedingMonthsOfContributionPeriod(run.year, run.month);
+          if (precedingMonths.length > 0) {
+            const hasPrevContribution = await this.payslipRepo.hasEsiContributionInMonths(
+              context,
+              empId,
+              precedingMonths
+            );
+            if (hasPrevContribution) {
+              bypassEsiCeiling = true;
+            }
+          }
+        }
+        const esi = calculateESI(grossEarned, !!statutory.esiEnabled, employee.countryCode || "IN", bypassEsiCeiling);
+
+        // STEP 9: PF — on pro-rated wages
         const wagesRatio    = attendanceSummary.payableDays / attendanceSummary.totalDaysInMonth;
         const proRatedWages = Math.round(structure.wagesForStatutory * wagesRatio);
-        const pf            = calculatePF(proRatedWages, !!statutory.pfEnabled, employee.countryCode || "IN");
+        const pf            = calculatePF(
+          proRatedWages,
+          !!statutory.pfEnabled,
+          employee.countryCode || "IN",
+          !!employee.pfOnActuals
+        );
         const pfEmployeeAnnual = pf.employee * 12;
-
-        // STEP 9: ESIC — on pro-rated gross
-        const esi = calculateESI(grossEarned, !!statutory.esiEnabled, employee.countryCode || "IN");
 
         // STEP 10: Professional Tax — DB-driven state slabs
         const pt = await calculatePT(

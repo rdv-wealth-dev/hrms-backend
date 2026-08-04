@@ -10,17 +10,17 @@ export class PayslipRepository {
 
   async findByRun(context: RequestContext, payrollRunId: string) {
     return PayslipModel.find({
-      tenantId:     new mongoose.Types.ObjectId(context.tenantId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       payrollRunId: new mongoose.Types.ObjectId(payrollRunId),
-      isDeleted:    false,
+      isDeleted: false,
     }).populate("employeeId", "employeeCode firstName lastName");
   }
 
   async findForEmployee(context: RequestContext, employeeId: string, page: number, pageSize: number) {
     const query = {
-      tenantId:   new mongoose.Types.ObjectId(context.tenantId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       employeeId: new mongoose.Types.ObjectId(employeeId),
-      isDeleted:  false,
+      isDeleted: false,
     };
     const skip = (page - 1) * pageSize;
     const safe = Math.min(pageSize, 100);
@@ -34,18 +34,39 @@ export class PayslipRepository {
 
   async findById(context: RequestContext, id: string) {
     return PayslipModel.findOne({
-      _id:       new mongoose.Types.ObjectId(id),
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
+      _id: new mongoose.Types.ObjectId(id),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
     });
   }
 
   async existsForRunAndEmployee(context: RequestContext, payrollRunId: string, employeeId: string) {
     const doc = await PayslipModel.findOne({
-      tenantId:     new mongoose.Types.ObjectId(context.tenantId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       payrollRunId: new mongoose.Types.ObjectId(payrollRunId),
-      employeeId:   new mongoose.Types.ObjectId(employeeId),
+      employeeId: new mongoose.Types.ObjectId(employeeId),
     }).select("_id");
+    return doc !== null;
+  }
+
+  async hasEsiContributionInMonths(
+    context: RequestContext,
+    employeeId: string,
+    monthsList: { year: number; month: number }[]
+  ): Promise<boolean> {
+    if (monthsList.length === 0) return false;
+    
+    const query = {
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      employeeId: new mongoose.Types.ObjectId(employeeId),
+      isDeleted: false,
+      $or: monthsList.map(item => ({
+        year: item.year,
+        month: item.month
+      })),
+      esiEmployeeContribution: { $gt: 0 }
+    };
+    const doc = await PayslipModel.findOne(query).select("_id");
     return doc !== null;
   }
 }

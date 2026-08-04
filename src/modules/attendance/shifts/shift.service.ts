@@ -10,6 +10,23 @@ import { AssignShiftInput } from "../shifts/shift-assignment.dto";
 export class ShiftService {
   private shiftRepo = new ShiftRepository();
 
+  // Resolve the branch to attach — the caller's branch, or the org itself
+  // (tenantId) when the caller has no branch assigned (e.g. ORG_ADMIN).
+  // Org-level shifts use the tenantId as their branchId, mirroring the
+  // head-office branch pattern in the onboarding flow.
+  private resolveBranchId(context: RequestContext): mongoose.Types.ObjectId {
+    if (context.branchIds && context.branchIds.length > 0) {
+      const firstBranch = context.branchIds[0];
+      if (firstBranch && mongoose.Types.ObjectId.isValid(firstBranch)) {
+        return new mongoose.Types.ObjectId(firstBranch);
+      }
+    }
+    if (context.tenantId && mongoose.Types.ObjectId.isValid(context.tenantId)) {
+      return new mongoose.Types.ObjectId(context.tenantId);
+    }
+    throw new AppError("Invalid branchId or tenantId in request context", 400);
+  }
+
   async createShift(context: RequestContext, input: CreateShiftInput) {
     const existing = await this.shiftRepo.findByCode(context, input.code);
     if (existing) {
@@ -31,7 +48,7 @@ export class ShiftService {
 
     return this.shiftRepo.create(context, {
       tenantId:   new mongoose.Types.ObjectId(context.tenantId) as any,
-      branchId:   new mongoose.Types.ObjectId(context.branchIds[0] ?? "") as any,
+      branchId:   this.resolveBranchId(context) as any,
       name:       input.name,
       code:       input.code,
       startTime:  input.startTime,
