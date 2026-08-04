@@ -1,0 +1,109 @@
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import crypto from "crypto";
+import { s3Client } from "../../config/s3.config";
+import { env } from "../../config/env.config"
+
+const UPLOAD_URL_EXPIRY_SECONDS = 300;  // 5 min to complete the upload
+const DOWNLOAD_URL_EXPIRY_SECONDS = 900;    // 15 min to view/download
+
+export class S3Service {
+    // Generate the S3 key — deterministic, scoped, never guessable
+    // Structure: tenants/{tenantId}/employees/{employeeId}/documents/{uuid}-{filename}
+    // Scoping by tenantId in the key itself is a second layer of isolation on
+    // top of application-level tenant checks — even a leaked key reveals
+    // nothing usable without S3 credentials, and stays organized per tenant.
+
+    buildDocumentKey(slug: string, employeeId: string, documentType: string, fileName: string): string {
+        const safeFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const unique = crypto.randomBytes(8).toString("hex");
+        return `tenants/${slug}/employees/${employeeId}/documents/${documentType.toLowerCase()}/${unique}-${safeFileName}`;
+    }
+
+    //Pre-signed PUT URL — client uploads directly to S3, server never sees bytes
+    async getUploadUrl(
+        s3Key : string,
+        mimeType : string
+    ): Promise<{ uploadUrl : string; expiresIn : number}> {
+        const command = new PutObjectCommand({
+            Bucket : env.awsS3Bucket,
+            Key : s3Key,
+            ContentType : mimeType,
+        });
+
+        const uploadUrl = await getSignedUrl(s3Client, command, {
+            expiresIn: UPLOAD_URL_EXPIRY_SECONDS
+        });
+
+        return { uploadUrl, expiresIn: UPLOAD_URL_EXPIRY_SECONDS};
+    }
+
+    // Pre-signed GET URL — short-lived, generated on demand for viewing
+    // Never store a permanent public URL anywhere — this is regenerated
+    // every time someone actually wants to view the document.
+    async getDownloadUrl(s3Key : string): Promise<string> {
+        const command = new GetObjectCommand({
+            Bucket : env.awsS3Bucket,
+            Key : s3Key,
+        });
+
+        return getSignedUrl(s3Client, command, {
+            expiresIn : DOWNLOAD_URL_EXPIRY_SECONDS,
+        });
+    }
+
+    // Direct buffer upload from server-side (no pre-signed URL needed)
+    async uploadObject(s3Key: string, buffer: Buffer, mimeType: string): Promise<void> {
+        const command = new PutObjectCommand({
+            Bucket: env.awsS3Bucket,
+            Key: s3Key,
+            Body: buffer,
+            ContentType: mimeType,
+            ServerSideEncryption: "AES256",
+        });
+        await s3Client.send(command);
+    }
+
+    buildAvatarKey(slug: string, employeeId: string, extension: string = "jpg"): string {
+        return `tenants/${slug}/employees/${employeeId}/avatar/profile.${extension}`;
+    }
+
+    async uploadPublicAvatar(s3Key: string, buffer: Buffer, mimeType: string): Promise<string> {
+        try {
+            const command = new PutObjectCommand({
+                Bucket: env.awsS3Bucket,
+                Key: s3Key,
+                Body: buffer,
+                ContentType: mimeType,
+                ACL: "public-read",
+            });
+            await s3Client.send(command);
+        } catch (err) {
+            // Fallback if public-read ACL is not allowed
+            const command = new PutObjectCommand({
+                Bucket: env.awsS3Bucket,
+                Key: s3Key,
+                Body: buffer,
+                ContentType: mimeType,
+            });
+            await s3Client.send(command);
+        }
+        const region = env.awsRegion || "ap-south-1";
+        return `https://${env.awsS3Bucket}.s3.${region}.amazonaws.com/${s3Key}`;
+    }
+
+
+    // Delete — called when a document record is hard-removed from S3
+    // Note: your employee-document soft-delete (isDeleted: true) does NOT
+    // call this — soft-deleted documents stay in S3 for audit/recovery.
+    // Only call this for genuine permanent removal, e.g. a data-retention job.
+    async deleteObject(s3Key : string): Promise<void>{
+        const command = new DeleteObjectCommand({
+            Bucket : env.awsS3Bucket,
+            Key : s3Key,
+        });
+        await s3Client.send(command);
+    }
+}
+
+export const s3Service = new S3Service();

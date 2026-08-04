@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { PayrollController } from "./payroll.controller";
-import { authenticate } from "../../core/middlewares/auth.middleware";
-import { checkPermission } from "../../core/middlewares/rbac.middleware";
-import { validateBody } from "../../core/validators/validate.middleware";
-import { heavyActionLimiter } from "../../core/middlewares/rate-limiter.middleware";
+import { PayrollController } from "./controllers/payroll.controller";
+import { authenticate } from "../../shared/middlewares/auth.middleware";
+import { checkPermission } from "../../shared/middlewares/rbac.middleware";
+import { validateBody } from "../../shared/validators/validate.middleware";
+import { heavyActionLimiter } from "../../shared/middlewares/rate-limiter.middleware";
 import {
   CreateSalaryComponentDto, UpdateSalaryComponentDto,
   CreateSalaryStructureDto, CreatePayrollRunDto, ApprovePayrollRunDto,
@@ -11,9 +11,9 @@ import {
   RejectOTDto,
   UpsertPTConfigDto, UpsertLWFConfigDto, UpsertOTConfigDto,
   TaxDeclarationDto,
-} from "./payroll.dto";
+} from "./dto/payroll.dto";
 
-import { requireCompleteProfile } from "../employee/profile/profile-completion.middleware";
+import { requireCompleteProfile } from "../employee/sub-modules/profile/profile-completion.middleware";
 
 const router = Router();
 const ctrl = new PayrollController();

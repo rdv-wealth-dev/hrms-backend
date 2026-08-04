@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { safeStringSchema, countryCodeSchema, } from "../../core/validators/common.validator";
+import { safeStringSchema, countryCodeSchema, } from "../../shared/validators/common.validator";
 
 //Create Branch
 export const CreateBranchDto = z.object({

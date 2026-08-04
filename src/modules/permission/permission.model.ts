@@ -1,5 +1,5 @@
 import mongoose, { Document } from "mongoose";
-import { createPlatformSchema } from "../../core/database/base.schema";
+import { createPlatformSchema } from "../../shared/database/base.schema";
 
 export interface PermissionDocument extends Document {
   module:      string;

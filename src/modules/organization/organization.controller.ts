@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { OrganizationService } from "./organization.service";
 import { UpdateMandatoryDocsInput } from "./organization.dto";
-import { buildSuccessResponse } from "../../core/database/base.schema";
+import { buildSuccessResponse } from "../../shared/database/base.schema";
 
 const orgService = new OrganizationService();
 

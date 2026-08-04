@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { UserService } from "./user.service";
-import { buildSuccessResponse } from "../../core/database/base.schema";
+import { buildSuccessResponse } from "../../shared/database/base.schema";
 
 const userService = new UserService();
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { objectIdSchema } from "../../core/validators/common.validator";
+import { objectIdSchema } from "../../shared/validators/common.validator";
 
 export const AssignRoleDto = z.object({
     role : z.enum([

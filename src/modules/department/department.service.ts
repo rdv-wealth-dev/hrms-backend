@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 import { DepartmentRepository } from "./department.repository";
 import { CreateDepartmentInput, UpdateDepartmentInput, } from "./department.dto";
-import { AppError } from "../../core/errors/app.error";
-import { RequestContext } from "../../core/interfaces/request-context.interface";
-import { PaginationOptions,} from "../../repositories/base.repository"
+import { AppError } from "../../shared/errors/app.error";
+import { RequestContext } from "../../shared/types/request-context.interface";
+import { PaginationOptions,} from "../../shared/database/base.repository"
 
 export class DepartmentService {
   private deptRepo = new DepartmentRepository();

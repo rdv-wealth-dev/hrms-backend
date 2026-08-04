@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { authenticate } from "../../core/middlewares/auth.middleware";
-import { buildSuccessResponse } from "../../core/database/base.schema";
+import { authenticate } from "../../shared/middlewares/auth.middleware";
+import { buildSuccessResponse } from "../../shared/database/base.schema";
 import { ProfileService } from "./profile.service";
 
 const router = Router();

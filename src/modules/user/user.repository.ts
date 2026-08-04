@@ -1,4 +1,4 @@
-import { BaseRepository } from "../../repositories/base.repository";
+import { BaseRepository } from "../../shared/database/base.repository";
 import { UserDocument, UserModel } from "./user.model";
 
 export class UserRepository extends BaseRepository<UserDocument> {

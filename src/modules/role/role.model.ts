@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { createOrgLevelSchema, OrgLevelDocument } from "../../core/database/base.schema";
+import { createOrgLevelSchema, OrgLevelDocument } from "../../shared/database/base.schema";
 
 export interface RoleDocument extends OrgLevelDocument {
   name:         string;

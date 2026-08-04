@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { AuthService } from "./auth.service";
 import { OrganizationRepository } from "../organization/organization.repository";
-import { buildSuccessResponse } from "../../core/database/base.schema";
-import { AppError } from "../../core/errors/app.error";
+import { buildSuccessResponse } from "../../shared/database/base.schema";
+import { AppError } from "../../shared/errors/app.error";
 import { auditService } from "../audit/audit.service";
 import { SessionEventType } from "../audit/session-log.model";
 

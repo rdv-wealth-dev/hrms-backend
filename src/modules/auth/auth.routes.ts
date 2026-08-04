@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { AuthController } from "./auth.controller";
-import { validateBody, validateQuery } from "../../core/validators/validate.middleware";
-import { authenticate } from "../../core/middlewares/auth.middleware";
-import { loginRateLimiter } from "../../core/middlewares/rate-limiter.middleware";
+import { validateBody, validateQuery } from "../../shared/validators/validate.middleware";
+import { authenticate } from "../../shared/middlewares/auth.middleware";
+import { loginRateLimiter } from "../../shared/middlewares/rate-limiter.middleware";
 import {
   RegisterDto,
   LoginDto,

@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
 import { BranchRepository } from "./branch.repository";
 import { CreateBranchInput, UpdateBranchInput } from "./branch.dto";
-import { AppError } from "../../core/errors/app.error";
-import { RequestContext } from "../../core/interfaces/request-context.interface";
+import { AppError } from "../../shared/errors/app.error";
+import { RequestContext } from "../../shared/types/request-context.interface";
 import { OrganizationRepository } from "../organization/organization.repository";
-import { geocodingService } from "../../service/geocoding.service";
-import { seedStatutoryNationalHolidays } from "../leave/holidays/holiday.seed";
+import { geocodingService } from "../../shared/services/geocoding.service";
+import { seedStatutoryNationalHolidays } from "../../database/seeds/holiday.seed";
 
 export class BranchService {
   private branchRepo = new BranchRepository();

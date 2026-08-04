@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { DesignationService } from "./designation.service";
-import { buildSuccessResponse } from "../../core/database/base.schema";
-import { paginationSchema } from "../../core/validators/common.validator";
+import { buildSuccessResponse } from "../../shared/database/base.schema";
+import { paginationSchema } from "../../shared/validators/common.validator";
 
 const desgService = new DesignationService();
 

@@ -1,7 +1,7 @@
 import { OrganizationRepository } from "./organization.repository";
 import { UpdateOrganizationInput, UpdateModulesInput, UpdateStatutoryInput, UpdateMandatoryDocsInput } from "./organization.dto";
-import { RequestContext } from "../../core/interfaces/request-context.interface";
-import { AppError } from "../../core/errors/app.error";
+import { RequestContext } from "../../shared/types/request-context.interface";
+import { AppError } from "../../shared/errors/app.error";
 
 export class OrganizationService {
   private orgRepo = new OrganizationRepository();

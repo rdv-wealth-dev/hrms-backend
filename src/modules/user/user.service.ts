@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 import { UserModel } from "./user.model";
 import { AssignRoleInput } from "./user.dto";
-import { AppError } from "../../core/errors/app.error";
-import { RequestContext } from "../../core/interfaces/request-context.interface";
+import { AppError } from "../../shared/errors/app.error";
+import { RequestContext } from "../../shared/types/request-context.interface";
 
 export class UserService {
 

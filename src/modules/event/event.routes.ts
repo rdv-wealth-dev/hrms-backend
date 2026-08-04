@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { EventController } from "./event.controller";
-import { authenticate } from "../../core/middlewares/auth.middleware";
-import { validateBody } from "../../core/validators/validate.middleware";
-import { checkRole } from "../../core/middlewares/rbac.middleware";
+import { authenticate } from "../../shared/middlewares/auth.middleware";
+import { validateBody } from "../../shared/validators/validate.middleware";
+import { checkRole } from "../../shared/middlewares/rbac.middleware";
 import { CreateEventDto } from "./event.dto";
 
 const router = Router();

@@ -1,20 +1,20 @@
 import { Router } from "express";
-import { LeaveTypeController } from "./leave-types/leave-type.controller";
-import { LeaveRequestController } from "./leave-requests/leave-request.controller";
-import { authenticate } from "../../core/middlewares/auth.middleware";
-import { checkPermission } from "../../core/middlewares/rbac.middleware";
-import { validateBody } from "../../core/validators/validate.middleware";
+import { LeaveTypeController } from "./sub-modules/leave-types/leave-type.controller";
+import { LeaveRequestController } from "./sub-modules/leave-requests/leave-request.controller";
+import { authenticate } from "../../shared/middlewares/auth.middleware";
+import { checkPermission } from "../../shared/middlewares/rbac.middleware";
+import { validateBody } from "../../shared/validators/validate.middleware";
 import {
   CreateLeaveTypeDto,
   UpdateLeaveTypeDto,
   CreateLeaveRequestDto,
   ReviewLeaveRequestDto,
   CancelLeaveRequestDto,
-} from "./leave.dto";
-import { HolidayController } from "./holidays/holiday.controller";
-import { CreateHolidayDto, UpdateHolidayDto } from "./leave.dto";
+} from "./dto/leave.dto";
+import { HolidayController } from "./sub-modules/holidays/holiday.controller";
+import { CreateHolidayDto, UpdateHolidayDto } from "./dto/leave.dto";
 
-import { requireCompleteProfile } from "../employee/profile/profile-completion.middleware";
+import { requireCompleteProfile } from "../employee/sub-modules/profile/profile-completion.middleware";
 
 const router = Router();
 const typeCtrl = new LeaveTypeController();

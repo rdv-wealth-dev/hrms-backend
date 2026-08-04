@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { BranchService }                   from "./branch.service";
-import { buildSuccessResponse }            from "../../core/database/base.schema";
+import { buildSuccessResponse }            from "../../shared/database/base.schema";
 
 const branchService = new BranchService();
 

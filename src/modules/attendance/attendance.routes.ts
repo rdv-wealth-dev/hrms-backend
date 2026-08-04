@@ -1,24 +1,24 @@
 import { Router } from "express";
-import { AttendanceController } from "./core/attendance.controller";
-import { ShiftController } from "./shifts/shift.controller";
-import { RegularizationController } from "./regularizations/regularization.controller";
-import { ShiftRotationPlanController } from "./rotation-plans/shift-rotation-plan.controller";
-import { authenticate } from "../../core/middlewares/auth.middleware";
-import { checkPermission } from "../../core/middlewares/rbac.middleware";
-import { validateBody } from "../../core/validators/validate.middleware";
+import { AttendanceController } from "./controllers/attendance.controller";
+import { ShiftController } from "./sub-modules/shifts/shift.controller";
+import { RegularizationController } from "./sub-modules/regularizations/regularization.controller";
+import { ShiftRotationPlanController } from "./sub-modules/rotation-plans/shift-rotation-plan.controller";
+import { authenticate } from "../../shared/middlewares/auth.middleware";
+import { checkPermission } from "../../shared/middlewares/rbac.middleware";
+import { validateBody } from "../../shared/validators/validate.middleware";
 import {
   PunchDto, ManualAttendanceDto, CreateShiftDto, UpdateShiftDto, CreateRegularizationDto,
   ReviewRegularizationDto,
-} from "./core/attendance.dto";
-import { AssignShiftDto } from "./shifts/shift-assignment.dto";
-import { CreateShiftRotationPlanDto, UpdateShiftRotationPlanDto, AssignRotationPlanDto } from "./rotation-plans/shift-rotation-plan.dto";
-import { buildSuccessResponse } from "../../core/database/base.schema";
-import { AttendanceSummaryService } from "./core/attendance-summary.service";
-import { closeOutAttendanceForDate } from "./core/attendance-closeout.job";
+} from "./dto/attendance.dto";
+import { AssignShiftDto } from "./sub-modules/shifts/shift-assignment.dto";
+import { CreateShiftRotationPlanDto, UpdateShiftRotationPlanDto, AssignRotationPlanDto } from "./sub-modules/rotation-plans/shift-rotation-plan.dto";
+import { buildSuccessResponse } from "../../shared/database/base.schema";
+import { AttendanceSummaryService } from "./services/attendance-summary.service";
+import { closeOutAttendanceForDate } from "./jobs/attendance-closeout.job";
 import { UserModel } from "../user/user.model";
-import { AppError } from "../../core/errors/app.error";
+import { AppError } from "../../shared/errors/app.error";
 
-import { requireCompleteProfile } from "../employee/profile/profile-completion.middleware";
+import { requireCompleteProfile } from "../employee/sub-modules/profile/profile-completion.middleware";
 
 const router = Router();
 const attCtrl = new AttendanceController();

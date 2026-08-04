@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { SessionLogModel } from './session-log.model';
 import { ActionLogModel } from './action-log.model';
-import { RequestContext } from '../../core/interfaces/request-context.interface';
+import { RequestContext } from '../../shared/types/request-context.interface';
 
 export class AuditRepository {
 

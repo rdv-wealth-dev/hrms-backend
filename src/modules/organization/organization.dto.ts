@@ -5,7 +5,7 @@ import {
   countryCodeSchema,
   gstinSchema,
   panSchema,
-} from "../../core/validators/common.validator";
+} from "../../shared/validators/common.validator";
 
 //Update Organization
 export const UpdateOrganizationDto = z.object({

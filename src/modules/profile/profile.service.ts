@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
 import { UserModel } from "../user/user.model";
-import { EmployeeModel } from "../employee/core/employee.model";
-import { AttendanceModel } from "../attendance/core/attendance.model";
-import { LeaveBalanceModel } from "../leave/leave-balances/leave-balance.model";
-import { LeaveRequestModel } from "../leave/leave-requests/leave-request.model";
-import { CompOffModel } from "../leave/comp-off/comp-off.model";
-import { AppError } from "../../core/errors/app.error";
-import { RequestContext } from "../../core/interfaces/request-context.interface";
+import { EmployeeModel } from "../employee/models/employee.model";
+import { AttendanceModel } from "../attendance/models/attendance.model";
+import { LeaveBalanceModel } from "../leave/sub-modules/leave-balances/leave-balance.model";
+import { LeaveRequestModel } from "../leave/sub-modules/leave-requests/leave-request.model";
+import { CompOffModel } from "../leave/sub-modules/comp-off/comp-off.model";
+import { AppError } from "../../shared/errors/app.error";
+import { RequestContext } from "../../shared/types/request-context.interface";
 import { normalizeToMidnight } from "../attendance/attendance.util";
 
 export class ProfileService {

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import { BaseRepository } from "../../repositories/base.repository"
+import { BaseRepository } from "../../shared/database/base.repository"
 import { DesignationDocument, DesignationModel } from "./designation.model";
-import { RequestContext } from "../../core/interfaces/request-context.interface";
+import { RequestContext } from "../../shared/types/request-context.interface";
 
 export class DesignationRepository
   extends BaseRepository<DesignationDocument> {

@@ -9,19 +9,19 @@ import { UserRepository } from "../user/user.repository";
 import { OrganizationRepository } from "../organization/organization.repository";
 import { BranchRepository } from "../branch/branch.repository";
 import { UserModel } from "../user/user.model";
-import { seedDefaultRoles } from "../role/role.seed";
-import { seedDepartments } from "../department/department.seed";
-import { seedDesignations } from "../designation/designation.seed";
-import { seedLeaveTypes } from "../leave/leave-types/leave-type.seed";
-import { seedShifts } from "../attendance/shifts/shift.seed";
-import { seedStatutoryNationalHolidays } from "../leave/holidays/holiday.seed";
+import { seedDefaultRoles } from "../../database/seeds/role.seed";
+import { seedDepartments } from "../../database/seeds/department.seed";
+import { seedDesignations } from "../../database/seeds/designation.seed";
+import { seedLeaveTypes } from "../../database/seeds/leave-type.seed";
+import { seedShifts } from "../../database/seeds/shift.seed";
+import { seedStatutoryNationalHolidays } from "../../database/seeds/holiday.seed";
 
 import crypto from "crypto";
-import { emailService } from "../../service/email.service";
-import { env } from "../../config/env";
+import { emailService } from "../../shared/services/email.service";
+import { env } from "../../config/env.config";
 import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput, VerifyEmailInput, ActivateAccountInput, ResendVerificationEmailInput, OnboardingWizardInput, ChangePasswordInput } from "./auth.dto";
-import { AppError, InvalidCredentialsError, AccountInactiveError, RefreshInvalidError, } from "../../core/errors/app.error";
-import { JwtPayload } from "../../core/interfaces/jwt-payload.interface";
+import { AppError, InvalidCredentialsError, AccountInactiveError, RefreshInvalidError, } from "../../shared/errors/app.error";
+import { JwtPayload } from "../../shared/types/jwt-payload.interface";
 
 // CONSTANTS
 

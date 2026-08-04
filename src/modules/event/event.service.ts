@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { RequestContext } from "../../core/interfaces/request-context.interface";
+import { RequestContext } from "../../shared/types/request-context.interface";
 import { EventRepository } from "./event.repository";
 import { CreateEventInput } from "./event.dto";
 

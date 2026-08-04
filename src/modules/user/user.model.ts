@@ -1,5 +1,5 @@
 import mongoose, { Document } from "mongoose";
-import { createOrgLevelSchema, OrgLevelDocument } from "../../core/database/base.schema";
+import { createOrgLevelSchema, OrgLevelDocument } from "../../shared/database/base.schema";
 
 export interface UserDocument extends OrgLevelDocument {
   email: string;

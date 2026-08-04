@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { safeStringSchema, objectIdSchema, } from "../../core/validators/common.validator";
+import { safeStringSchema, objectIdSchema, } from "../../shared/validators/common.validator";
 
 
 //Create Designation

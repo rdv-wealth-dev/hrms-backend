@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { DesignationController } from "./designation.controller";
-import { authenticate } from "../../core/middlewares/auth.middleware";
-import { checkPermission } from "../../core/middlewares/rbac.middleware";
-import { validateBody } from "../../core/validators/validate.middleware";
+import { authenticate } from "../../shared/middlewares/auth.middleware";
+import { checkPermission } from "../../shared/middlewares/rbac.middleware";
+import { validateBody } from "../../shared/validators/validate.middleware";
 import { CreateDesignationDto, UpdateDesignationDto, } from "./designation.dto";
 
 const router = Router();

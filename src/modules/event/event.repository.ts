@@ -1,6 +1,6 @@
-import { BaseRepository } from "../../repositories/base.repository";
+import { BaseRepository } from "../../shared/database/base.repository";
 import { EventDocument, EventModel } from "./event.model";
-import { RequestContext } from "../../core/interfaces/request-context.interface";
+import { RequestContext } from "../../shared/types/request-context.interface";
 import { FilterQuery } from "mongoose";
 
 export class EventRepository extends BaseRepository<EventDocument> {

@@ -2,10 +2,10 @@ import { Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import { BranchModel } from "./branch.model";
 import { OrganizationModel } from "../organization/organization.model";
-import { HolidayModel } from "../leave/holidays/holiday.model";
-import { HolidayService } from "../leave/holidays/holiday.service";
-import { ShiftRotationPlanModel } from "../attendance/rotation-plans/shift-rotation-plan.model";
-import { EmployeeModel } from "../employee/core/employee.model";
+import { HolidayModel } from "../leave/sub-modules/holidays/holiday.model";
+import { HolidayService } from "../leave/sub-modules/holidays/holiday.service";
+import { ShiftRotationPlanModel } from "../attendance/sub-modules/rotation-plans/shift-rotation-plan.model";
+import { EmployeeModel } from "../employee/models/employee.model";
 import { UserModel } from "../user/user.model";
 import {
   generateMonthCalendar,
@@ -13,11 +13,11 @@ import {
   CustomWeekOffRule,
   CalendarDay,
   formatDate,
-} from "../attendance/engine/schedule-engine";
-import { buildSuccessResponse } from "../../core/database/base.schema";
-import { AppError } from "../../core/errors/app.error";
+} from "../attendance/services/schedule-engine.service";
+import { buildSuccessResponse } from "../../shared/database/base.schema";
+import { AppError } from "../../shared/errors/app.error";
 import { normalizeToMidnight } from "../attendance/attendance.util";
-import { ShiftRepository } from "../attendance/shifts/shift.repository";
+import { ShiftRepository } from "../attendance/sub-modules/shifts/shift.repository";
 
 const shiftRepo = new ShiftRepository();
 const holidayService = new HolidayService();

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { EventService } from "./event.service";
-import { buildSuccessResponse } from "../../core/database/base.schema";
+import { buildSuccessResponse } from "../../shared/database/base.schema";
 
 const eventService = new EventService();
 

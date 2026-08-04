@@ -8,7 +8,7 @@ import {
   withPhoneValidation,
   workspaceSlugSchema,
   currencyCodeSchema,
-} from "../../core/validators/common.validator";
+} from "../../shared/validators/common.validator";
 
 // Helper to convert empty string inputs to undefined so that optional schema fields work correctly
 function optionalString<T extends z.ZodTypeAny>(schema: T) {

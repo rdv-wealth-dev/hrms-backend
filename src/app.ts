@@ -1,26 +1,26 @@
 import express, { Application, Request, Response } from "express";
 import compression from "compression";
-import { applySecurityMiddleware } from "./core/middlewares/security.middleware";
-import { requestIdMiddleware } from "./core/middlewares/request-id.middleware";
-import { globalErrorHandler } from "./core/errors/error.middleware";
-import { requireCompleteProfile } from "./modules/employee/profile/profile-completion.middleware";
-import { authenticate } from "./core/middlewares/auth.middleware";
-import { createTenantRateLimiter } from "./core/middlewares/rate-limiter.middleware";
-import authRoutes from "./modules/auth/auth.routes";
-import organizationRoutes from "./modules/organization/organization.routes"
-import branchRoutes from "./modules/branch/branch.routes"
-import departmentRoutes from "./modules/department/department.routes";
-import designationRoutes from "./modules/designation/designation.routes";
-import employeeRoutes from "./modules/employee/core/employee.routes";
-import attendanceRoutes from "./modules/attendance/attendance.routes";
-import userRoutes from "./modules/user/user.routes";
-import leaveRoutes from "./modules/leave/leave.routes";
-import profileRoutes from "./modules/profile/profile.routes";
-import payrollRoutes from "./modules/payroll/payroll.routes";
-import eventRoutes from "./modules/event/event.routes";
-import onboardingWizardRoutes from "./modules/employee/onboarding/onboarding-wizard.routes";
-import auditRoutes from "./modules/audit/audit.routes";
-import employeeDocumentRoutes from "./modules/employee-documents/employee-document.routes";
+import { applySecurityMiddleware } from "./shared/middlewares/security.middleware";
+import { requestIdMiddleware } from "./shared/middlewares/request-id.middleware";
+import { globalErrorHandler } from "./shared/errors/error.middleware";
+import { requireCompleteProfile } from "./modules/employee/sub-modules/profile/profile-completion.middleware";
+import { authenticate } from "./shared/middlewares/auth.middleware";
+import { createTenantRateLimiter } from "./shared/middlewares/rate-limiter.middleware";
+import authRoutes from "./modules/auth";
+import organizationRoutes from "./modules/organization"
+import branchRoutes from "./modules/branch"
+import departmentRoutes from "./modules/department";
+import designationRoutes from "./modules/designation";
+import employeeRoutes from "./modules/employee/employee.routes";
+import attendanceRoutes from "./modules/attendance";
+import userRoutes from "./modules/user";
+import leaveRoutes from "./modules/leave";
+import profileRoutes from "./modules/profile";
+import payrollRoutes from "./modules/payroll";
+import eventRoutes from "./modules/event";
+import onboardingWizardRoutes from "./modules/employee/sub-modules/onboarding/onboarding-wizard.routes";
+import auditRoutes from "./modules/audit";
+import employeeDocumentRoutes from "./modules/employee-document/employee-document.routes";
 
 const app: Application = express();
 
