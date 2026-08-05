@@ -70,7 +70,7 @@ export class LeaveRequestRepository {
       },
     };
 
-    if (context.branchIds && context.branchIds.length > 0) {
+    if (context.role !== "ORG_ADMIN" && context.role !== "SUPER_ADMIN" && context.branchIds && context.branchIds.length > 0) {
       query.branchId = {
         $in: context.branchIds.map((id) => new mongoose.Types.ObjectId(id)),
       };
@@ -105,7 +105,7 @@ export class LeaveRequestRepository {
       ...filters,
     };
 
-    if (context.branchIds && context.branchIds.length > 0 && !filters.branchId) {
+    if (context.role !== "ORG_ADMIN" && context.role !== "SUPER_ADMIN" && context.branchIds && context.branchIds.length > 0 && !filters.branchId) {
       query.branchId = {
         $in: context.branchIds.map((id) => new mongoose.Types.ObjectId(id)),
       };

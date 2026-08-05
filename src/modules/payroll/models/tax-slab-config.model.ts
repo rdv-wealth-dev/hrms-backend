@@ -1,19 +1,3 @@
-// src/modules/payroll/models/tax-slab-config.model.ts
-//
-// NEW FILE.
-//
-// Income tax slabs change with the Union Budget most years — hardcoding
-// them means a redeploy every time Finance updates the law. This follows
-// the exact same DB-driven pattern already used for
-// ProfessionalTaxConfigModel and LWFConfigModel in statutory-config.model.ts:
-// Finance/HR upserts a config document per financial year + regime, and
-// payroll-engine.service.ts reads it at TDS-calculation time.
-//
-// If no config exists for a given financial year, calculateTDS() falls
-// back to a hardcoded FY2025-26 default (see payroll-engine.service.ts),
-// so payroll never silently breaks — it just won't reflect a brand new
-// budget until someone seeds the new slabs.
-
 import mongoose from "mongoose";
 import { createOrgLevelSchema, OrgLevelDocument } from "../../../shared/database/base.schema";
 import { TaxRegime } from "./statutory-config.model";

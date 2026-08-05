@@ -37,7 +37,7 @@ export class BaseRepository<T extends Document> {
       isDeleted: false,
     } as FilterQuery<T>;
 
-    if (context.branchIds && context.branchIds.length > 0) {
+    if (context.role !== "ORG_ADMIN" && context.role !== "SUPER_ADMIN" && context.branchIds && context.branchIds.length > 0) {
       (tenantFilter as any).branchId = {
         $in: context.branchIds,
       };

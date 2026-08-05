@@ -27,7 +27,7 @@ export class HolidayRepository extends BaseRepository<HolidayDocument> {
         // When branchIds is populated the user is scoped to specific branches.
         // Return non-BRANCH holidays (shared across tenant) + only BRANCH holidays
         // that belong to one of the caller's branches.
-        if (context.branchIds && context.branchIds.length > 0) {
+        if (context.role !== "ORG_ADMIN" && context.role !== "SUPER_ADMIN" && context.branchIds && context.branchIds.length > 0) {
             const branchOIds = context.branchIds.map((id) => new mongoose.Types.ObjectId(id));
             baseFilter.$or = [
                 { scope: { $in: [HolidayScope.GLOBAL, HolidayScope.COUNTRY, HolidayScope.STATE] } },

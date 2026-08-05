@@ -36,7 +36,7 @@ export class EmployeeRepository
       ...filters,
     };
 
-    if (context.branchIds && context.branchIds.length > 0) {
+    if (context.role !== "ORG_ADMIN" && context.role !== "SUPER_ADMIN" && context.branchIds && context.branchIds.length > 0) {
       tenantFilter.branchId = {
         $in: context.branchIds.map(
           (id) => new mongoose.Types.ObjectId(id)
