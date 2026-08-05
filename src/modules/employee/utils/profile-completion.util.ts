@@ -41,10 +41,21 @@ export async function recalculateProfileCompletion(
     
     // Check if document numbers are filled for mandatory types (PAN, AADHAAR, PASSPORT)
     // or if the document file itself has been uploaded.
+    const isIndia = (employee.countryCode || "IN").toUpperCase() === "IN";
     mandatoryDocs = required.every((t: string) => {
-      if (t === "PAN") return !!employee.pan;
-      if (t === "AADHAAR") return !!employee.aadhaar;
-      if (t === "PASSPORT") return !!employee.passportNo;
+      if (t === "PAN") {
+        return isIndia
+          ? (!!employee.pan || uploadedTypes.includes("PAN"))
+          : uploadedTypes.includes("PAN");
+      }
+      if (t === "AADHAAR") {
+        return isIndia
+          ? (!!employee.aadhaar || uploadedTypes.includes("AADHAAR"))
+          : uploadedTypes.includes("AADHAAR");
+      }
+      if (t === "PASSPORT") {
+        return !!employee.passportNo || uploadedTypes.includes("PASSPORT");
+      }
       return uploadedTypes.includes(t);
     });
   }

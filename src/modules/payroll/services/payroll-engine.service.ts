@@ -7,6 +7,7 @@ import { AttendanceSummarySnapshot, PayslipEarning } from "../models/payslip.mod
 import { ProfessionalTaxConfigModel } from "../models/statutory-config.model";
 import { LWFConfigModel } from "../models/statutory-config.model";
 import { TaxDeclarationModel, TaxRegime } from "../models/statutory-config.model";
+import { TaxSlabConfigModel } from "../models/tax-slab-config.model";
 import { OvertimeModel, OTStatus } from "../models/overtime.model";
 import { AttendanceLockModel, AttendanceLockStatus } from "../../attendance/models/attendance-lock.model";
 import { getCountryModule } from "../../../domain/localization/country.registry";
@@ -417,10 +418,66 @@ export async function calculateTDS(
 
   const regime = declaration?.regime ?? TaxRegime.NEW;
 
-  // ── STEP 1: Start with annual CTC as gross income 
+  // ── STEP 1: Query DB-driven Tax Slab Config or use hardcoded FY2025-26 fallbacks
+  const config = await TaxSlabConfigModel.findOne({
+    tenantId: new mongoose.Types.ObjectId(tenantId),
+    regime,
+    financialYear,
+    isActive: true,
+  }).lean();
+
+  let slabs: { min: number; max: number; rate: number }[] = [];
+  let standardDeduction = 0;
+  let rebateCeiling = 0;
+  let rebateMaxAmount = 0;
+  let marginalReliefUpperLimit = 0;
+  let cessRate = 0.04;
+
+  if (config) {
+    slabs = config.slabs.map(s => ({
+      min: s.minIncome,
+      max: s.maxIncome === 0 ? Infinity : s.maxIncome,
+      rate: s.rate
+    }));
+    standardDeduction = config.standardDeduction;
+    rebateCeiling = config.rebateCeiling;
+    rebateMaxAmount = config.rebateMaxAmount;
+    marginalReliefUpperLimit = config.marginalReliefUpperLimit;
+    cessRate = config.cessRate;
+  } else {
+    // Fallback to FY2025-26 defaults
+    if (regime === TaxRegime.NEW) {
+      slabs = [
+        { min: 0, max: 400_000, rate: 0.00 },
+        { min: 400_000, max: 800_000, rate: 0.05 },
+        { min: 800_000, max: 1_200_000, rate: 0.10 },
+        { min: 1_200_000, max: 1_600_000, rate: 0.15 },
+        { min: 1_600_000, max: 2_000_000, rate: 0.20 },
+        { min: 2_000_000, max: 2_400_000, rate: 0.25 },
+        { min: 2_400_000, max: Infinity, rate: 0.30 },
+      ];
+      standardDeduction = 75_000;
+      rebateCeiling = 1_200_000;
+      rebateMaxAmount = 60_000;
+      marginalReliefUpperLimit = 1_275_000;
+    } else {
+      slabs = [
+        { min: 0, max: 250_000, rate: 0.00 },
+        { min: 250_000, max: 500_000, rate: 0.05 },
+        { min: 500_000, max: 1_000_000, rate: 0.20 },
+        { min: 1_000_000, max: Infinity, rate: 0.30 },
+      ];
+      standardDeduction = 50_000;
+      rebateCeiling = 500_000;
+      rebateMaxAmount = 12_500;
+      marginalReliefUpperLimit = 0;
+    }
+  }
+
+  // ── STEP 2: Start with annual CTC as gross income 
   let taxableIncome = annualCtc;
 
-  // ── STEP 2: Old regime exemptions
+  // ── STEP 3: Old regime HRA and other exemptions
   if (regime === TaxRegime.OLD && declaration) {
     const hraExemption = computeHRAExemption(
       basicMonthly,
@@ -434,10 +491,10 @@ export async function calculateTDS(
     taxableIncome -= (declaration.ltaAmount ?? 0);
   }
 
-  // ── STEP 3: Standard deduction
-  taxableIncome -= regime === TaxRegime.NEW ? 75_000 : 50_000;
+  // ── STEP 4: Standard deduction
+  taxableIncome -= standardDeduction;
 
-  // ── STEP 4: 80C — Old regime only, max ₹1,50,000
+  // ── STEP 5: 80C — Old regime only, max ₹1,50,000
   if (regime === TaxRegime.OLD && declaration) {
     const sec80C = Math.min(
       (declaration.section80C ?? 0) + pfEmployeeAnnual,
@@ -446,36 +503,53 @@ export async function calculateTDS(
     taxableIncome -= sec80C;
   }
 
-  // ── STEP 5: 80D — Old regime only 
+  // ── STEP 6: 80D — Old regime only 
   if (regime === TaxRegime.OLD && declaration?.section80D) {
     taxableIncome -= Math.min(declaration.section80D, 50_000);
   }
 
-  // ── STEP 6: 80CCD(1B) NPS — both regimes, max ₹50,000 
+  // ── STEP 7: 80CCD(1B) NPS — both regimes, max ₹50,000 
   if (declaration?.section80CCD1B) {
     taxableIncome -= Math.min(declaration.section80CCD1B, 50_000);
   }
 
-  // ── STEP 7: Home loan interest — Old regime only, max ₹2,00,000 
+  // ── STEP 8: Home loan interest — Old regime only, max ₹2,00,000 
   if (regime === TaxRegime.OLD && declaration?.homeLoanInterest) {
     taxableIncome -= Math.min(declaration.homeLoanInterest, 200_000);
   }
 
   taxableIncome = Math.max(0, Math.round(taxableIncome));
 
-  // ── STEP 8: Compute slab tax 
-  const slabs = regime === TaxRegime.NEW ? NEW_REGIME_SLABS : OLD_REGIME_SLABS;
+  // ── STEP 9: Compute slab tax 
   let annualTax = computeSlabTax(taxableIncome, slabs);
 
-  // ── STEP 9: Surcharge 
+  // ── STEP 10: Section 87A Rebate & Marginal Relief
+  if (rebateCeiling > 0) {
+    if (taxableIncome <= rebateCeiling) {
+      const rebate = Math.min(annualTax, rebateMaxAmount);
+      annualTax -= rebate;
+    } else if (marginalReliefUpperLimit > 0 && taxableIncome <= marginalReliefUpperLimit) {
+      // Tax at ceiling
+      const taxAtCeiling = computeSlabTax(rebateCeiling, slabs);
+      const rebateAtCeiling = Math.min(taxAtCeiling, rebateMaxAmount);
+      const netTaxAtCeiling = taxAtCeiling - rebateAtCeiling; // usually 0
+      
+      const excessIncome = taxableIncome - rebateCeiling;
+      const maxTaxAllowed = netTaxAtCeiling + excessIncome;
+      if (annualTax > maxTaxAllowed) {
+        annualTax = maxTaxAllowed;
+      }
+    }
+  }
+
+  // ── STEP 11: Surcharge 
   annualTax += computeSurcharge(taxableIncome, annualTax);
 
-  // ── STEP 10: Health & Education Cess 4% 
-  const cess = Math.round(annualTax * 0.04);
+  // ── STEP 12: Health & Education Cess 4% 
+  const cess = Math.round(annualTax * cessRate);
   const annualTaxWithCess = annualTax + cess;
 
-  // ── STEP 11: Monthly TDS = remaining liability / remaining months 
-  // Adjusts automatically when employee submits new declaration mid-year
+  // ── STEP 13: Monthly TDS = remaining liability / remaining months 
   const monthlyTDS = Math.round(annualTaxWithCess / Math.max(monthsRemaining, 1));
 
   return { annualTaxableIncome: taxableIncome, annualTax, annualTaxWithCess, monthlyTDS, regime };

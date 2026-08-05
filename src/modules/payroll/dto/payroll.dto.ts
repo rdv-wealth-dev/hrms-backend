@@ -146,3 +146,23 @@ export const TaxDeclarationDto = z.object({
   }
 );
 export type TaxDeclarationInput = z.infer<typeof TaxDeclarationDto>;
+
+// ── Tax Slab Config ───────────────────────────────────────────────────────
+
+export const TaxSlabDto = z.object({
+  minIncome: z.number().min(0),
+  maxIncome: z.number().min(0), // 0 = no upper limit (top slab)
+  rate:      z.number().min(0).max(1),
+});
+
+export const UpsertTaxSlabConfigDto = z.object({
+  regime:                    z.enum(["OLD", "NEW"]),
+  financialYear:             z.string().regex(/^\d{4}-\d{2}$/, "Format must be YYYY-YY e.g. 2025-26"),
+  slabs:                     z.array(TaxSlabDto).min(1, "At least one slab required"),
+  standardDeduction:         z.number().min(0),
+  rebateCeiling:             z.number().min(0).optional().default(0),
+  rebateMaxAmount:           z.number().min(0).optional().default(0),
+  marginalReliefUpperLimit:  z.number().min(0).optional().default(0),
+  cessRate:                  z.number().min(0).max(1).optional().default(0.04),
+});
+export type UpsertTaxSlabConfigInput = z.infer<typeof UpsertTaxSlabConfigDto>;

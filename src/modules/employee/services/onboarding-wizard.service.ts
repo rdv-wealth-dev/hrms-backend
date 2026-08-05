@@ -144,17 +144,44 @@ export class OnboardingWizardService {
         isDeleted: false,
       }) as unknown as string[];
 
+      const documentLabels: Record<string, string> = {
+        PAN: "PAN Card",
+        AADHAAR: "Aadhaar Card", 
+        PASSPORT: "Passport",
+        DRIVING_LICENSE: "Driving License",
+        OFFER_LETTER: "Offer Letter",
+        RESUME: "Resume/CV",
+        DEGREE: "Degree Certificate",
+        EXPERIENCE: "Experience Certificate",
+        OTHER: "Other Document"
+      };
+
+      const isIndia = (refreshed!.countryCode || "IN").toUpperCase() === "IN";
       const missing: string[] = [];
       required.forEach((t: string) => {
-        if (t === "PAN" && !refreshed!.pan) {
-          missing.push("PAN Number");
-        } else if (t === "AADHAAR" && !refreshed!.aadhaar) {
-          missing.push("Aadhaar Number");
-        } else if (t === "PASSPORT" && !refreshed!.passportNo) {
-          missing.push("Passport Number");
+        const label = documentLabels[t] || t;
+        if (t === "PAN") {
+          const hasIt = isIndia 
+            ? (!!refreshed!.pan || uploadedTypes.includes("PAN"))
+            : uploadedTypes.includes("PAN");
+          if (!hasIt) {
+            missing.push(isIndia ? `${label} Number or Document` : `${label} Document`);
+          }
+        } else if (t === "AADHAAR") {
+          const hasIt = isIndia 
+            ? (!!refreshed!.aadhaar || uploadedTypes.includes("AADHAAR"))
+            : uploadedTypes.includes("AADHAAR");
+          if (!hasIt) {
+            missing.push(isIndia ? `${label} Number or Document` : `${label} Document`);
+          }
+        } else if (t === "PASSPORT") {
+          const hasIt = !!refreshed!.passportNo || uploadedTypes.includes("PASSPORT");
+          if (!hasIt) {
+            missing.push(`${label} Number or Document`);
+          }
         } else if (t !== "PAN" && t !== "AADHAAR" && t !== "PASSPORT") {
           if (!uploadedTypes.includes(t)) {
-            missing.push(`${t} Document`);
+            missing.push(`${label} Document`);
           }
         }
       });

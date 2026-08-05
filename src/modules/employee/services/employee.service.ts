@@ -431,10 +431,22 @@ export class EmployeeService {
     const mandatoryDocumentTypes = org?.mandatoryDocumentTypes ?? [];
     
     // Calculate missing documents
+    const isIndia = (employee.countryCode || "IN").toUpperCase() === "IN";
     const uploadedDocTypes = documents.map(doc => doc.documentType) as string[];
-    const missingDocuments = mandatoryDocumentTypes.filter(
-      type => !uploadedDocTypes.includes(type)
-    );
+    const missingDocuments = mandatoryDocumentTypes.filter(type => {
+      if (type === "PAN") {
+        return isIndia
+          ? (!employee.pan && !uploadedDocTypes.includes("PAN"))
+          : !uploadedDocTypes.includes("PAN");
+      }
+      if (type === "AADHAAR") {
+        return isIndia
+          ? (!employee.aadhaar && !uploadedDocTypes.includes("AADHAAR"))
+          : !uploadedDocTypes.includes("AADHAAR");
+      }
+      if (type === "PASSPORT") return !employee.passportNo && !uploadedDocTypes.includes("PASSPORT");
+      return !uploadedDocTypes.includes(type);
+    });
 
     // Document labels for frontend
     const documentLabels = {
