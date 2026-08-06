@@ -1,18 +1,20 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IBiometricRawLog extends Document {
-
+  tenantId: mongoose.Types.ObjectId;
+  provider: string;
   receivedAt: Date;
   payload: any;
 }
 
 const rawLogSchema = new Schema<IBiometricRawLog>(
   {
-
+    tenantId: { type: Schema.Types.ObjectId, required: true, index: true },
+    provider: { type: String, required: true, index: true },
     receivedAt: { type: Date, default: Date.now },
     payload: { type: Schema.Types.Mixed, required: true },
   },
-  { timestamps: true, collection: "webhook_raw_timewatch" }
+  { timestamps: true, collection: "webhook_raw_biometrics" }
 );
 
 export interface IBiometricPunch extends Document {

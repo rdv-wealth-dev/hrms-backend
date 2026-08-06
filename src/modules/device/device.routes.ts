@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { receiveRawTimeWatchWebhook } from "./device-webhook.controller";
+import { receiveRawBiometricWebhook } from "./device-webhook.controller";
 
 const router = Router();
 
-// Biometric webhook endpoint - unauthenticated raw timewatch logger
-router.post("/timewatch", receiveRawTimeWatchWebhook);
+// Biometric webhook endpoint - generic, supports dynamic tenantId and provider route params
+router.post("/:tenantId/:provider", receiveRawBiometricWebhook);
 
 export default router;

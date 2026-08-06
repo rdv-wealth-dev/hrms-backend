@@ -40,12 +40,19 @@ export async function getBranchCalendar(req: any, res: Response, next: NextFunct
     if (month < 1 || month > 12) throw new AppError("month must be 1–12", 400);
     if (year  < 2000 || year > 2100) throw new AppError("year out of range", 400);
 
-    // Verify branch belongs to this tenant
-    const branch = await BranchModel.findOne({
+    // Verify branch belongs to this tenant; fall back to Head Office if not found
+    let branch = await BranchModel.findOne({
       _id:       new mongoose.Types.ObjectId(branchId),
       tenantId:  new mongoose.Types.ObjectId(req.context.tenantId),
       isDeleted: false,
     });
+    if (!branch) {
+      branch = await BranchModel.findOne({
+        tenantId:     new mongoose.Types.ObjectId(req.context.tenantId),
+        isHeadOffice: true,
+        isDeleted:    false,
+      });
+    }
     if (!branch) throw new AppError("Branch not found", 404);
 
     const org = await OrganizationModel.findById(req.context.tenantId);
@@ -161,10 +168,23 @@ export async function getMyBranchCalendar(req: any, res: Response, next: NextFun
     if (!user?.employeeId) throw new AppError("No employee linked to this account", 404);
 
     const employee = await EmployeeModel.findById(user.employeeId).select("branchId");
-    if (!employee?.branchId) throw new AppError("No branch assigned to employee", 400);
+
+    // If employee has no branch, fall back to Head Office so the calendar still loads
+    let branchId: string;
+    if (employee?.branchId) {
+      branchId = employee.branchId.toString();
+    } else {
+      const headOffice = await BranchModel.findOne({
+        tenantId:     new mongoose.Types.ObjectId(req.context.tenantId),
+        isHeadOffice: true,
+        isDeleted:    false,
+      });
+      if (!headOffice) throw new AppError("No branch assigned and no Head Office found", 404);
+      branchId = headOffice._id.toString();
+    }
 
     // Delegate to the branch calendar handler via a param shim
-    req.params.branchId = employee.branchId.toString();
+    req.params.branchId = branchId;
     return getBranchCalendar(req, res, next);
   } catch (err) {
     next(err);

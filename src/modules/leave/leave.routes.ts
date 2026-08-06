@@ -30,7 +30,6 @@ router.use(authenticate);
 // employee profile can still fetch the resolved holiday calendar for any branch.
 router.get(
   "/holidays/resolve",
-  checkPermission("leave.read"),
   holidayCtrl.resolveForBranch.bind(holidayCtrl)
 );
 
@@ -122,7 +121,6 @@ router.post(
 
 router.get(
   "/holidays",
-  checkPermission("leave.read"),
   holidayCtrl.list.bind(holidayCtrl)
 );
 

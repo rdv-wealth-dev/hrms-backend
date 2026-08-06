@@ -404,7 +404,7 @@ export class EmployeeService {
   ) {
     // Get basic employee data with populated references
     const employee = await this.empRepo.findById(context, id, {
-      populate: ["departmentId", "designationId", "managerId"],
+      populate: ["departmentId", "designationId", "managerId", "branchId", "shiftId"],
     });
 
     if (!employee) {
@@ -497,6 +497,8 @@ export class EmployeeService {
         departmentId: employee.departmentId,
         designationId: employee.designationId,
         managerId: employee.managerId,
+        branchId: employee.branchId,
+        shiftId: employee.shiftId,
         employeeType: employee.employeeType,
         status: employee.status,
         joiningDate: employee.joiningDate,

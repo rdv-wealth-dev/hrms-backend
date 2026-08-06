@@ -1,8 +1,6 @@
-import mongoose, { Connection } from 'mongoose';
+import mongoose from 'mongoose';
 import { env } from './env.config';
 import { logger } from './logger.config';
-
-let biometricConnection: Connection | null = null;
 
 // Setup Mongoose Event Listeners
 const setupEventListeners = (): void => {
@@ -44,29 +42,10 @@ export const connectDatabase = async (): Promise<void> => {
 
     logger.info(`Database Connected Successfully (${env.connectionStringName})`);
 
-    // Second connection for raw biometric data
-    biometricConnection = mongoose.createConnection(env.connectionString, {
-      dbName: env.biometricDbName,
-      maxPoolSize: 20,
-    });
-    biometricConnection.on('connected', () => {
-      logger.info(`Mongoose: Connected to biometric raw database (${env.biometricDbName})`);
-    });
-    biometricConnection.on('error', (err) => {
-      logger.error(`Mongoose: biometric raw database connection error: ${err}`);
-    });
-
   } catch (error) {
     logger.error(`Database Connection Failed: ${error}`);
     process.exit(1);
   }
-};
-
-export const getBiometricConnection = (): Connection => {
-  if (!biometricConnection) {
-    throw new Error('Biometric raw database connection is not initialized');
-  }
-  return biometricConnection;
 };
 
 /**
@@ -74,10 +53,6 @@ export const getBiometricConnection = (): Connection => {
  */
 export const disconnectDatabase = async (): Promise<void> => {
   try {
-    if (biometricConnection) {
-      await biometricConnection.close();
-      logger.info('Biometric raw database connection closed.');
-    }
     await mongoose.connection.close();
     logger.info('Primary Database connection closed cleanly.');
   } catch (error) {
