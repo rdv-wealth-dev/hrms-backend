@@ -22,9 +22,10 @@ export function applySecurityMiddleware(app: Application): void {
   // Helmet — security headers (CSP, HSTS, X-Frame-Options, etc.)
   app.use(helmet());
 
-  // CORS — allow all origins (tighten in production via env var)
+  // CORS — allow all origins with credentials support
   app.use(cors({
-    origin: "*",
+    origin: (origin, callback) => callback(null, true), // Allows frontend origin with credentials
+    credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Tenant-Slug"],
   }));
