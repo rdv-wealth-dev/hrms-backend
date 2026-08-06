@@ -21,6 +21,7 @@ import eventRoutes from "./modules/event";
 import onboardingWizardRoutes from "./modules/employee/onboarding-wizard.routes";
 import auditRoutes from "./modules/audit";
 import employeeDocumentRoutes from "./modules/employee-document/employee-document.routes";
+import deviceRoutes from "./modules/device/device.routes";
 
 const app: Application = express();
 
@@ -32,6 +33,7 @@ applySecurityMiddleware(app)
 
 // Public — no auth, no tenant cap
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/device", deviceRoutes);
 
 //Layer 2: Tenant Rate Limiter
 // authenticate populates req.context, then tenantRateLimiter applies
