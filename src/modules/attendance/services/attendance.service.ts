@@ -82,11 +82,25 @@ export class AttendanceService {
     const employeeId = user.employeeId.toString();
     const today = normalizeToMidnight(new Date());
 
-    // Resolve shift — fall back to tenant default if employee has none assigned yet
+    // Resolve shift — 3-tier: Employee Shift → Branch Default Shift → Org Default Shift
     const employeeDoc = await EmployeeModel.findById(employeeId).select("shiftId branchId");
-    const shift = employeeDoc?.shiftId
+    let shift = employeeDoc?.shiftId
       ? await this.shiftRepo.findById(context, employeeDoc.shiftId.toString())
-      : await this.shiftRepo.findDefault(context);
+      : null;
+
+    if (!shift && employeeDoc?.branchId) {
+      // Tier 2: check if the branch has a defaultShiftId configured
+      const branchDoc = await BranchModel.findById(employeeDoc.branchId).select("defaultShiftId").lean();
+      if (branchDoc?.defaultShiftId) {
+        shift = await this.shiftRepo.findById(context, branchDoc.defaultShiftId.toString());
+      }
+    }
+
+    if (!shift) {
+      // Tier 3: fall back to org-wide default shift
+      shift = await this.shiftRepo.findDefault(context);
+    }
+
     if (!shift) {
       throw new AppError(
         "No default shift configured for this organization. Contact HR.",

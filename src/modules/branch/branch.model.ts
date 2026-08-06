@@ -44,6 +44,7 @@ export interface BranchDocument extends BaseDocument {
     ptApplicable?:  boolean | null;
     ptStateCode?:   string;
   };
+  defaultShiftId?: mongoose.Types.ObjectId; // Branch-level default shift (overrides org default)
 }
 // BRANCH SCHEMA
 // Uses createBaseSchema — inherits tenantId + branchId + base fields
@@ -113,6 +114,13 @@ const BranchSchema = createBaseSchema<BranchDocument>(
       esiApplicable: { type: Boolean, default: null },
       ptApplicable:  { type: Boolean, default: null },
       ptStateCode:   { type: String,  trim: true    },
+    },
+    // Branch-level default shift — used as middle tier in resolution:
+    // Employee Shift → Branch Default Shift → Org Default Shift
+    defaultShiftId: {
+      type:    mongoose.Schema.Types.ObjectId,
+      ref:     "Shift",
+      default: null,
     },
   },
   {

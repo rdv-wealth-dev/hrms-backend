@@ -124,7 +124,22 @@ export class PayrollRunService {
       );
     }
 
-    // ── Check 2: Per-employee validation ──────────────────────────────────
+    // ── Check 2: Branch must have a state code (required for PT and LWF) ──
+    const branch = await BranchModel.findById(branchId)
+      .select("address name")
+      .lean<{ name: string; address?: { state?: string } }>();
+
+    if (!branch) {
+      errors.push(`CRITICAL: Branch not found for this payroll run.`);
+    } else if (!branch.address?.state) {
+      errors.push(
+        `WARNING: Branch "${branch.name}" has no state code set. ` +
+        `Professional Tax and LWF will be ₹0. ` +
+        `Update branch address with state code before running payroll.`
+      );
+    }
+
+    // ── Check 3: Per-employee validation ──────────────────────────────────
     const employees = await EmployeeModel.find({
       tenantId:  new mongoose.Types.ObjectId(context.tenantId),
       branchId:  new mongoose.Types.ObjectId(branchId),
