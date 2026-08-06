@@ -13,22 +13,30 @@ import {
   TaxDeclarationDto,
 } from "./dto/payroll.dto";
 
-import { requireCompleteProfile } from "../employee/middlewares/profile-completion.middleware";
+import {
+  injectOnboardingStatus,
+  requireProfileForRestrictedFeature,
+} from "../employee/middlewares/profile-completion.middleware";
 
 const router = Router();
 const ctrl = new PayrollController();
 
 router.use(authenticate);
-router.use(requireCompleteProfile);
+// Stamps req.context with onboarding phase. Never blocks on its own.
+// Self-service payslip and tax-declaration routes are individually gated below.
+router.use(injectOnboardingStatus);
 
-// Self-service — no permission check
+// Self-service — blocked at Day 8+ until profile is complete.
+// Payslips require bank details and tax info to be meaningful/accurate.
 router.get(
     "/payslips/me",
+    requireProfileForRestrictedFeature("payslip downloads"),
     ctrl.getMyPayslips.bind(ctrl)
 );
 
 router.get(
     "/payslips/me/:id",
+    requireProfileForRestrictedFeature("payslip downloads"),
     ctrl.getMyPayslipById.bind(ctrl)
 );
 
@@ -241,11 +249,14 @@ router.post(
 );
 
 // ── Tax Declaration — Employee self-service ───────────────────────────────
-// Employee submits once per year, can revise before proof deadline
-// No permission check — employees access their own declaration only
+// Employee submits once per year, can revise before proof deadline.
+// Blocked at Day 8+ — tax declaration requires bank + identity details to be
+// present and accurate before it can be acted upon by payroll.
+// No permission check — employees access their own declaration only.
 
 router.post(
   "/tax-declaration",
+  requireProfileForRestrictedFeature("tax declarations"),
   validateBody(TaxDeclarationDto),
   ctrl.submitTaxDeclaration.bind(ctrl)
 );

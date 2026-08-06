@@ -14,7 +14,10 @@ import {
 import { HolidayController } from "./sub-modules/holidays/holiday.controller";
 import { CreateHolidayDto, UpdateHolidayDto } from "./dto/leave.dto";
 
-import { requireCompleteProfile } from "../employee/middlewares/profile-completion.middleware";
+import {
+  injectOnboardingStatus,
+  requireProfileForRestrictedFeature,
+} from "../employee/middlewares/profile-completion.middleware";
 
 const router = Router();
 const typeCtrl = new LeaveTypeController();
@@ -23,7 +26,7 @@ const holidayCtrl = new HolidayController();
 
 router.use(authenticate);
 
-// RESOLVE — placed BEFORE requireCompleteProfile so HR Admins without a complete
+// RESOLVE — placed BEFORE injectOnboardingStatus so HR Admins without a complete
 // employee profile can still fetch the resolved holiday calendar for any branch.
 router.get(
   "/holidays/resolve",
@@ -31,13 +34,16 @@ router.get(
   holidayCtrl.resolveForBranch.bind(holidayCtrl)
 );
 
-router.use(requireCompleteProfile);
-
+// Stamps req.context with onboarding phase. Never blocks on its own.
+router.use(injectOnboardingStatus);
 
 // SELF-SERVICE — authenticate only, same pattern as employees/me and attendance/me
 
+// Block leave submission at Day 8+ if profile is incomplete.
+// Viewing history/balances is always allowed — read-only operations carry no risk.
 router.post(
   "/requests",
+  requireProfileForRestrictedFeature("leave requests"),
   validateBody(CreateLeaveRequestDto),
   requestCtrl.create.bind(requestCtrl)
 );

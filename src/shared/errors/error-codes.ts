@@ -23,6 +23,12 @@ export const ErrorCode = {
   FORBIDDEN_PERMISSION:      "FORBIDDEN_PERMISSION",
   FORBIDDEN_BRANCH_ACCESS:   "FORBIDDEN_BRANCH_ACCESS",
 
+  // Onboarding / Profile Completion
+  // SOFT: grace period — informational, never blocks (Days 1–7)
+  // HARD: restricted phase — feature blocked until profile complete (Day 8+)
+  PROFILE_INCOMPLETE_SOFT:   "PROFILE_INCOMPLETE_SOFT",
+  PROFILE_INCOMPLETE_HARD:   "PROFILE_INCOMPLETE_HARD",
+
   // System
   SYSTEM_RATE_LIMITED:       "SYSTEM_RATE_LIMITED",
   SYSTEM_INTERNAL_ERROR:     "SYSTEM_INTERNAL_ERROR",

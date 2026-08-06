@@ -15,7 +15,7 @@ import { UserModel } from "../user/user.model";
 import { RoleModel } from "../role/role.model";
 import { AppError } from "../../shared/errors/app.error";
 
-import { requireCompleteProfile } from "./middlewares/profile-completion.middleware";
+import { injectOnboardingStatus } from "./middlewares/profile-completion.middleware";
 import { EmployeeDocumentController } from "../employee-document/employee-document.controller";
 import { AddDocumentDto, RequestUploadUrlDto, UploadDocumentDto } from "../employee-document/employee-document.dto";
 
@@ -70,7 +70,10 @@ async function authorizeCompleteProfile(
 }
 
 router.use(authenticate);
-router.use(requireCompleteProfile);
+// Inject onboarding phase into context for all employee routes.
+// No blocking here — /me, /me/documents, /me/bank-accounts are the completion
+// routes themselves and must always remain open to all employees.
+router.use(injectOnboardingStatus);
 
 router.get(
   "/me",

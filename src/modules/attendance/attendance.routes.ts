@@ -18,7 +18,7 @@ import { closeOutAttendanceForDate } from "./jobs/attendance-closeout.job";
 import { UserModel } from "../user/user.model";
 import { AppError } from "../../shared/errors/app.error";
 
-import { requireCompleteProfile } from "../employee/middlewares/profile-completion.middleware";
+import { injectOnboardingStatus } from "../employee/middlewares/profile-completion.middleware";
 
 const router = Router();
 const attCtrl = new AttendanceController();
@@ -28,7 +28,9 @@ const rotationCtrl = new ShiftRotationPlanController();
 const summaryService = new AttendanceSummaryService();
 
 router.use(authenticate);
-router.use(requireCompleteProfile);
+// Stamps req.context with onboardingPhase/isProfileComplete/profileCompletionPct.
+// Never blocks — attendance (punch-in/out) must always be accessible.
+router.use(injectOnboardingStatus);
 
 // ─── SELF-SERVICE (no permission check, auth only)
 
