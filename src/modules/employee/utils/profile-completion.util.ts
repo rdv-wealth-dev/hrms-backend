@@ -75,6 +75,22 @@ export async function recalculateProfileCompletion(
     reviewed: employee.onboardingStepsCompleted?.reviewed ?? false,       // set by HR
   };
 
+  // Auto-resolve onboarding step based on first incomplete step
+  if (!employee.onboardingComplete) {
+    const steps = employee.onboardingStepsCompleted;
+    if (!steps.personalDetails) {
+      employee.onboardingStep = 1;
+    } else if (!steps.familyDetails) {
+      employee.onboardingStep = 2;
+    } else if (!steps.bankDetails) {
+      employee.onboardingStep = 3;
+    } else if (!steps.documents) {
+      employee.onboardingStep = 4;
+    } else {
+      employee.onboardingStep = 5;
+    }
+  }
+
   await employee.save();
   return isProfileComplete;
 }

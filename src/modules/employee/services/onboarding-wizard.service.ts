@@ -14,6 +14,7 @@ import { RequestContext } from "../../../shared/types/request-context.interface"
 import { recalculateProfileCompletion } from "../utils/profile-completion.util";
 import { OrganizationModel } from "../../organization/organization.model";
 import { EmployeeDocumentModel } from "../../employee-document/employee-document.model";
+import { EmployeeBankAccountModel } from "../models/employee-bank-account.model";
 
 export class OnboardingWizardService {
   private familyRepo = new EmployeeFamilyRepository();
@@ -48,10 +49,15 @@ export class OnboardingWizardService {
   // Get current wizard state — frontend calls this to know where to render 
   async getStatus(context: RequestContext) {
     const employee = await this.resolveOwnEmployee(context);
+    
+    // Sync onboardingStep and stepsCompleted based on current DB state (in case HR updated details)
+    await recalculateProfileCompletion(context.tenantId, employee._id.toString());
+    const refreshed = await EmployeeModel.findById(employee._id);
+
     return {
-      onboardingStep:            employee.onboardingStep,
-      onboardingComplete:        employee.onboardingComplete,
-      onboardingStepsCompleted:  employee.onboardingStepsCompleted,
+      onboardingStep:            refreshed!.onboardingStep,
+      onboardingComplete:        refreshed!.onboardingComplete,
+      onboardingStepsCompleted:  refreshed!.onboardingStepsCompleted,
     };
   }
 
@@ -60,13 +66,35 @@ export class OnboardingWizardService {
     const employee = await this.resolveOwnEmployee(context);
     this.assertStepAllowed(employee, 1);
 
-    employee.dateOfBirth       = new Date(input.dateOfBirth);
-    employee.gender            = input.gender as any;
-    employee.bloodGroup        = input.bloodGroup as any;
-    employee.maritalStatus     = input.maritalStatus as any;
-    employee.phone             = input.phone;
-    employee.currentAddress    = input.currentAddress;
-    employee.emergencyContacts = input.emergencyContact as any;
+    // Merge inputs with existing values on the employee record (e.g. from HR create employee step)
+    const dateOfBirth = input.dateOfBirth ? new Date(input.dateOfBirth) : employee.dateOfBirth;
+    const gender = input.gender ?? employee.gender;
+    const bloodGroup = input.bloodGroup ?? employee.bloodGroup;
+    const maritalStatus = input.maritalStatus ?? employee.maritalStatus;
+    const phone = input.phone ?? employee.phone;
+    const currentAddress = input.currentAddress ?? employee.currentAddress;
+    const emergencyContacts = input.emergencyContact ?? employee.emergencyContacts;
+
+    // Validate that required fields are complete after merge
+    if (!dateOfBirth) throw new AppError("Date of birth is required", 400, ErrorCode.VALIDATION_FAILED);
+    if (!gender) throw new AppError("Gender is required", 400, ErrorCode.VALIDATION_FAILED);
+    if (!maritalStatus) throw new AppError("Marital status is required", 400, ErrorCode.VALIDATION_FAILED);
+    if (!phone) throw new AppError("Phone number is required", 400, ErrorCode.VALIDATION_FAILED);
+    if (!currentAddress || !currentAddress.addressLine1 || !currentAddress.city || !currentAddress.state || !currentAddress.countryCode || !currentAddress.zip) {
+      throw new AppError("Current address details (addressLine1, city, state, countryCode, zip) are required", 400, ErrorCode.VALIDATION_FAILED);
+    }
+    if (!emergencyContacts || emergencyContacts.length === 0) {
+      throw new AppError("At least one emergency contact is required", 400, ErrorCode.VALIDATION_FAILED);
+    }
+
+    // Apply values to employee model
+    employee.dateOfBirth       = dateOfBirth;
+    employee.gender            = gender as any;
+    employee.bloodGroup        = bloodGroup as any;
+    employee.maritalStatus     = maritalStatus as any;
+    employee.phone             = phone;
+    employee.currentAddress    = currentAddress as any;
+    employee.emergencyContacts = emergencyContacts as any;
 
     // Save optional document numbers (e.g. PAN, Aadhaar, Passport)
     if (input.pan !== undefined) employee.pan = input.pan;
@@ -74,10 +102,13 @@ export class OnboardingWizardService {
     if (input.passportNo !== undefined) employee.passportNo = input.passportNo;
 
     employee.onboardingStepsCompleted.personalDetails = true;
-    if (employee.onboardingStep === 1) employee.onboardingStep = 2;
-
     await employee.save();
-    return { message: "Personal details saved", nextStep: employee.onboardingStep };
+
+    // Recalculate wizard step dynamically based on completed sections
+    await recalculateProfileCompletion(context.tenantId, employee._id.toString());
+    const refreshed = await EmployeeModel.findById(employee._id);
+
+    return { message: "Personal details saved", nextStep: refreshed!.onboardingStep };
   }
 
   // Step 2 — Family Details 
@@ -90,10 +121,13 @@ export class OnboardingWizardService {
     );
 
     employee.onboardingStepsCompleted.familyDetails = true;
-    if (employee.onboardingStep === 2) employee.onboardingStep = 3;
     await employee.save();
 
-    return { message: "Family details saved", nextStep: employee.onboardingStep };
+    // Recalculate wizard step dynamically
+    await recalculateProfileCompletion(context.tenantId, employee._id.toString());
+    const refreshed = await EmployeeModel.findById(employee._id);
+
+    return { message: "Family details saved", nextStep: refreshed!.onboardingStep };
   }
 
   // Step 3 — Bank Details 
@@ -101,14 +135,39 @@ export class OnboardingWizardService {
     const employee = await this.resolveOwnEmployee(context);
     this.assertStepAllowed(employee, 3);
 
+    // If inputs are missing, check if there's already a bank account populated by HR
+    const hasExistingBank = employee.onboardingStepsCompleted.bankDetails || (await EmployeeBankAccountModel.countDocuments({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      employeeId: employee._id,
+      isActive: true,
+      isDeleted: false,
+    })) > 0;
+
+    const bankName = input.bankName;
+    const accountNumber = input.accountNumber;
+    const ifscCode = input.ifscCode;
+    const accountType = input.accountType ?? "SALARY";
+
+    if (!bankName || !accountNumber || !ifscCode) {
+      if (hasExistingBank) {
+        // Safe to skip/accept since bank account exists
+        employee.onboardingStepsCompleted.bankDetails = true;
+        await employee.save();
+        await recalculateProfileCompletion(context.tenantId, employee._id.toString());
+        const refreshed = await EmployeeModel.findById(employee._id);
+        return { message: "Bank details verified", nextStep: refreshed!.onboardingStep };
+      }
+      throw new AppError("Bank name, account number, and IFSC code are required", 400, ErrorCode.VALIDATION_FAILED);
+    }
+
     await this.empRepo.addBankAccount({
       tenantId:      employee.tenantId as any,
       branchId:      employee.branchId as any,
       employeeId:    employee._id as any,
-      bankName:      input.bankName,
-      accountNumber: input.accountNumber,
-      ifscCode:      input.ifscCode,
-      accountType:   input.accountType as any,
+      bankName:      bankName,
+      accountNumber: accountNumber,
+      ifscCode:      ifscCode,
+      accountType:   accountType as any,
       isPrimary:     true,
       isActive:      true,
       createdBy:     new mongoose.Types.ObjectId(context.userId) as any,
@@ -116,10 +175,13 @@ export class OnboardingWizardService {
     });
 
     employee.onboardingStepsCompleted.bankDetails = true;
-    if (employee.onboardingStep === 3) employee.onboardingStep = 4;
     await employee.save();
 
-    return { message: "Bank details saved", nextStep: employee.onboardingStep };
+    // Recalculate wizard step dynamically
+    await recalculateProfileCompletion(context.tenantId, employee._id.toString());
+    const refreshed = await EmployeeModel.findById(employee._id);
+
+    return { message: "Bank details saved", nextStep: refreshed!.onboardingStep };
   }
 
   // Step 4 — Documents (checked, not submitted — uses existing upload routes) 

@@ -3,6 +3,7 @@ import { AttendanceService } from "../services/attendance.service";
 import { buildSuccessResponse } from "../../../shared/database/base.schema";
 import { AttendanceReportQueryDto } from "../dto/attendance.dto";
 import { PunchSource } from "../models/attendance.model";
+import { AppError } from "../../../shared/errors/app.error";
 
 const attService = new AttendanceService();
 
@@ -72,8 +73,16 @@ export class AttendanceController {
         next: NextFunction
     ): Promise<void> {
         try {
-            const fromDate = new Date(req.query.fromDate as string);
-            const toDate = new Date(req.query.toDate as string);
+            const fromQuery = req.query.fromDate as string;
+            const toQuery = req.query.toDate as string;
+
+            // Default to current month if parameters are missing
+            const fromDate = fromQuery ? new Date(fromQuery) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+            const toDate = toQuery ? new Date(toQuery) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+
+            if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+                throw new AppError("Invalid fromDate or toDate query parameter format", 400);
+            }
 
             const result = await attService.getMyHistory(req.context, fromDate, toDate);
             res.status(200).json(

@@ -2,11 +2,11 @@ import { z } from "zod";
 import { safeStringSchema, dateSchema, phoneSchema, emailSchema } from "../../../shared/validators/index";
 
 export const OnboardingStep1Dto = z.object({
-  dateOfBirth: dateSchema,
-  gender: z.enum(["MALE", "FEMALE", "OTHER"]),
+  dateOfBirth: dateSchema.optional(),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]).optional(),
-  maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]),
-  phone: phoneSchema,
+  maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]).optional(),
+  phone: phoneSchema.optional(),
   currentAddress: z.object({
     addressLine1: safeStringSchema(1, 200),
     addressLine2: safeStringSchema(0, 200).optional(),
@@ -14,13 +14,13 @@ export const OnboardingStep1Dto = z.object({
     state: safeStringSchema(1, 100),
     countryCode: z.string().length(2).toUpperCase(),
     zip: z.string().trim().min(4).max(10),
-  }),
+  }).optional(),
   emergencyContact: z.array(z.object({
     name: safeStringSchema(2, 100),
     relationship: safeStringSchema(2, 50),
     phone: phoneSchema,
     email: emailSchema.optional(),
-  })).min(1, "At least one emergency contact is required"),
+  })).min(1, "At least one emergency contact is required").optional(),
   pan: z.string().trim().optional(),
   aadhaar: z.string().trim().optional(),
   passportNo: z.string().trim().optional(),
@@ -47,9 +47,9 @@ export type OnboardingStep2Input = z.infer<typeof OnboardingStep2Dto>;
 
 // Step 3 — Bank Details 
 export const OnboardingStep3Dto = z.object({
-  bankName: safeStringSchema(2, 200),
-  accountNumber: z.string().trim().min(8).max(20),
-  ifscCode: z.string().trim().toUpperCase().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/),
+  bankName: safeStringSchema(2, 200).optional(),
+  accountNumber: z.string().trim().min(8).max(20).optional(),
+  ifscCode: z.string().trim().toUpperCase().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/).optional(),
   accountType: z.enum(["SAVINGS", "CURRENT", "SALARY"]).optional().default("SALARY"),
 });
 export type OnboardingStep3Input = z.infer<typeof OnboardingStep3Dto>;
