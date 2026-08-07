@@ -40,13 +40,15 @@ export class AttendanceSummaryService {
       if (r.isRegularized) summary.regularizedDays++;
 
       switch (r.status) {
-        case "PRESENT":  summary.present++; break;
-        case "LATE":     summary.late++; break;
-        case "HALF_DAY": summary.halfDay++; break;
-        case "ABSENT":   summary.absent++; break;
-        case "ON_LEAVE": summary.onLeave++; break;
-        case "HOLIDAY":  summary.holiday++; break;
-        case "WEEK_OFF": summary.weekOff++; break;
+        case "PRESENT":           summary.present++; break;
+        case "LATE":              summary.late++; break;
+        case "HALF_DAY":
+        case "HALF_DAY_MORNING":
+        case "HALF_DAY_AFTERNOON": summary.halfDay++; break;
+        case "ABSENT":            summary.absent++; break;
+        case "ON_LEAVE":          summary.onLeave++; break;
+        case "HOLIDAY":           summary.holiday++; break;
+        case "WEEK_OFF":          summary.weekOff++; break;
       }
     }
 

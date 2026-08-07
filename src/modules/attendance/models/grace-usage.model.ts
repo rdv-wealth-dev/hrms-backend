@@ -2,10 +2,10 @@ import mongoose from "mongoose";
 import { createBaseSchema, BaseDocument } from "../../../shared/database/base.schema";
 
 export interface GraceUsageDocument extends BaseDocument {
-  employeeId: mongoose.Types.ObjectId;
+  employeeId: mongoose.Types.ObjectId;    //per employee
   year:       number;
   month:      number;   // 1-12
-  used:       number;   // how many grace periods consumed this month
+  used:       number;   // how many grace periods consumed this month by individual employee 
 }
 
 const GraceUsageSchema = createBaseSchema<GraceUsageDocument>({

@@ -154,55 +154,100 @@ export function calculateWorkedMinutes(sessions: AttendanceSession[]): number {
 }
 
 // Determines attendance status from check-in time + shift config + worked minutes.
-// This is the core "automatic status" logic — no manual status setting needed
-// for normal punches. Only regularization/manual entry overrides this.
+// Industry-standard waterfall logic: arrival-based checks → duration-based checks → grace/late check.
+// Returns both the AttendanceStatus and an optional halfDayType discriminator.
 
 export function calculateAttendanceStatus(
   shift:         ShiftDocument,
   firstCheckIn:  Date | null,
   workedMinutes: number,
   graceUsed?:    number,
-  graceLimit?:   number
-): AttendanceStatus {
+  graceLimit?:   number,
+  lastCheckOut?: Date | null,
+): { status: AttendanceStatus; halfDayType: "MORNING" | "AFTERNOON" | null } {
 
+  const none = (status: AttendanceStatus) => ({ status, halfDayType: null as null });
+
+  // ── 0. No punch at all ──────────────────────────────────────────────────────
   if (!firstCheckIn) {
-    return AttendanceStatus.ABSENT;
+    return none(AttendanceStatus.ABSENT);
   }
 
+  // Build shift-start and shift-end Date objects anchored to the check-in day
   const [shiftHour, shiftMin] = shift.startTime.split(":").map(Number);
   const shiftStart = new Date(firstCheckIn);
   shiftStart.setHours(shiftHour, shiftMin, 0, 0);
 
-  // 1. Arrival-based ABSENT check
-  const absentThreshold   = (shift.absentThresholdMinutes   ?? 255) * 60000;
-  const absentArrivalThreshold  = new Date(shiftStart.getTime() + absentThreshold);
-  if (firstCheckIn > absentArrivalThreshold) {
-    return AttendanceStatus.ABSENT;
+  const minutesLate = Math.max(0, (firstCheckIn.getTime() - shiftStart.getTime()) / 60000);
+
+  // ── 1. Arrival-based ABSENT: arrived after absent threshold (e.g. 255 mins = ~2:15 PM) ────
+  const absentThresholdMins = shift.absentThresholdMinutes ?? 255;
+  if (minutesLate >= absentThresholdMins) {
+    return none(AttendanceStatus.ABSENT);
   }
 
-  // 2. Arrival-based HALF-DAY check
-  const halfDayThreshold  = (shift.lateArrivalHalfDayMinutes ?? 90)  * 60000;
-  const halfDayArrivalThreshold = new Date(shiftStart.getTime() + halfDayThreshold);
-  if (firstCheckIn > halfDayArrivalThreshold) {
-    return AttendanceStatus.HALF_DAY;
+  // ── 2. First-half cutoff: arrived after firstHalfCutoffMinutes (e.g. 240 = 2:00 PM) ───────
+  //    Any arrival beyond this cannot get 2nd-half credit — treat as ABSENT
+  //    (They're arriving in the 2nd half and there's no remaining shift time to qualify)
+  const firstHalfCutoffMins = shift.firstHalfCutoffMinutes ?? 240;
+  if (minutesLate >= firstHalfCutoffMins) {
+    return none(AttendanceStatus.ABSENT);
   }
 
-  // 3. Duration-based HALF-DAY check: Worked minutes below threshold (e.g. 4.5 hours)
-  if (workedMinutes < shift.halfDayThresholdMinutes) {
-    return AttendanceStatus.HALF_DAY;
+  // ── 3. Minimum hours floor: worked below this → ABSENT regardless of anything else ─────────
+  //    e.g. worked only 2 hrs — cannot credit even a half day
+  const minWorkForHalfDay = shift.minimumWorkMinutesForHalfDay ?? 270;
+  if (workedMinutes > 0 && workedMinutes < minWorkForHalfDay) {
+    // Exception: only apply this if they actually checked out (not a mid-day single punch)
+    if (lastCheckOut) {
+      return none(AttendanceStatus.ABSENT);
+    }
   }
 
-  // 4. Grace Period & Late coming check:
-  const hasGraceLeft = !graceLimit || (graceUsed ?? 0) < graceLimit;
-  const effectiveGraceMinutes = hasGraceLeft ? shift.gracePeriodMinutes : 0;
-  const lateThreshold = new Date(shiftStart.getTime() + effectiveGraceMinutes * 60000);
-
-  if (firstCheckIn > lateThreshold) {
-    return AttendanceStatus.LATE;
+  // ── 4. Arrival-based HALF_DAY_AFTERNOON: arrived past lateArrivalHalfDayMinutes ──────────
+  //    Employee was absent in the first half, present in the second half.
+  //    Condition: late arrival AND they worked enough hours (>= minimumWorkMinutesForHalfDay)
+  const lateHalfDayMins = shift.lateArrivalHalfDayMinutes ?? 90;
+  if (minutesLate >= lateHalfDayMins) {
+    // They came too late for a full day — mark HALF_DAY_AFTERNOON (first half absent)
+    return { status: AttendanceStatus.HALF_DAY_AFTERNOON, halfDayType: "AFTERNOON" };
   }
 
-  return AttendanceStatus.PRESENT;
+  // ── 5. Duration-based HALF_DAY_MORNING: worked below full-day threshold ────────────────────
+  //    Employee arrived on time but left early — first half present, second half absent.
+  const halfDayThreshMins = shift.halfDayThresholdMinutes ?? 240;
+  if (workedMinutes < halfDayThreshMins && workedMinutes >= minWorkForHalfDay) {
+    // Validate against secondHalfCutoffMinutes: did they work at least until 1:30 PM?
+    const secondHalfCutoffMins = shift.secondHalfCutoffMinutes ?? 210;
+    const elapsedFromShiftStart = lastCheckOut
+      ? Math.max(0, (lastCheckOut.getTime() - shiftStart.getTime()) / 60000)
+      : workedMinutes;
+
+    if (elapsedFromShiftStart >= secondHalfCutoffMins) {
+      // Checkout after 1:30 PM (secondHalfCutoff) — 1st half is credited, 2nd half absent
+      return { status: AttendanceStatus.HALF_DAY_MORNING, halfDayType: "MORNING" };
+    }
+    // Checked out before secondHalfCutoff AND didn't work enough for full day → ABSENT
+    return none(AttendanceStatus.ABSENT);
+  }
+
+  // ── 6. Duration below halfDayThreshold AND below minWorkForHalfDay → ABSENT ───────────────
+  if (workedMinutes < halfDayThreshMins) {
+    return none(AttendanceStatus.ABSENT);
+  }
+
+  // ── 7. Grace Period & Late-mark check (full-day duration met) ────────────────────────────
+  const hasGraceLeft      = !graceLimit || (graceUsed ?? 0) < graceLimit;
+  const effectiveGraceMin = hasGraceLeft ? (shift.gracePeriodMinutes ?? 15) : 0;
+
+  if (minutesLate > effectiveGraceMin) {
+    return none(AttendanceStatus.LATE);
+  }
+
+  // ── 8. Full Day PRESENT ───────────────────────────────────────────────────────────────────
+  return none(AttendanceStatus.PRESENT);
 }
+
 
 // Normalizes any Date to midnight (00:00:00.000) — used so that
 // "attendanceDate" is always a clean day boundary for the unique index

@@ -17,7 +17,7 @@ export const ManualAttendanceDto = z.object({
     attendanceDate : dateSchema,
     checkIn        : z.string().datetime().optional(),
     checkOut       : z.string().datetime().optional(),
-    status         : z.enum(["PRESENT","LATE","HALF_DAY","ABSENT","ON_LEAVE","HOLIDAY","WEEK_OFF"]).optional(),
+    status         : z.enum(["PRESENT","LATE","HALF_DAY","HALF_DAY_MORNING","HALF_DAY_AFTERNOON","ABSENT","ON_LEAVE","HOLIDAY","WEEK_OFF"]).optional(),
     notes          : safeStringSchema(0,500).optional(),
 })
 export type ManualAttendanceInput = z.infer<typeof ManualAttendanceDto>;
@@ -48,12 +48,19 @@ export const CreateShiftDto = z.object({
     code                    : z.string().trim().toUpperCase().min(2).max(20),
     startTime               : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format"),
     endTime                 : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format"),
-    gracePeriodMinutes      : z.number().min(0).max(120).optional().default(15),
-    graceLimitPerMonth      : z.number().min(0).optional().default(0),
-    halfDayThresholdMinutes : z.number().min(0).optional().default(240),
-    fullDayMinutes          : z.number().min(0).optional().default(480),
-    breakDurationMinutes    : z.number().min(0).optional().default(60),
-    isDefault               : z.boolean().optional().default(false),
+    gracePeriodMinutes           : z.number().min(0).max(120).optional().default(15),
+    graceLimitPerMonth           : z.number().min(0).optional().default(0),
+    halfDayThresholdMinutes      : z.number().min(0).optional().default(240),
+    fullDayMinutes               : z.number().min(0).optional().default(480),
+    breakDurationMinutes         : z.number().min(0).optional().default(60),
+    isDefault                    : z.boolean().optional().default(false),
+    // ─── Industry-standard cutoff & minimum thresholds ─────────────────────────────
+    // Latest arrival (mins from shift start) still eligible for 2nd-half credit (default 240 = 2 PM for 10 AM shift)
+    firstHalfCutoffMinutes       : z.number().min(0).optional().default(240),
+    // Minimum elapsed mins from shift start for early checkout to still earn 1st-half (default 210 = 1:30 PM for 10 AM shift)
+    secondHalfCutoffMinutes      : z.number().min(0).optional().default(210),
+    // Absolute floor: worked less than this → ABSENT not HALF_DAY (default 270 = 4.5 hrs)
+    minimumWorkMinutesForHalfDay : z.number().min(0).optional().default(270),
 });
 export type CreateShiftInput = z.infer<typeof CreateShiftDto>;
 export const UpdateShiftDto = z.object({
@@ -61,12 +68,15 @@ export const UpdateShiftDto = z.object({
     code                    : z.string().trim().toUpperCase().min(2).max(20).optional(),
     startTime               : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
     endTime                 : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
-    gracePeriodMinutes      : z.number().min(0).max(120).optional(),
-    graceLimitPerMonth      : z.number().min(0).optional(),
-    halfDayThresholdMinutes : z.number().min(0).optional(),
-    fullDayMinutes          : z.number().min(0).optional(),
-    breakDurationMinutes    : z.number().min(0).optional(),
-    isDefault               : z.boolean().optional(),
+    gracePeriodMinutes           : z.number().min(0).max(120).optional(),
+    graceLimitPerMonth           : z.number().min(0).optional(),
+    halfDayThresholdMinutes      : z.number().min(0).optional(),
+    fullDayMinutes               : z.number().min(0).optional(),
+    breakDurationMinutes         : z.number().min(0).optional(),
+    isDefault                    : z.boolean().optional(),
+    firstHalfCutoffMinutes       : z.number().min(0).optional(),
+    secondHalfCutoffMinutes      : z.number().min(0).optional(),
+    minimumWorkMinutesForHalfDay : z.number().min(0).optional(),
 });
 export type UpdateShiftInput = z.infer<typeof UpdateShiftDto>;
 
@@ -80,7 +90,7 @@ export const AttendanceReportQueryDto = z.object({
   departmentId : objectIdSchema.optional(),
   designationId: objectIdSchema.optional(),
   search       : z.string().optional(),
-  status       : z.enum(["PRESENT","LATE","HALF_DAY","ABSENT","ON_LEAVE","HOLIDAY","WEEK_OFF"]).optional(),
+  status       : z.enum(["PRESENT","LATE","HALF_DAY","HALF_DAY_MORNING","HALF_DAY_AFTERNOON","ABSENT","ON_LEAVE","HOLIDAY","WEEK_OFF"]).optional(),
   pageNumber   : z.string().optional().transform(v => v ? parseInt(v) : 1),
   pageSize     : z.string().optional().transform(v => v ? parseInt(v) : 20),
 });

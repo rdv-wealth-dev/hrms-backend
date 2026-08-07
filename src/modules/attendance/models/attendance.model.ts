@@ -5,6 +5,8 @@ export enum AttendanceStatus {
     PRESENT = "PRESENT",
     LATE = "LATE",
     HALF_DAY = "HALF_DAY",
+    HALF_DAY_MORNING = "HALF_DAY_MORNING",  // First half present, second half absent (early checkout)
+    HALF_DAY_AFTERNOON = "HALF_DAY_AFTERNOON",  // First half absent (late arrival), second half present
     ABSENT = "ABSENT",
     ON_LEAVE = "ON_LEAVE",
     HOLIDAY = "HOLIDAY",
@@ -51,6 +53,7 @@ export interface AttendanceDocument extends BaseDocument {
     overtimeId?: mongoose.Types.ObjectId;  // populated after OT computation
     isLate?:         boolean;
     isCheckOutEarly?: boolean;
+    halfDayType?:    "MORNING" | "AFTERNOON"; // MORNING = 1st half present / AFTERNOON = 2nd half present
 }
 
 const AttendanceSessionSchema = new mongoose.Schema(
@@ -157,6 +160,11 @@ const AttendanceSchema = createBaseSchema<AttendanceDocument>(
         isCheckOutEarly: {
           type:    Boolean,
           default: false,
+        },
+        halfDayType: {
+          type:    String,
+          enum:    ["MORNING", "AFTERNOON"],
+          default: null,
         },
     },
         {collection : "attendance"}

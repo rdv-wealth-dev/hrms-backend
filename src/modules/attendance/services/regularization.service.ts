@@ -132,11 +132,16 @@ export class RegularizationService {
         // Recalculate attendance status based on shift rules
         const shift = await ShiftModel.findById(attendance.shiftId);
         if (shift) {
-          attendance.status = calculateAttendanceStatus(
+          const sr = calculateAttendanceStatus(
             shift,
             attendance.firstCheckIn ?? null,
             attendance.workedMinutes,
+            undefined,
+            undefined,
+            attendance.lastCheckOut ?? null,
           );
+          attendance.status      = sr.status;
+          attendance.halfDayType = sr.halfDayType ?? undefined;
           attendance.isLate = isCheckInLate(shift, attendance.firstCheckIn ?? null);
           attendance.isCheckOutEarly = checkIfCheckOutEarly(shift, attendance.lastCheckOut ?? null, attendance.attendanceDate);
         }

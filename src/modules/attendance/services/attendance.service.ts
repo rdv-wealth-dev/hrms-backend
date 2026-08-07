@@ -189,13 +189,16 @@ export class AttendanceService {
     }
 
     // Recompute status on every punch — always reflects current state
-    attendance.status = calculateAttendanceStatus(
+    const statusResult = calculateAttendanceStatus(
       shift,
       attendance.firstCheckIn ?? null,
       attendance.workedMinutes,
       graceUsed,
-      shift.graceLimitPerMonth
+      shift.graceLimitPerMonth,
+      attendance.lastCheckOut ?? null,
     );
+    attendance.status    = statusResult.status;
+    attendance.halfDayType = statusResult.halfDayType ?? undefined;
     attendance.isLate = isCheckInLate(
       shift,
       attendance.firstCheckIn ?? null,
@@ -209,12 +212,12 @@ export class AttendanceService {
     );
 
     // If check-in was within grace period, increment the monthly counter
-    if (input.type === SessionType.CHECK_IN && attendance.status === AttendanceStatus.PRESENT) {
+    if (input.type === SessionType.CHECK_IN && attendance.status === AttendanceStatus.PRESENT && attendance.firstCheckIn) {
       const now = new Date();
       const [shiftHour, shiftMin] = shift.startTime.split(":").map(Number);
-      const shiftStart = new Date();
+      const shiftStart = new Date(attendance.firstCheckIn);
       shiftStart.setHours(shiftHour, shiftMin, 0, 0);
-      if (attendance.firstCheckIn && attendance.firstCheckIn > shiftStart) {
+      if (attendance.firstCheckIn > shiftStart) {
         await this.graceRepo.increment(
           context, employeeId, now.getFullYear(), now.getMonth() + 1, branchId
         );
@@ -333,8 +336,15 @@ export class AttendanceService {
     }
 
     attendance.workedMinutes = calculateWorkedMinutes(attendance.sessions);
-    attendance.status = input.status as AttendanceStatus ??
-      calculateAttendanceStatus(shift, attendance.firstCheckIn ?? null, attendance.workedMinutes);
+    let resolvedStatus: AttendanceStatus;
+    if (input.status) {
+      resolvedStatus = input.status as AttendanceStatus;
+    } else {
+      const sr = calculateAttendanceStatus(shift, attendance.firstCheckIn ?? null, attendance.workedMinutes, undefined, undefined, attendance.lastCheckOut ?? null);
+      resolvedStatus = sr.status;
+      attendance.halfDayType = sr.halfDayType ?? undefined;
+    }
+    attendance.status = resolvedStatus;
     attendance.isLate = isCheckInLate(shift, attendance.firstCheckIn ?? null);
     attendance.isCheckOutEarly = checkIfCheckOutEarly(shift, attendance.lastCheckOut ?? null, attendance.attendanceDate);
     attendance.isRegularized = true;
