@@ -20,13 +20,14 @@ export class AttendanceSummaryService {
       employeeId:     new mongoose.Types.ObjectId(employeeId),
       attendanceDate: { $gte: fromDate, $lte: toDate },
       isDeleted:      false,
-    });
+    }).populate("shiftId");
 
     const summary = {
       totalDays:      records.length,
       present:        0,
       late:           0,
       halfDay:        0,
+      halfDayValue:   0, // Sum of shift-specific halfDayWeight
       absent:         0,
       onLeave:        0,
       holiday:        0,
@@ -44,7 +45,12 @@ export class AttendanceSummaryService {
         case "LATE":              summary.late++; break;
         case "HALF_DAY":
         case "HALF_DAY_MORNING":
-        case "HALF_DAY_AFTERNOON": summary.halfDay++; break;
+        case "HALF_DAY_AFTERNOON": {
+          summary.halfDay++;
+          const weight = (r.shiftId as any)?.halfDayWeight ?? 0.5;
+          summary.halfDayValue += weight;
+          break;
+        }
         case "ABSENT":            summary.absent++; break;
         case "ON_LEAVE":          summary.onLeave++; break;
         case "HOLIDAY":           summary.holiday++; break;
@@ -56,7 +62,7 @@ export class AttendanceSummaryService {
       ...summary,
       totalWorkedHours: Math.round((summary.totalWorkedMinutes / 60) * 10) / 10,
       attendancePercentage: summary.totalDays > 0
-        ? Math.round(((summary.present + summary.late + summary.halfDay * 0.5) / (summary.totalDays - summary.weekOff - summary.holiday)) * 1000) / 10
+        ? Math.round(((summary.present + summary.late + summary.halfDayValue) / (summary.totalDays - summary.weekOff - summary.holiday)) * 1000) / 10
         : 0,
     };
   }

@@ -17,13 +17,15 @@ import { UserModel } from "../../user/user.model";
 import { BranchModel } from "../../branch/branch.model";
 import { EmployeeModel } from "../../employee/models/employee.model";
 import { GraceUsageRepository } from "../repositories/grace-usage.repository";
+import { ShiftQuotaUsageRepository } from "../repositories/shift-quota-usage.repository";
 import { OvertimeService } from "../../payroll/services/overtime.service";
 
 
 export class AttendanceService {
-  private attRepo       = new AttendanceRepository();
-  private shiftRepo     = new ShiftRepository();
-  private graceRepo     = new GraceUsageRepository();
+  private attRepo         = new AttendanceRepository();
+  private shiftRepo       = new ShiftRepository();
+  private graceRepo       = new GraceUsageRepository();
+  private quotaRepo       = new ShiftQuotaUsageRepository();
   private overtimeService = new OvertimeService();
 
   // Resolve the calling user's own employeeId
@@ -138,6 +140,26 @@ export class AttendanceService {
         );
       }
 
+      // ── Check-in Window Guard ──────────────────────────────────────────────
+      // If allowedCheckInFromTime is configured, punches before that time are
+      // checked. If rejectEarlyPunch is enabled, we reject the punch.
+      // Otherwise, we accept it silently and use startTime as baseline.
+      if (shift.allowedCheckInFromTime) {
+        const now = new Date();
+        const [fromH, fromM] = shift.allowedCheckInFromTime.split(":").map(Number);
+        const windowOpen = new Date(now);
+        windowOpen.setHours(fromH, fromM, 0, 0);
+
+        if (now < windowOpen) {
+          if (shift.rejectEarlyPunch) {
+            throw new AppError(
+              `Check-in not allowed before ${shift.allowedCheckInFromTime}. Your punch was rejected.`,
+              400
+            );
+          }
+        }
+      }
+
       attendance = await this.attRepo.create({
         tenantId:       new mongoose.Types.ObjectId(context.tenantId) as any,
         branchId:       new mongoose.Types.ObjectId(branchId) as any,
@@ -205,13 +227,15 @@ export class AttendanceService {
       graceUsed,
       shift.graceLimitPerMonth
     );
-    attendance.isCheckOutEarly = checkIfCheckOutEarly(
+    const earlyResult = checkIfCheckOutEarly(
       shift,
       attendance.lastCheckOut ?? null,
       attendance.attendanceDate
     );
+    attendance.isCheckOutEarly    = earlyResult.isEarly;
+    attendance.isAllowedEarlyLeave = earlyResult.isAllowedEarlyLeave;
 
-    // If check-in was within grace period, increment the monthly counter
+    // If check-in was within grace period, increment the monthly grace counter
     if (input.type === SessionType.CHECK_IN && attendance.status === AttendanceStatus.PRESENT && attendance.firstCheckIn) {
       const now = new Date();
       const [shiftHour, shiftMin] = shift.startTime.split(":").map(Number);
@@ -223,6 +247,23 @@ export class AttendanceService {
         );
       }
     }
+
+    // ── Quota Tracking (soft limits — no punch blocking) ──────────────────────
+    // Increment lateCount when employee arrives LATE (grace exhausted)
+    if (input.type === SessionType.CHECK_IN && attendance.status === AttendanceStatus.LATE) {
+      const now = new Date();
+      await this.quotaRepo.incrementLate(
+        context, employeeId, shift._id.toString(), now.getFullYear(), now.getMonth() + 1, branchId
+      );
+    }
+    // Increment earlyLeaveCount when employee uses the allowed early-leave window
+    if (input.type === SessionType.CHECK_OUT && attendance.isAllowedEarlyLeave) {
+      const now = new Date();
+      await this.quotaRepo.incrementEarlyLeave(
+        context, employeeId, shift._id.toString(), now.getFullYear(), now.getMonth() + 1, branchId
+      );
+    }
+
 
     await this.attRepo.save(attendance);
 
@@ -346,7 +387,9 @@ export class AttendanceService {
     }
     attendance.status = resolvedStatus;
     attendance.isLate = isCheckInLate(shift, attendance.firstCheckIn ?? null);
-    attendance.isCheckOutEarly = checkIfCheckOutEarly(shift, attendance.lastCheckOut ?? null, attendance.attendanceDate);
+    const manualEarlyRes = checkIfCheckOutEarly(shift, attendance.lastCheckOut ?? null, attendance.attendanceDate);
+    attendance.isCheckOutEarly     = manualEarlyRes.isEarly;
+    attendance.isAllowedEarlyLeave = manualEarlyRes.isAllowedEarlyLeave;
     attendance.isRegularized = true;
     if (input.notes) attendance.notes = input.notes;
 

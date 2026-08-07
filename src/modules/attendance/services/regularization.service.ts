@@ -143,7 +143,9 @@ export class RegularizationService {
           attendance.status      = sr.status;
           attendance.halfDayType = sr.halfDayType ?? undefined;
           attendance.isLate = isCheckInLate(shift, attendance.firstCheckIn ?? null);
-          attendance.isCheckOutEarly = checkIfCheckOutEarly(shift, attendance.lastCheckOut ?? null, attendance.attendanceDate);
+          const earlyRes = checkIfCheckOutEarly(shift, attendance.lastCheckOut ?? null, attendance.attendanceDate);
+          attendance.isCheckOutEarly    = earlyRes.isEarly;
+          attendance.isAllowedEarlyLeave = earlyRes.isAllowedEarlyLeave;
         }
 
         attendance.isRegularized = true;

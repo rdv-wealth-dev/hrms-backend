@@ -53,6 +53,7 @@ export interface AttendanceDocument extends BaseDocument {
     overtimeId?: mongoose.Types.ObjectId;  // populated after OT computation
     isLate?:         boolean;
     isCheckOutEarly?: boolean;
+    isAllowedEarlyLeave?: boolean; // true if checkout is in the earlyLeaveStartTime→endTime window (no penalty)
     halfDayType?:    "MORNING" | "AFTERNOON"; // MORNING = 1st half present / AFTERNOON = 2nd half present
 }
 
@@ -158,6 +159,10 @@ const AttendanceSchema = createBaseSchema<AttendanceDocument>(
           default: false,
         },
         isCheckOutEarly: {
+          type:    Boolean,
+          default: false,
+        },
+        isAllowedEarlyLeave: {
           type:    Boolean,
           default: false,
         },

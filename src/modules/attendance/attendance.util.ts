@@ -277,22 +277,51 @@ export function isCheckInLate(
   return firstCheckIn > lateThreshold;
 }
 
+// Returns two flags:
+//   isEarly             : checkout happened before shift endTime
+//   isAllowedEarlyLeave : checkout was within the earlyLeaveStartTime→endTime window
+//                         (no status penalty — tracked only for quota reporting)
+//
+// Zone diagram for shift 10:00–19:30, earlyLeaveStartTime=18:00:
+//   before 18:00 → isEarly=true,  isAllowedEarlyLeave=false  (penalized)
+//   18:00–19:29  → isEarly=true,  isAllowedEarlyLeave=true   (allowed, quota-tracked)
+//   19:30+       → isEarly=false, isAllowedEarlyLeave=false  (full day)
+
 export function checkIfCheckOutEarly(
   shift:          any,
   lastCheckOut:   Date | null,
   attendanceDate: Date
-): boolean {
-  if (!lastCheckOut) return false;
+): { isEarly: boolean; isAllowedEarlyLeave: boolean } {
+  if (!lastCheckOut) return { isEarly: false, isAllowedEarlyLeave: false };
 
   const [startHour, startMin] = shift.startTime.split(":").map(Number);
-  const [endHour, endMin] = shift.endTime.split(":").map(Number);
+  const [endHour,   endMin  ] = shift.endTime.split(":").map(Number);
 
+  // Build shift end anchored to attendanceDate
   const shiftEnd = new Date(attendanceDate);
   shiftEnd.setHours(endHour, endMin, 0, 0);
-
+  // Handle overnight shifts (e.g. endTime < startTime)
   if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
     shiftEnd.setDate(shiftEnd.getDate() + 1);
   }
 
-  return lastCheckOut < shiftEnd;
+  const isEarly = lastCheckOut < shiftEnd;
+  if (!isEarly) return { isEarly: false, isAllowedEarlyLeave: false };
+
+  // Determine if this early checkout is within the allowed early-leave window.
+  // earlyLeaveStartTime defaults to endTime (no window) if not configured.
+  const rawEarlyLeaveTime: string | undefined = shift.earlyLeaveStartTime;
+  if (!rawEarlyLeaveTime) return { isEarly: true, isAllowedEarlyLeave: false };
+
+  const [elHour, elMin] = rawEarlyLeaveTime.split(":").map(Number);
+  const earlyLeaveStart = new Date(attendanceDate);
+  earlyLeaveStart.setHours(elHour, elMin, 0, 0);
+  // Handle overnight cross (same adjustment as shiftEnd)
+  if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
+    earlyLeaveStart.setDate(earlyLeaveStart.getDate() + 1);
+  }
+
+  // isAllowedEarlyLeave = checkout >= earlyLeaveStart AND < shiftEnd
+  const isAllowedEarlyLeave = lastCheckOut >= earlyLeaveStart;
+  return { isEarly: true, isAllowedEarlyLeave };
 }

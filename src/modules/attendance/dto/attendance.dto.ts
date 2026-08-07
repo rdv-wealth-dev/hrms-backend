@@ -55,12 +55,21 @@ export const CreateShiftDto = z.object({
     breakDurationMinutes         : z.number().min(0).optional().default(60),
     isDefault                    : z.boolean().optional().default(false),
     // ─── Industry-standard cutoff & minimum thresholds ─────────────────────────────
-    // Latest arrival (mins from shift start) still eligible for 2nd-half credit (default 240 = 2 PM for 10 AM shift)
     firstHalfCutoffMinutes       : z.number().min(0).optional().default(240),
-    // Minimum elapsed mins from shift start for early checkout to still earn 1st-half (default 210 = 1:30 PM for 10 AM shift)
     secondHalfCutoffMinutes      : z.number().min(0).optional().default(210),
-    // Absolute floor: worked less than this → ABSENT not HALF_DAY (default 270 = 4.5 hrs)
     minimumWorkMinutesForHalfDay : z.number().min(0).optional().default(270),
+    // ─── Check-in window & Early-leave window ────────────────────────────────
+    // Earliest time employee can punch in. Punches are accepted; status still
+    // uses startTime as baseline. e.g. "08:00" for 10:00 AM shift.
+    allowedCheckInFromTime       : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    // Checkout after this time but before endTime = allowed early leave (quota-tracked, no penalty).
+    // e.g. "18:00" means leaving 6 PM–7:30 PM is acceptable early leave.
+    earlyLeaveStartTime          : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    // ─── Monthly soft quotas (soft limit — HR flag only, no punch block) ─────────────
+    lateArrivalQuotaPerMonth     : z.number().min(0).optional().default(3),
+    earlyLeaveQuotaPerMonth      : z.number().min(0).optional().default(3),
+    halfDayWeight                : z.number().min(0).max(1).optional().default(0.5),
+    rejectEarlyPunch             : z.boolean().optional().default(false),
 });
 export type CreateShiftInput = z.infer<typeof CreateShiftDto>;
 export const UpdateShiftDto = z.object({
@@ -77,6 +86,12 @@ export const UpdateShiftDto = z.object({
     firstHalfCutoffMinutes       : z.number().min(0).optional(),
     secondHalfCutoffMinutes      : z.number().min(0).optional(),
     minimumWorkMinutesForHalfDay : z.number().min(0).optional(),
+    allowedCheckInFromTime       : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    earlyLeaveStartTime          : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    lateArrivalQuotaPerMonth     : z.number().min(0).optional(),
+    earlyLeaveQuotaPerMonth      : z.number().min(0).optional(),
+    halfDayWeight                : z.number().min(0).max(1).optional(),
+    rejectEarlyPunch             : z.boolean().optional(),
 });
 export type UpdateShiftInput = z.infer<typeof UpdateShiftDto>;
 
