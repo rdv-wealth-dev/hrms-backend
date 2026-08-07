@@ -174,7 +174,8 @@ export function calculateAttendanceStatus(
   }
 
   // Build shift-start and shift-end Date objects anchored to the check-in day
-  const [shiftHour, shiftMin] = shift.startTime.split(":").map(Number);
+  const baselineTimeStr = shift.checkInWindowEnd || shift.startTime;
+  const [shiftHour, shiftMin] = baselineTimeStr.split(":").map(Number);
   const shiftStart = new Date(firstCheckIn);
   shiftStart.setHours(shiftHour, shiftMin, 0, 0);
 
@@ -266,7 +267,8 @@ export function isCheckInLate(
   graceLimit?:   number
 ): boolean {
   if (!firstCheckIn) return false;
-  const [shiftHour, shiftMin] = shift.startTime.split(":").map(Number);
+  const baselineTimeStr = shift.checkInWindowEnd || shift.startTime;
+  const [shiftHour, shiftMin] = baselineTimeStr.split(":").map(Number);
   const shiftStart = new Date(firstCheckIn);
   shiftStart.setHours(shiftHour, shiftMin, 0, 0);
 

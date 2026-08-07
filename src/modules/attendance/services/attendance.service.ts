@@ -141,19 +141,20 @@ export class AttendanceService {
       }
 
       // ── Check-in Window Guard ──────────────────────────────────────────────
-      // If allowedCheckInFromTime is configured, punches before that time are
-      // checked. If rejectEarlyPunch is enabled, we reject the punch.
-      // Otherwise, we accept it silently and use startTime as baseline.
-      if (shift.allowedCheckInFromTime) {
+      // If checkInWindowStart (or allowedCheckInFromTime) is configured, punches before that
+      // time are checked. If rejectEarlyPunch is enabled, we reject the punch.
+      // Otherwise, we accept it silently.
+      const earliestCheckInStr = shift.checkInWindowStart || shift.allowedCheckInFromTime;
+      if (earliestCheckInStr) {
         const now = new Date();
-        const [fromH, fromM] = shift.allowedCheckInFromTime.split(":").map(Number);
+        const [fromH, fromM] = earliestCheckInStr.split(":").map(Number);
         const windowOpen = new Date(now);
         windowOpen.setHours(fromH, fromM, 0, 0);
 
         if (now < windowOpen) {
           if (shift.rejectEarlyPunch) {
             throw new AppError(
-              `Check-in not allowed before ${shift.allowedCheckInFromTime}. Your punch was rejected.`,
+              `Check-in not allowed before ${earliestCheckInStr}. Your punch was rejected.`,
               400
             );
           }

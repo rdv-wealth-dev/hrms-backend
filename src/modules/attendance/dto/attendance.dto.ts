@@ -59,8 +59,8 @@ export const CreateShiftDto = z.object({
     secondHalfCutoffMinutes      : z.number().min(0).optional().default(210),
     minimumWorkMinutesForHalfDay : z.number().min(0).optional().default(270),
     // ─── Check-in window & Early-leave window ────────────────────────────────
-    // Earliest time employee can punch in. Punches are accepted; status still
-    // uses startTime as baseline. e.g. "08:00" for 10:00 AM shift.
+    checkInWindowStart           : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    checkInWindowEnd             : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
     allowedCheckInFromTime       : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
     // Checkout after this time but before endTime = allowed early leave (quota-tracked, no penalty).
     // e.g. "18:00" means leaving 6 PM–7:30 PM is acceptable early leave.
@@ -86,6 +86,8 @@ export const UpdateShiftDto = z.object({
     firstHalfCutoffMinutes       : z.number().min(0).optional(),
     secondHalfCutoffMinutes      : z.number().min(0).optional(),
     minimumWorkMinutesForHalfDay : z.number().min(0).optional(),
+    checkInWindowStart           : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    checkInWindowEnd             : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
     allowedCheckInFromTime       : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
     earlyLeaveStartTime          : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
     lateArrivalQuotaPerMonth     : z.number().min(0).optional(),

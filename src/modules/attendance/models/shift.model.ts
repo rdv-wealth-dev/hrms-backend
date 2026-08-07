@@ -11,6 +11,9 @@ export interface ShiftDocument extends BaseDocument {
   // for status calculation is still startTime (no early-bird bonus).
   // e.g. "08:00" — employee can punch from 8 AM; shift start is still 10 AM.
   allowedCheckInFromTime: string;  // earliest accepted punch HH:MM (default = startTime)
+  // ─── Customizable Check-in Range ─────────────────────────────────────────────
+  checkInWindowStart:    string;   // Earliest check-in allowed, e.g. "08:00"
+  checkInWindowEnd:      string;   // Shift start check-in deadline, e.g. "10:00"
   // ─── Grace Period ────────────────────────────────────────────────────────────
   gracePeriodMinutes:    number;   // late arrival tolerance before status = LATE (per occurrence)
   graceLimitPerMonth:    number;   // max times grace can be used per month (0 = unlimited)
@@ -101,13 +104,17 @@ const ShiftSchema = createBaseSchema<ShiftDocument>(
         secondHalfCutoffMinutes:      { type: Number, default: 210 },
         minimumWorkMinutesForHalfDay:  { type: Number, default: 270 },
         // ─── Check-in Window & Early-Leave Window ────────────────────────────
-        // allowedCheckInFromTime: earliest time employee can punch in.
-        //   Punches accepted but status is still calculated from startTime.
-        //   Default = startTime (no early window). e.g. "08:00" for 10 AM shift.
         allowedCheckInFromTime: {
           type:  String,
           match: /^([01]\d|2[0-3]):([0-5]\d)$/,
-          // default is set dynamically to startTime in the service if not provided
+        },
+        checkInWindowStart: {
+          type:  String,
+          match: /^([01]\d|2[0-3]):([0-5]\d)$/,
+        },
+        checkInWindowEnd: {
+          type:  String,
+          match: /^([01]\d|2[0-3]):([0-5]\d)$/,
         },
         // earlyLeaveStartTime: checkout AFTER this but BEFORE endTime = allowed early leave
         //   (isCheckOutEarly=true, isAllowedEarlyLeave=true, no status downgrade).
