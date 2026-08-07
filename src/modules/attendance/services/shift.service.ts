@@ -47,18 +47,9 @@ export class ShiftService {
     }
 
     return this.shiftRepo.create(context, {
+      ...input,
       tenantId:   new mongoose.Types.ObjectId(context.tenantId) as any,
       branchId:   this.resolveBranchId(context) as any,
-      name:       input.name,
-      code:       input.code,
-      startTime:  input.startTime,
-      endTime:    input.endTime,
-      gracePeriodMinutes: input.gracePeriodMinutes,
-      graceLimitPerMonth: input.graceLimitPerMonth,
-      halfDayThresholdMinutes: input.halfDayThresholdMinutes,
-      fullDayMinutes: input.fullDayMinutes,
-      breakDurationMinutes: input.breakDurationMinutes,
-      isDefault:  input.isDefault,
       isActive:   true,
     });
   }
