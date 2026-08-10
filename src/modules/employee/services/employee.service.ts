@@ -33,6 +33,7 @@ import { recalculateProfileCompletion } from "../utils/profile-completion.util";
 import { ShiftRepository } from "../../attendance/repositories/shift.repository";
 import { parseImportFile, buildExportBuffer } from "../utils/employee.utils";
 import { v4 as uuidv4 } from "uuid";
+import { validatePAN, validateAadhaar } from "../../../domain/localization/IN/validators";
 import { ImportSessionModel } from "../models/import-session.model";
 import { ExportSessionModel } from "../models/export-session.model";
 
@@ -85,6 +86,20 @@ export class EmployeeService {
       );
     }
 
+    if (input.pan) {
+      const cleanPan = input.pan.trim().toUpperCase();
+      if (!validatePAN(cleanPan)) {
+        throw new AppError("Invalid PAN format. Must be 10 alphanumeric characters (e.g. ABCPS1234D).", 400);
+      }
+    }
+
+    if (input.aadhaar) {
+      const cleanAadhaar = input.aadhaar.replace(/[\s-]/g, "").trim();
+      if (!validateAadhaar(cleanAadhaar)) {
+        throw new AppError("Invalid Aadhaar format. Must be exactly 12 digits and start with 2–9.", 400);
+      }
+    }
+
     // Generate atomic employee code
     const employeeCode = await getNextEmployeeCode(context.tenantId);
 
@@ -129,6 +144,8 @@ export class EmployeeService {
       pan: input.pan,
       aadhaar: input.aadhaar,
       passportNo: input.passportNo,
+      drivingLicense: input.drivingLicense,
+      voterId: input.voterId,
       employeeType: input.employeeType as any,
       status: "ACTIVE" as any,
       joiningDate: new Date(input.joiningDate),
@@ -580,6 +597,22 @@ export class EmployeeService {
     }
 
     const updateData: Record<string, unknown> = { ...input };
+
+    if (input.pan) {
+      const cleanPan = input.pan.trim().toUpperCase();
+      if (!validatePAN(cleanPan)) {
+        throw new AppError("Invalid PAN format. Must be 10 alphanumeric characters (e.g. ABCPS1234D).", 400);
+      }
+      updateData.pan = cleanPan;
+    }
+
+    if (input.aadhaar) {
+      const cleanAadhaar = input.aadhaar.replace(/[\s-]/g, "").trim();
+      if (!validateAadhaar(cleanAadhaar)) {
+        throw new AppError("Invalid Aadhaar format. Must be exactly 12 digits and start with 2–9.", 400);
+      }
+      updateData.aadhaar = cleanAadhaar;
+    }
 
     if (input.dateOfBirth) updateData.dateOfBirth = new Date(input.dateOfBirth);
     if (input.confirmationDate) updateData.confirmationDate = new Date(input.confirmationDate);

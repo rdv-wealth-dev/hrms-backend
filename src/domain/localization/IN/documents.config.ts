@@ -1,19 +1,13 @@
 import { StatutoryFieldConfig } from "../country-plugin.interface";
-import { validatePAN, validateAadhaar, maskPAN, maskAadhaar } from "./validators";
+import { INDIAN_DOCUMENT_REGISTRY } from "./validators";
 
-export const statutoryFields: StatutoryFieldConfig[] = [
-  {
-    key: "pan",
-    label: "PAN",
-    required: false,
-    validate: (val) => validatePAN(val) || "Invalid PAN format",
-    mask: maskPAN,
+// Dynamically generate statutoryFields from the central INDIAN_DOCUMENT_REGISTRY
+export const statutoryFields: StatutoryFieldConfig[] = Object.values(INDIAN_DOCUMENT_REGISTRY).map((doc) => ({
+  key: doc.key,
+  label: doc.name,
+  required: false,
+  validate: (val: string): boolean | string => {
+    return doc.validate(val) ? true : `Invalid ${doc.name} format (e.g. ${doc.sample})`;
   },
-  {
-    key: "aadhaar",
-    label: "Aadhaar",
-    required: false,
-    validate: (val) => validateAadhaar(val) || "Aadhaar must be 12 digits",
-    mask: maskAadhaar,
-  },
-];
+  mask: (val: string): string => doc.mask(val),
+}));

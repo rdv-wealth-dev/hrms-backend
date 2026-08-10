@@ -93,16 +93,82 @@ export const dateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format");
 
-// Indian PAN
+// Indian PAN (Permanent Account Number - AAAAA9999A)
+// Characters 1-3 : Random alphabetic series from AAA to ZZZ ([A-Z]{3})
+// Character 4    : Status of PAN holder ([PCHFATBLJGE]: P=Individual, C=Company, H=HUF, F=Firm, A=AOP, T=Trust, B=BOI, L=Local Authority, J=Artificial Juridical Person, G=Govt)
+// Character 5    : First letter of cardholder's surname/last name or entity name ([A-Z])
+// Characters 6-9 : Sequential numeric series from 0001 to 9999 ([0-9]{4})
+// Character 10   : Alphabetic check digit ([A-Z])
+export const panRegex = /^[A-Z]{3}[PCHFATBLJGE][A-Z][0-9]{4}[A-Z]$/;
+export const individualPanRegex = /^[A-Z]{3}[P][A-Z][0-9]{4}[A-Z]$/;
+
 export const panSchema = z
   .string()
-  .regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format")
-  .toUpperCase();
+  .trim()
+  .toUpperCase()
+  .regex(
+    panRegex,
+    "Invalid PAN format. Must be 10 characters (AAAAA9999A) with valid taxpayer status code (P, C, H, F, A, T, B, L, J, G) as 4th character."
+  );
 
-// Indian Aadhaar
+export const individualPanSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(
+    individualPanRegex,
+    "Invalid Individual PAN format. 4th character must be 'P' for Individual employees."
+  );
+
+// Indian Aadhaar (UIDAI 12-digit number, starts with 2-9)
+export const aadhaarRegex = /^[2-9]\d{11}$/;
+
 export const aadhaarSchema = z
   .string()
-  .regex(/^\d{12}$/, "Aadhaar must be 12 digits");
+  .trim()
+  .transform((val) => val.replace(/[\s-]/g, ""))
+  .refine(
+    (val) => aadhaarRegex.test(val),
+    "Invalid Aadhaar format: Must be exactly 12 numeric digits and cannot start with 0 or 1."
+  );
+
+// Indian Passport (8 characters: 1 uppercase letter + 7 numeric digits e.g. Z1234567)
+export const passportRegex = /^[A-Z][0-9]{7}$/;
+
+export const passportSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(
+    passportRegex,
+    "Invalid Indian Passport format. Must be exactly 8 characters: 1 capital letter followed by 7 numeric digits (e.g. Z1234567)."
+  );
+
+// Indian Driving License (15 alphanumeric characters: SS-RR-YYYYNNNNNNN e.g. MH0220180001234)
+export const drivingLicenseRegex = /^[A-Z]{2}[0-9]{2}[0-9]{4}[0-9]{7}$/;
+
+export const drivingLicenseSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .transform((val) => val.replace(/[\s-]/g, ""))
+  .refine(
+    (val) => drivingLicenseRegex.test(val),
+    "Invalid Indian Driving License format. Must be 15 characters: State (2 letters) + RTO (2 digits) + Year (4 digits) + Serial (7 digits) e.g. MH-02-20180001234."
+  );
+
+// Indian Voter ID / EPIC (10 alphanumeric characters: AAA1234567 e.g. ABC1234567)
+export const voterIdRegex = /^[A-Z]{3}[0-9]{7}$/;
+
+export const voterIdSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .transform((val) => val.replace(/[\s-]/g, ""))
+  .refine(
+    (val) => voterIdRegex.test(val),
+    "Invalid Indian Voter ID (EPIC) format. Must be 10 alphanumeric characters: 3 letters followed by 7 numeric digits (e.g. ABC1234567)."
+  );
 
 // Indian GSTIN
 export const gstinSchema = z

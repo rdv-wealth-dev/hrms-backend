@@ -78,6 +78,8 @@ export interface EmployeeDocument extends BaseDocument {
   pan?:          string;      // encrypted at write, masked on read
   aadhaar?:      string;      // encrypted at write, masked on read
   passportNo?:   string;
+  drivingLicense?: string;
+  voterId?:      string;
   countryCode:   string;
   pfOnActuals?:  boolean;
 
@@ -194,10 +196,12 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
       enum: Object.values(MaritalStatus),
     },
     nationality: { type: String, trim: true },
-    pan:         { type: String, trim: true, uppercase: true },
-    aadhaar:     { type: String, trim: true },
-    passportNo:  { type: String, trim: true },
-    countryCode: { type: String, default: "IN", uppercase: true, trim: true },
+    pan:            { type: String, trim: true, uppercase: true },
+    aadhaar:        { type: String, trim: true },
+    passportNo:     { type: String, trim: true, uppercase: true },
+    drivingLicense: { type: String, trim: true, uppercase: true },
+    voterId:        { type: String, trim: true, uppercase: true },
+    countryCode:    { type: String, default: "IN", uppercase: true, trim: true },
     pfOnActuals: { type: Boolean, default: false },
 
 
