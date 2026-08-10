@@ -41,6 +41,8 @@ export interface PayslipDocument extends BaseDocument {
   salaryStructureId: mongoose.Types.ObjectId;
   month: number;
   year: number;
+  countryCode?: string; // "IN", "US", "GB", "AE", etc.
+  currency?: string; // "INR", "USD", "GBP", "AED", etc.
 
   // The snapshot — this is the literal Attendance/Leave interlink,
   // frozen at generation time so a payslip never silently changes if
@@ -64,9 +66,18 @@ export interface PayslipDocument extends BaseDocument {
 
   lwfEmployeeAmount?: number;   // Labour Welfare Fund — employee side
   lwfEmployerAmount?: number;   // Labour Welfare Fund — employer side
-  taxRegime?: string;   // "OLD" | "NEW" — stored for Form 16 generation
-  annualTaxableIncome?: number;   // stored for Form 16 / audit
+  taxRegime?: string;   // "OLD" | "NEW" | "US_FEDERAL_W4" | etc.
+  annualTaxableIncome?: number;   // stored for Form 16 / W-2 / audit
   gratuityMonthlyProvision?: number;   // employer cost accrual — NOT deducted from employee
+
+  // Flexible global statutory breakdown for any country
+  statutoryBreakdown?: Array<{
+    code: string;
+    name: string;
+    amount: number;
+    isEmployer: boolean;
+  }>;
+  totalEmployerStatutoryCost?: number;
 
   generatedAt: Date;
   isFinalized: boolean;   // true once the parent PayrollRun is APPROVED — immutable after
@@ -125,6 +136,8 @@ const PayslipSchema = createBaseSchema<PayslipDocument>(
     },
     month: { type: Number, required: true },
     year: { type: Number, required: true },
+    countryCode: { type: String, trim: true, uppercase: true, default: "IN" },
+    currency: { type: String, trim: true, uppercase: true, default: "INR" },
 
     attendanceSummary: {
       type: AttendanceSummarySchema,
@@ -148,9 +161,18 @@ const PayslipSchema = createBaseSchema<PayslipDocument>(
 
     lwfEmployeeAmount: { type: Number, default: 0 },
     lwfEmployerAmount: { type: Number, default: 0 },
-    taxRegime: { type: String, enum: ["OLD", "NEW"] },
+    taxRegime: { type: String },
     annualTaxableIncome: { type: Number },
     gratuityMonthlyProvision: { type: Number, default: 0 },
+    totalEmployerStatutoryCost: { type: Number, default: 0 },
+    statutoryBreakdown: [
+      {
+        code: { type: String, required: true },
+        name: { type: String, required: true },
+        amount: { type: Number, required: true },
+        isEmployer: { type: Boolean, default: false },
+      },
+    ],
 
     generatedAt: { type: Date, default: Date.now },
     isFinalized: { type: Boolean, default: false },

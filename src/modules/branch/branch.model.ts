@@ -6,11 +6,17 @@ export { CustomWeekOffRule };
 // BRANCH DOCUMENT INTERFACE
 
 export interface BranchDocument extends BaseDocument {
-  name:            string;
-  code:            string;
-  isHeadOffice:    boolean;
-  isActive:        boolean;
-  parentBranchId?: mongoose.Types.ObjectId;
+  name:                  string;
+  code:                  string;
+  legalEntityName?:      string;
+  countryCode?:          string; // ISO 2-letter e.g. "IN", "US", "GB", "AE", "SG"
+  currency?:             string; // ISO 3-letter e.g. "INR", "USD", "GBP", "AED", "SGD"
+  taxRegistrationNumber?: string; // GSTIN/PAN, EIN, VAT, etc.
+  stateOrRegionCode?:    string; // State/Region code e.g. "MH", "CA", "ENG", "DXB"
+  isHeadquarters?:       boolean;
+  isHeadOffice:          boolean;
+  isActive:              boolean;
+  parentBranchId?:       mongoose.Types.ObjectId;
   address?: {
     addressLine1?: string;
     addressLine2?: string;
@@ -65,6 +71,35 @@ const BranchSchema = createBaseSchema<BranchDocument>(
       trim:      true,
       uppercase: true,
       maxlength: 20,
+    },
+    legalEntityName: {
+      type: String,
+      trim: true,
+    },
+    countryCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: "IN",
+    },
+    currency: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: "INR",
+    },
+    taxRegistrationNumber: {
+      type: String,
+      trim: true,
+    },
+    stateOrRegionCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    isHeadquarters: {
+      type: Boolean,
+      default: false,
     },
     isHeadOffice: {
       type:    Boolean,

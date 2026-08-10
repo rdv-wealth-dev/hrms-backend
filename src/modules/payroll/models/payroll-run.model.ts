@@ -20,6 +20,8 @@ export interface PayrollRunDocument extends BaseDocument {
   month: number;   // 1-12
   year: number;
   runLabel: string;   // "June 2026" — denormalized for display
+  countryCode?: string; // "IN", "US", "GB", "AE", etc.
+  currency?: string; // "INR", "USD", "GBP", "AED", etc.
   status: PayrollRunStatus;
   totalEmployees: number;
   totalGrossAmount: number;
@@ -57,6 +59,18 @@ const PayrollRunSchema = createBaseSchema<PayrollRunDocument>(
       type: String,
       required: true,
       trim: true,
+    },
+    countryCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: "IN",
+    },
+    currency: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: "INR",
     },
     status: {
       type: String,

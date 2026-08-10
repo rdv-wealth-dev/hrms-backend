@@ -17,6 +17,7 @@ import { BranchModel } from "../../branch/branch.model";
 import { AttendanceModel } from "../../attendance/models/attendance.model";
 import { AttendanceLockModel, AttendanceLockStatus } from "../../attendance/models/attendance-lock.model";
 import { ComponentType } from "../models/salary-component.model";
+import { PayrollStrategyFactory } from "../strategies";
 
 import {
   assertAttendanceLocked,
@@ -89,12 +90,19 @@ export class PayrollRunService {
       );
     }
 
+    const branchId = context.branchIds[0] ?? "";
+    const branch = branchId
+      ? await BranchModel.findById(branchId).select("countryCode currency").lean()
+      : null;
+
     return this.runRepo.create({
       tenantId:  new mongoose.Types.ObjectId(context.tenantId) as any,
-      branchId:  new mongoose.Types.ObjectId(context.branchIds[0] ?? "") as any,
+      branchId:  new mongoose.Types.ObjectId(branchId) as any,
       createdBy: new mongoose.Types.ObjectId(context.userId) as any,
       month:     input.month,
       year:      input.year,
+      countryCode: (branch as any)?.countryCode || "IN",
+      currency:    (branch as any)?.currency || "INR",
       runLabel:  `${MONTH_NAMES[input.month - 1]} ${input.year}`,
       status:    PayrollRunStatus.DRAFT,
     });
@@ -128,20 +136,17 @@ export class PayrollRunService {
       );
     }
 
-    // ── Check 2: Branch must have a state code (required for PT and LWF) ──
+    // ── Check 2: Branch check & Country Strategy pre-flight validation ──
     const branch = await BranchModel.findById(branchId)
-      .select("address name")
-      .lean<{ name: string; address?: { state?: string } }>();
+      .select("address name countryCode currency stateOrRegionCode")
+      .lean<{ name: string; countryCode?: string; currency?: string; stateOrRegionCode?: string; address?: { state?: string } }>();
 
     if (!branch) {
       errors.push(`CRITICAL: Branch not found for this payroll run.`);
-    } else if (!branch.address?.state) {
-      errors.push(
-        `WARNING: Branch "${branch.name}" has no state code set. ` +
-        `Professional Tax and LWF will be ₹0. ` +
-        `Update branch address with state code before running payroll.`
-      );
     }
+
+    const countryCode = branch?.countryCode || run.countryCode || "IN";
+    const strategy = PayrollStrategyFactory.getStrategy(countryCode);
 
     // ── Check 3: Per-employee validation ──────────────────────────────────
     const employees = await EmployeeModel.find({
@@ -201,6 +206,13 @@ export class PayrollRunService {
       }
     }
 
+    // Country Strategy specific pre-flight validations
+    if (strategy) {
+      const strategyReport = await strategy.validatePreFlightProfiles(employees, branch, period);
+      errors.push(...strategyReport.criticalErrors.map(e => `CRITICAL: ${e}`));
+      errors.push(...strategyReport.warnings.map(w => `WARNING: ${w}`));
+    }
+
     // Save validation results to the run record
     run.validatedAt      = new Date();
     run.validationErrors = errors;
@@ -249,11 +261,16 @@ export class PayrollRunService {
       lwfEnabled: boolean;
     };
 
-    // ── Load branch state code for PT + LWF ───────────────────────────────
+    // ── Load branch details & Country Strategy ───────────────────────────
     const branch = await BranchModel.findById(branchId)
-      .select("address")
+      .select("address name countryCode currency stateOrRegionCode")
       .lean();
-    const stateCode = (branch as any)?.address?.state?.toUpperCase() ?? "";
+
+    const countryCode = (branch as any)?.countryCode || run.countryCode || "IN";
+    const currency    = (branch as any)?.currency || run.currency || "INR";
+    const stateCode   = (branch as any)?.stateOrRegionCode || ((branch as any)?.address?.state ? (branch as any).address.state.toUpperCase() : "");
+
+    const strategy = PayrollStrategyFactory.getStrategy(countryCode);
 
     const financialYear   = getFinancialYear(run.year, run.month);
     const monthsRemaining = getMonthsRemainingInFY(run.month);
@@ -371,106 +388,78 @@ export class PayrollRunService {
           }
         }
 
-        // STEP 8: ESIC — on pro-rated gross (LOP -> ESIC -> PF order)
-        let bypassEsiCeiling = false;
-        if (statutory.esiEnabled && grossEarned > 21000) {
+        // STEP 8: Calculate Statutory Deductions via Country Strategy Plugin
+        let hasPrecedingContributions = false;
+        if (countryCode === "IN" && statutory.esiEnabled && grossEarned > 21000) {
           const precedingMonths = getPrecedingMonthsOfContributionPeriod(run.year, run.month);
           if (precedingMonths.length > 0) {
-            const hasPrevContribution = await this.payslipRepo.hasEsiContributionInMonths(
+            hasPrecedingContributions = await this.payslipRepo.hasEsiContributionInMonths(
               context,
               empId,
               precedingMonths
             );
-            if (hasPrevContribution) {
-              bypassEsiCeiling = true;
-            }
           }
         }
-        const esi = calculateESI(grossEarned, !!statutory.esiEnabled, employee.countryCode || "IN", bypassEsiCeiling);
 
-        // STEP 9: PF — on pro-rated wages
-        const wagesRatio    = attendanceSummary.payableDays / attendanceSummary.totalDaysInMonth;
-        const proRatedWages = Math.round(structure.wagesForStatutory * wagesRatio);
-        const pf            = calculatePF(
-          proRatedWages,
-          !!statutory.pfEnabled,
-          employee.countryCode || "IN",
-          !!employee.pfOnActuals
-        );
-        const pfEmployeeAnnual = pf.employee * 12;
-
-        // STEP 10: Professional Tax — DB-driven state slabs
-        const pt = await calculatePT(
-          context.tenantId,
-          grossEarned,
-          stateCode,
-          !!statutory.ptEnabled,
-          financialYear
-        );
-
-        // STEP 11: LWF — only in configured months (June/December etc.)
-        const lwf = await calculateLWF(
-          context.tenantId,
-          stateCode,
-          run.month,
-          financialYear,
-          !!statutory.lwfEnabled
-        );
-
-        // STEP 12: TDS — full 11-step engine with regime + declarations
         const basicItem = earnings.find(e => e.componentCode === "BASIC");
         const hraItem   = earnings.find(e => e.componentCode === "HRA");
 
-        // No PAN → flat 20% TDS per Section 206AA
-        let tdsResult;
-        if (!employee.pan) {
-          const flatTDS = Math.round(grossEarned * 0.20);
-          tdsResult = {
-            annualTaxableIncome: grossEarned * 12,
-            annualTax:           flatTDS * 12,
-            annualTaxWithCess:   flatTDS * 12,
-            monthlyTDS:          flatTDS,
-            regime:              "NEW" as any,
-          };
-        } else {
-          tdsResult = await calculateTDS(
-            context.tenantId,
-            empId,
-            structure.ctcAnnual,
-            basicItem?.amount   ?? 0,
-            hraItem?.amount     ?? 0,
-            pfEmployeeAnnual,
-            financialYear,
-            !!statutory.tdsEnabled,
-            monthsRemaining
-          );
+        const statutoryResult = await strategy.calculateStatutoryDeductions({
+          tenantId: context.tenantId,
+          branchId,
+          employeeId: empId,
+          countryCode,
+          currency,
+          stateOrRegionCode: stateCode,
+          month: run.month,
+          year: run.year,
+          financialYear,
+          monthsRemainingInFY: monthsRemaining,
+          payableDays: attendanceSummary.payableDays,
+          totalDaysInMonth: attendanceSummary.totalDaysInMonth,
+          grossEarned,
+          wagesForStatutory: structure.wagesForStatutory,
+          annualCtc: structure.ctcAnnual,
+          basicMonthly: basicItem?.amount ?? 0,
+          hraMonthly: hraItem?.amount ?? 0,
+          employee,
+          statutoryFlags: statutory,
+          hasPrecedingContributions,
+        });
+
+        // STEP 9: Append statutory employee deductions
+        for (const statItem of statutoryResult.employeeDeductions) {
+          deductions.push({
+            componentCode: statItem.code,
+            componentName: statItem.name,
+            amount: statItem.amount,
+          });
         }
 
-        // STEP 13: Push statutory deductions in correct order
-        if (pf.employee > 0)
-          deductions.push({ componentCode: "PF",  componentName: "Provident Fund",             amount: pf.employee });
-        if (esi.employee > 0)
-          deductions.push({ componentCode: "ESI", componentName: "Employee State Insurance",    amount: esi.employee });
-        if (pt > 0)
-          deductions.push({ componentCode: "PT",  componentName: "Professional Tax",            amount: pt });
-        if (lwf.employee > 0)
-          deductions.push({ componentCode: "LWF", componentName: "Labour Welfare Fund",         amount: lwf.employee });
-        if (tdsResult.monthlyTDS > 0)
-          deductions.push({ componentCode: "TDS", componentName: "Tax Deducted at Source",      amount: tdsResult.monthlyTDS });
-
-        // STEP 14: Net pay
+        // STEP 10: Net pay computation
         const totalDeductionsAmount = deductions.reduce((sum, d) => sum + d.amount, 0);
         const netPay = Math.round((grossEarned - totalDeductionsAmount) * 100) / 100;
 
-        // STEP 15: Hard block on negative net pay
+        // STEP 11: Hard block on negative net pay
         assertPositiveNetPay(empId, netPay, grossEarned, totalDeductionsAmount);
 
-        // STEP 16: Gratuity provision (employer cost — NOT deducted from employee)
-        const gratuityProvision = calculateMonthlyGratuityProvision(
-          basicItem?.amount ?? 0  // Basic + DA (DA = 0 for most private orgs)
-        );
+        // STEP 12: Combine all statutory line items for global breakdown snapshot
+        const statutoryBreakdown = [
+          ...statutoryResult.employeeDeductions.map(d => ({
+            code: d.code,
+            name: d.name,
+            amount: d.amount,
+            isEmployer: false,
+          })),
+          ...statutoryResult.employerContributions.map(c => ({
+            code: c.code,
+            name: c.name,
+            amount: c.amount,
+            isEmployer: true,
+          })),
+        ];
 
-        // STEP 17: Save payslip
+        // STEP 13: Save payslip with multi-country & multi-currency metadata
         await this.payslipRepo.create({
           tenantId:                new mongoose.Types.ObjectId(context.tenantId) as any,
           branchId:                employee.branchId as any,
@@ -479,6 +468,8 @@ export class PayrollRunService {
           salaryStructureId:       structure._id as any,
           month:                   run.month,
           year:                    run.year,
+          countryCode,
+          currency,
           attendanceSummary,
           earnings,
           deductions,
@@ -486,17 +477,19 @@ export class PayrollRunService {
           totalDeductions:         totalDeductionsAmount,
           lopAmount,
           netPay,
-          pfEmployeeContribution:  pf.employee,
-          pfEmployerContribution:  pf.totalEmployer,
-          esiEmployeeContribution: esi.employee,
-          esiEmployerContribution: esi.employer,
-          ptAmount:                pt,
-          lwfEmployeeAmount:       lwf.employee,
-          lwfEmployerAmount:       lwf.employer,
-          tdsAmount:               tdsResult.monthlyTDS,
-          taxRegime:               tdsResult.regime,
-          annualTaxableIncome:     tdsResult.annualTaxableIncome,
-          gratuityMonthlyProvision: gratuityProvision,
+          statutoryBreakdown,
+          totalEmployerStatutoryCost: statutoryResult.totalEmployerStatutoryCost,
+          pfEmployeeContribution:  statutoryResult.metadata?.pfEmployee || 0,
+          pfEmployerContribution:  statutoryResult.metadata?.pfEmployer || 0,
+          esiEmployeeContribution: statutoryResult.metadata?.esiEmployee || 0,
+          esiEmployerContribution: statutoryResult.metadata?.esiEmployer || 0,
+          ptAmount:                statutoryResult.metadata?.ptAmount || 0,
+          lwfEmployeeAmount:       statutoryResult.metadata?.lwfEmployee || 0,
+          lwfEmployerAmount:       statutoryResult.metadata?.lwfEmployer || 0,
+          tdsAmount:               statutoryResult.metadata?.tdsAmount || 0,
+          taxRegime:               statutoryResult.taxRegimeOrBracket,
+          annualTaxableIncome:     statutoryResult.annualTaxableIncome,
+          gratuityMonthlyProvision: statutoryResult.gratuityOrEndServiceProvision,
           isFinalized:             false,
         });
 
