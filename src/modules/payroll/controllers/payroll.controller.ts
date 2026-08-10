@@ -7,17 +7,27 @@ import { buildSuccessResponse } from "../../../shared/database/base.schema";
 import { AttendanceLockService } from "../../attendance/services/attendance-lock.service";
 import { OvertimeService } from "../services/overtime.service";
 import { ProfessionalTaxService, LWFConfigService, OvertimeConfigService, TaxDeclarationService } from "../services/statutory-calculator.service";
+import { PayrollAdjustmentService } from "../services/payroll-adjustment.service";
+import { PayrollAuditService } from "../services/payroll-audit.service";
+import { PayrollDisbursementService } from "../services/payroll-disbursement.service";
+import { PayrollComplianceService } from "../services/payroll-compliance.service";
+import { PayrollGLService } from "../services/payroll-gl.service";
 
-const componentService = new SalaryComponentService();
-const structureService = new SalaryStructureService();
-const runService = new PayrollRunService();
-const payslipService = new PayslipService();
-const lockService      = new AttendanceLockService();
-const otService        = new OvertimeService();
-const ptService        = new ProfessionalTaxService();
-const lwfService       = new LWFConfigService();
-const otConfigService  = new OvertimeConfigService();
-const taxDeclService   = new TaxDeclarationService();
+const componentService    = new SalaryComponentService();
+const structureService    = new SalaryStructureService();
+const runService          = new PayrollRunService();
+const payslipService      = new PayslipService();
+const lockService         = new AttendanceLockService();
+const otService           = new OvertimeService();
+const ptService           = new ProfessionalTaxService();
+const lwfService          = new LWFConfigService();
+const otConfigService     = new OvertimeConfigService();
+const taxDeclService      = new TaxDeclarationService();
+const adjustmentService   = new PayrollAdjustmentService();
+const auditService        = new PayrollAuditService();
+const disbursementService = new PayrollDisbursementService();
+const complianceService   = new PayrollComplianceService();
+const glService           = new PayrollGLService();
 
 export class PayrollController {
 
@@ -558,6 +568,167 @@ export class PayrollController {
         req.params.financialYear
       );
       res.status(200).json(buildSuccessResponse(result, "Proof submission marked"));
+    } catch (e) { next(e); }
+  }
+
+  // ── Step 3: Variable & Ad-Hoc Adjustments ──────────────────────────────────
+
+  async createAdjustment(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await adjustmentService.create(req.context!, req.body);
+      res.status(201).json(buildSuccessResponse(result, "Payroll adjustment created"));
+    } catch (e) { next(e); }
+  }
+
+  async bulkCreateAdjustments(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await adjustmentService.bulkCreate(req.context!, req.body);
+      res.status(201).json(buildSuccessResponse(result, "Bulk adjustments processed"));
+    } catch (e) { next(e); }
+  }
+
+  async approveAdjustment(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await adjustmentService.approve(req.context!, req.params.id);
+      res.status(200).json(buildSuccessResponse(result, "Payroll adjustment approved"));
+    } catch (e) { next(e); }
+  }
+
+  async rejectAdjustment(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await adjustmentService.reject(req.context!, req.params.id, req.body.reason);
+      res.status(200).json(buildSuccessResponse(result, "Payroll adjustment rejected"));
+    } catch (e) { next(e); }
+  }
+
+  async listAdjustments(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const pageSize = parseInt(req.query.pageSize as string) || 20;
+      const filter = {
+        employeeId: req.query.employeeId as string,
+        branchId:   req.query.branchId as string,
+        year:       req.query.year ? parseInt(req.query.year as string) : undefined,
+        month:      req.query.month ? parseInt(req.query.month as string) : undefined,
+        status:     req.query.status as string,
+        type:       req.query.type as string,
+      };
+      const result = await adjustmentService.list(req.context!, filter, page, pageSize);
+      res.status(200).json(buildSuccessResponse(result, "Adjustments fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async getAdjustmentById(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await adjustmentService.getById(req.context!, req.params.id);
+      res.status(200).json(buildSuccessResponse(result, "Adjustment fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async deleteAdjustment(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await adjustmentService.delete(req.context!, req.params.id);
+      res.status(200).json(buildSuccessResponse(null, "Adjustment deleted"));
+    } catch (e) { next(e); }
+  }
+
+  // ── Step 8: Period-over-Period Variance & Audit ───────────────────────────
+
+  async getVarianceReport(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const threshold = req.query.threshold ? parseFloat(req.query.threshold as string) : 5;
+      const compareRunId = req.query.compareRunId as string;
+      const result = await auditService.getVarianceAndAuditReport(req.context!, req.params.id, {
+        thresholdPercent: threshold,
+        compareRunId,
+      });
+      res.status(200).json(buildSuccessResponse(result, "Variance and audit report generated"));
+    } catch (e) { next(e); }
+  }
+
+  // ── Step 10: Bank Disbursement Files ──────────────────────────────────────
+
+  async getDisbursementSummary(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await disbursementService.getDisbursementSummary(req.context!, req.params.id);
+      res.status(200).json(buildSuccessResponse(result, "Disbursement summary generated"));
+    } catch (e) { next(e); }
+  }
+
+  async downloadDisbursementFile(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const format = (req.query.format as any) || "GENERIC_CSV";
+      const fileData = await disbursementService.generateDisbursementFile(req.context!, req.params.id, format);
+      res.setHeader("Content-Type", fileData.contentType);
+      res.setHeader("Content-Disposition", `attachment; filename="${fileData.filename}"`);
+      res.send(fileData.content);
+    } catch (e) { next(e); }
+  }
+
+  // ── Step 12 & 14: Statutory Compliance & Returns ─────────────────────────
+
+  async downloadEpfoEcr(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const fileData = await complianceService.generateEpfoEcr(req.context!, req.params.id);
+      res.setHeader("Content-Type", fileData.contentType);
+      res.setHeader("Content-Disposition", `attachment; filename="${fileData.filename}"`);
+      res.send(fileData.content);
+    } catch (e) { next(e); }
+  }
+
+  async downloadEsicReturn(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const fileData = await complianceService.generateEsicReturn(req.context!, req.params.id);
+      res.setHeader("Content-Type", fileData.contentType);
+      res.setHeader("Content-Disposition", `attachment; filename="${fileData.filename}"`);
+      res.send(fileData.content);
+    } catch (e) { next(e); }
+  }
+
+  async getPtStatement(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await complianceService.generatePtStatement(req.context!, req.params.id);
+      res.status(200).json(buildSuccessResponse(result, "Professional Tax statement fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async downloadTds24Q(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const fileData = await complianceService.generateTds24QRegister(req.context!, req.params.id);
+      res.setHeader("Content-Type", fileData.contentType);
+      res.setHeader("Content-Disposition", `attachment; filename="${fileData.filename}"`);
+      res.send(fileData.content);
+    } catch (e) { next(e); }
+  }
+
+  // ── Step 13: General Ledger Accounting ────────────────────────────────────
+
+  async getGLConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await glService.getGLConfig(req.context!);
+      res.status(200).json(buildSuccessResponse(result, "GL configuration fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async updateGLConfig(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await glService.updateGLConfig(req.context!, req.body);
+      res.status(200).json(buildSuccessResponse(result, "GL configuration updated"));
+    } catch (e) { next(e); }
+  }
+
+  async getOrDownloadGLJournal(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const format = (req.query.format as any) || "JSON";
+      const result = await glService.generateGLJournal(req.context!, req.params.id, format);
+      if (format === "CSV" || format === "TALLY_XML") {
+        const fileData = result as { filename: string; contentType: string; content: string };
+        res.setHeader("Content-Type", fileData.contentType);
+        res.setHeader("Content-Disposition", `attachment; filename="${fileData.filename}"`);
+        res.send(fileData.content);
+        return;
+      }
+      res.status(200).json(buildSuccessResponse(result, "GL journal generated"));
     } catch (e) { next(e); }
   }
 }

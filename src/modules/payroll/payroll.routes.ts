@@ -11,6 +11,8 @@ import {
   RejectOTDto,
   UpsertPTConfigDto, UpsertLWFConfigDto, UpsertOTConfigDto,
   TaxDeclarationDto,
+  CreatePayrollAdjustmentDto, BulkCreatePayrollAdjustmentDto, RejectAdjustmentDto,
+  UpsertPayrollGLConfigDto,
 } from "./dto/payroll.dto";
 
 import {
@@ -271,5 +273,120 @@ router.patch(
   ctrl.markTaxProofSubmitted.bind(ctrl)
 );
 
+// ── Step 3: Variable & Ad-Hoc Adjustments ──────────────────────────────────
 
-export default router;
+router.post(
+  "/adjustments",
+  checkPermission("payroll.create"),
+  validateBody(CreatePayrollAdjustmentDto),
+  ctrl.createAdjustment.bind(ctrl)
+);
+
+router.post(
+  "/adjustments/bulk",
+  checkPermission("payroll.create"),
+  validateBody(BulkCreatePayrollAdjustmentDto),
+  ctrl.bulkCreateAdjustments.bind(ctrl)
+);
+
+router.get(
+  "/adjustments",
+  checkPermission("payroll.read"),
+  ctrl.listAdjustments.bind(ctrl)
+);
+
+router.get(
+  "/adjustments/:id",
+  checkPermission("payroll.read"),
+  ctrl.getAdjustmentById.bind(ctrl)
+);
+
+router.patch(
+  "/adjustments/:id/approve",
+  checkPermission("payroll.approve"),
+  ctrl.approveAdjustment.bind(ctrl)
+);
+
+router.patch(
+  "/adjustments/:id/reject",
+  checkPermission("payroll.approve"),
+  validateBody(RejectAdjustmentDto),
+  ctrl.rejectAdjustment.bind(ctrl)
+);
+
+router.delete(
+  "/adjustments/:id",
+  checkPermission("payroll.create"),
+  ctrl.deleteAdjustment.bind(ctrl)
+);
+
+// ── Step 8: Period-over-Period Variance & Audit ───────────────────────────
+
+router.get(
+  "/runs/:id/variance-report",
+  checkPermission("payroll.read"),
+  ctrl.getVarianceReport.bind(ctrl)
+);
+
+// ── Step 10: Bank Disbursement Exports ────────────────────────────────────
+
+router.get(
+  "/runs/:id/disbursement/summary",
+  checkPermission("payroll.read"),
+  ctrl.getDisbursementSummary.bind(ctrl)
+);
+
+router.get(
+  "/runs/:id/disbursement/download",
+  checkPermission("payroll.run"),
+  ctrl.downloadDisbursementFile.bind(ctrl)
+);
+
+// ── Step 12 & 14: Statutory Compliance & Returns ─────────────────────────
+
+router.get(
+  "/runs/:id/statutory/epf-ecr",
+  checkPermission("payroll.run"),
+  ctrl.downloadEpfoEcr.bind(ctrl)
+);
+
+router.get(
+  "/runs/:id/statutory/esic",
+  checkPermission("payroll.run"),
+  ctrl.downloadEsicReturn.bind(ctrl)
+);
+
+router.get(
+  "/runs/:id/statutory/pt",
+  checkPermission("payroll.read"),
+  ctrl.getPtStatement.bind(ctrl)
+);
+
+router.get(
+  "/runs/:id/statutory/tds",
+  checkPermission("payroll.read"),
+  ctrl.downloadTds24Q.bind(ctrl)
+);
+
+// ── Step 13: General Ledger Accounting ────────────────────────────────────
+
+router.get(
+  "/gl-config",
+  checkPermission("payroll.read"),
+  ctrl.getGLConfig.bind(ctrl)
+);
+
+router.post(
+  "/gl-config",
+  checkPermission("payroll.create"),
+  validateBody(UpsertPayrollGLConfigDto),
+  ctrl.updateGLConfig.bind(ctrl)
+);
+
+router.get(
+  "/runs/:id/gl-journal",
+  checkPermission("payroll.read"),
+  ctrl.getOrDownloadGLJournal.bind(ctrl)
+);
+
+export default router;

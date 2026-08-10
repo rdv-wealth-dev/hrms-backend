@@ -5,10 +5,13 @@ import { SalaryStructureRepository } from "../repositories/salary-structure.repo
 import { SalaryComponentRepository } from "../repositories/salary-component.repository";
 import { PayrollRunStatus } from "../models/payroll-run.model";
 import { PayslipModel } from "../models/payslip.model";
+import { PayrollAdjustmentRepository } from "../repositories/payroll-adjustment.repository";
+import { AdjustmentType } from "../models/payroll-adjustment.model";
 import { CreatePayrollRunInput, ApprovePayrollRunInput } from "../dto/payroll.dto";
 import { AppError } from "../../../shared/errors/app.error";
 import { RequestContext } from "../../../shared/types/request-context.interface";
 import { EmployeeModel } from "../../employee/models/employee.model";
+import { EmployeeBankAccountModel } from "../../employee/models/employee-bank-account.model";
 import { OrganizationModel } from "../../organization/organization.model";
 import { BranchModel } from "../../branch/branch.model";
 import { AttendanceModel } from "../../attendance/models/attendance.model";
@@ -65,10 +68,11 @@ function getPrecedingMonthsOfContributionPeriod(year: number, month: number): { 
 }
 
 export class PayrollRunService {
-  private runRepo       = new PayrollRunRepository();
-  private payslipRepo   = new PayslipRepository();
-  private structureRepo = new SalaryStructureRepository();
-  private componentRepo = new SalaryComponentRepository();
+  private runRepo        = new PayrollRunRepository();
+  private payslipRepo    = new PayslipRepository();
+  private structureRepo  = new SalaryStructureRepository();
+  private componentRepo  = new SalaryComponentRepository();
+  private adjustmentRepo = new PayrollAdjustmentRepository();
 
   // ─────────────────────────────────────────────────────────────────────────
   // CREATE RUN
@@ -166,6 +170,19 @@ export class PayrollRunService {
       if (!emp.pan) {
         errors.push(
           `${empLabel}: PAN not on file — TDS will be deducted at 20% flat rate (Section 206AA).`
+        );
+      }
+
+      // Bank account present?
+      const hasBank = await EmployeeBankAccountModel.exists({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        employeeId: emp._id,
+        isActive: true,
+      });
+
+      if (!hasBank) {
+        errors.push(
+          `${empLabel}: WARNING — No active bank account on file for direct disbursement.`
         );
       }
 
@@ -322,12 +339,37 @@ export class PayrollRunService {
           grossEarned += otAmount;
         }
 
-        // STEP 7: Fixed deductions from salary structure
+        // STEP 6.5: Fixed deductions from salary structure
         const deductions = deductionItems.map(li => ({
           componentCode: li.componentCode,
           componentName: componentMap.get(li.componentCode)?.name ?? li.componentCode,
           amount:        li.amount,
         }));
+
+        // STEP 6.6: Ad-hoc / Variable pay adjustments (Bonuses, Incentives, Arrears, Reimbursements, Loan Deductions)
+        const adjustments = await this.adjustmentRepo.findApprovedForEmployeePeriod(
+          context.tenantId,
+          empId,
+          run.year,
+          run.month
+        );
+
+        for (const adj of adjustments) {
+          if (adj.type === AdjustmentType.EARNING) {
+            earnings.push({
+              componentCode: adj.category,
+              componentName: adj.customLabel || adj.category,
+              amount: adj.amount,
+            });
+            grossEarned += adj.amount;
+          } else if (adj.type === AdjustmentType.DEDUCTION) {
+            deductions.push({
+              componentCode: adj.category,
+              componentName: adj.customLabel || adj.category,
+              amount: adj.amount,
+            });
+          }
+        }
 
         // STEP 8: ESIC — on pro-rated gross (LOP -> ESIC -> PF order)
         let bypassEsiCeiling = false;
@@ -479,6 +521,22 @@ export class PayrollRunService {
     run.skippedEmployees      = skipped;
     run.erroredEmployees      = errored;
     await this.runRepo.save(run);
+
+    // Mark processed adjustments
+    const allApprovedAdjustments = await this.adjustmentRepo.findByFilter(
+      context,
+      { year: run.year, month: run.month, status: "APPROVED" },
+      1,
+      10000
+    );
+    const adjustmentIds = allApprovedAdjustments.items.map((a: any) => a._id);
+    if (adjustmentIds.length > 0) {
+      await this.adjustmentRepo.markProcessedForRun(
+        context.tenantId,
+        adjustmentIds,
+        run._id as any
+      );
+    }
 
     return {
       run,

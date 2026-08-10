@@ -165,4 +165,71 @@ export const UpsertTaxSlabConfigDto = z.object({
   marginalReliefUpperLimit:  z.number().min(0).optional().default(0),
   cessRate:                  z.number().min(0).max(1).optional().default(0.04),
 });
-export type UpsertTaxSlabConfigInput = z.infer<typeof UpsertTaxSlabConfigDto>;
+export type UpsertTaxSlabConfigInput = z.infer<typeof UpsertTaxSlabConfigDto>;
+
+// ── Payroll Adjustments DTOs (Step 3) ──────────────────────────────────────
+
+export const CreatePayrollAdjustmentDto = z.object({
+  employeeId:          objectIdSchema,
+  type:                z.enum(["EARNING", "DEDUCTION"]),
+  category:            z.enum([
+    "BONUS",
+    "COMMISSION",
+    "INCENTIVE",
+    "ARREARS",
+    "REIMBURSEMENT",
+    "ALLOWANCE",
+    "LOAN_REPAYMENT",
+    "ADVANCE_RECOVERY",
+    "PENALTY",
+    "NOTICE_PAY",
+    "CUSTOM",
+  ]),
+  customLabel:         safeStringSchema(2, 100),
+  amount:              z.number().positive("Amount must be greater than zero"),
+  month:               z.number().min(1).max(12),
+  year:                z.number().min(2020).max(2100),
+  frequency:           z.enum(["ONE_TIME", "RECURRING"]).optional().default("ONE_TIME"),
+  recurringStartMonth: z.number().min(1).max(12).optional(),
+  recurringStartYear:  z.number().min(2020).max(2100).optional(),
+  recurringEndMonth:   z.number().min(1).max(12).optional(),
+  recurringEndYear:    z.number().min(2020).max(2100).optional(),
+  isTaxable:           z.boolean().optional(),
+  affectsPfWages:      z.boolean().optional().default(false),
+  affectsEsiWages:     z.boolean().optional().default(false),
+  notes:               safeStringSchema(0, 500).optional(),
+});
+export type CreatePayrollAdjustmentInput = z.infer<typeof CreatePayrollAdjustmentDto>;
+
+export const BulkCreatePayrollAdjustmentDto = z.object({
+  adjustments: z.array(CreatePayrollAdjustmentDto).min(1, "At least one adjustment is required"),
+});
+export type BulkCreatePayrollAdjustmentInput = z.infer<typeof BulkCreatePayrollAdjustmentDto>;
+
+export const RejectAdjustmentDto = z.object({
+  reason: safeStringSchema(3, 500),
+});
+export type RejectAdjustmentInput = z.infer<typeof RejectAdjustmentDto>;
+
+// ── GL Config DTO (Step 13) ────────────────────────────────────────────────
+
+export const GLAccountItemDto = z.object({
+  accountCode: safeStringSchema(1, 50),
+  accountName: safeStringSchema(2, 150),
+});
+
+export const UpsertPayrollGLConfigDto = z.object({
+  grossSalaryExpenseAccount: GLAccountItemDto.optional(),
+  employerPfExpenseAccount:  GLAccountItemDto.optional(),
+  employerEsiExpenseAccount: GLAccountItemDto.optional(),
+  gratuityExpenseAccount:    GLAccountItemDto.optional(),
+  bonusExpenseAccount:       GLAccountItemDto.optional(),
+  pfPayableAccount:          GLAccountItemDto.optional(),
+  esiPayableAccount:         GLAccountItemDto.optional(),
+  ptPayableAccount:          GLAccountItemDto.optional(),
+  lwfPayableAccount:         GLAccountItemDto.optional(),
+  tdsPayableAccount:         GLAccountItemDto.optional(),
+  salariesPayableAccount:    GLAccountItemDto.optional(),
+});
+export type UpsertPayrollGLConfigInput = z.infer<typeof UpsertPayrollGLConfigDto>;
+

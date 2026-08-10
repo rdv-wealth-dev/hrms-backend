@@ -11,6 +11,7 @@ import { TaxSlabConfigModel } from "../models/tax-slab-config.model";
 import { OvertimeModel, OTStatus } from "../models/overtime.model";
 import { AttendanceLockModel, AttendanceLockStatus } from "../../attendance/models/attendance-lock.model";
 import { getCountryModule } from "../../../domain/localization/country.registry";
+import { AppError } from "../../../shared/errors/app.error";
 
 // CONSTANTS
 
@@ -44,9 +45,10 @@ export async function assertAttendanceLocked(
   }).lean();
 
   if (!lock || lock.status !== AttendanceLockStatus.LOCKED) {
-    throw new Error(
+    throw new AppError(
       `Attendance for ${period} is not locked. ` +
-      `Lock attendance before running payroll.`
+      `Lock attendance before running payroll.`,
+      400
     );
   }
 }
@@ -599,10 +601,11 @@ export function assertPositiveNetPay(
   totalDeductions: number
 ): void {
   if (netPay < 0) {
-    throw new Error(
+    throw new AppError(
       `Negative net pay for employee ${employeeId}: ` +
       `Gross ₹${grossEarned.toFixed(2)} - Deductions ₹${totalDeductions.toFixed(2)} ` +
-      `= ₹${netPay.toFixed(2)}. Review loan EMIs and LOP. Payslip blocked.`
+      `= ₹${netPay.toFixed(2)}. Review loan EMIs and LOP. Payslip blocked.`,
+      422
     );
   }
 }
