@@ -14,11 +14,11 @@ export class SalaryComponentService {
 
     return this.repo.create(context, {
       ...input,
-      type:            input.type as ComponentType,
+      type: input.type as ComponentType,
       calculationType: input.calculationType as ComponentCalculationType,
-      tenantId:        new mongoose.Types.ObjectId(context.tenantId) as any,
-      isStatutory:     false,
-      isActive:        true,
+      tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+      isStatutory: false,
+      isActive: true,
     });
   }
 

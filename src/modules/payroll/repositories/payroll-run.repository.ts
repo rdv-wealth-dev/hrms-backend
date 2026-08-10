@@ -14,8 +14,8 @@ export class PayrollRunRepository {
 
   async findById(context: RequestContext, id: string) {
     return PayrollRunModel.findOne({
-      _id:       new mongoose.Types.ObjectId(id),
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
+      _id: new mongoose.Types.ObjectId(id),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
     });
   }
@@ -27,8 +27,8 @@ export class PayrollRunRepository {
     month: number
   ) {
     return PayrollRunModel.findOne({
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-      branchId:  new mongoose.Types.ObjectId(branchId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      branchId: new mongoose.Types.ObjectId(branchId),
       year,
       month,
       isDeleted: false,
@@ -42,7 +42,7 @@ export class PayrollRunRepository {
     filter?: { branchId?: string; year?: number; month?: number; status?: string }
   ) {
     const query: any = {
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
     };
 

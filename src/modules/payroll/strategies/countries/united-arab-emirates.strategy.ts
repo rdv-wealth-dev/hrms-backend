@@ -59,7 +59,7 @@ export class UnitedArabEmiratesPayrollStrategy implements ICountryPayrollStrateg
     const totalSalaries = validItems.reduce((sum, i) => sum + i.netPay, 0);
 
     const scrRecord = `SCR,${employerMOLNumber},${bankRoutingCode},${dateStr},${timeString()},${validItems.length},${totalSalaries.toFixed(2)},AED,SALARY ${run.month}/${run.year}`;
-    
+
     const edrRows = validItems.map((i) => {
       return `EDR,${i.employeeCode},${i.ifscOrRoutingCode || "024"},${i.accountNumber},${run.year}-${String(run.month).padStart(2, "0")}-01,${run.year}-${String(run.month).padStart(2, "0")}-28,30,${i.netPay.toFixed(2)},0.00,0`;
     });

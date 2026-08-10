@@ -35,9 +35,9 @@ export class SalaryStructureService {
         totalDeductionsMonthly += li.amount;
       }
       return {
-        componentId:   comp._id,
+        componentId: comp._id,
         componentCode: comp.code,
-        amount:        li.amount,
+        amount: li.amount,
       };
     });
 
@@ -62,13 +62,13 @@ export class SalaryStructureService {
     const netMonthly = grossMonthly - totalDeductionsMonthly;
 
     const structure = await this.structureRepo.create({
-      tenantId:      new mongoose.Types.ObjectId(context.tenantId) as any,
-      branchId:      new mongoose.Types.ObjectId(context.branchIds[0] ?? "") as any,
-      employeeId:    new mongoose.Types.ObjectId(input.employeeId) as any,
+      tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+      branchId: new mongoose.Types.ObjectId(context.branchIds[0] ?? "") as any,
+      employeeId: new mongoose.Types.ObjectId(input.employeeId) as any,
       effectiveFrom: now,
-      effectiveTo:   null,
-      supersedes:    current?._id ?? null,
-      ctcAnnual:     input.ctcAnnual,
+      effectiveTo: null,
+      supersedes: current?._id ?? null,
+      ctcAnnual: input.ctcAnnual,
       lineItems,
       grossMonthly,
       totalDeductionsMonthly,

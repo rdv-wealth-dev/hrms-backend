@@ -231,9 +231,8 @@ export class IndiaPayrollStrategy implements ICountryPayrollStrategy {
           : "N";
         return `${txType}|${i.employeeCode}|${i.accountNumber}|${i.netPay.toFixed(
           2
-        )}|${i.employeeName}|${run.runLabel}-${i.employeeCode}|${
-          i.ifscOrRoutingCode
-        }|${i.email}|Salary-${i.month}-${i.year}`;
+        )}|${i.employeeName}|${run.runLabel}-${i.employeeCode}|${i.ifscOrRoutingCode
+          }|${i.email}|Salary-${i.month}-${i.year}`;
       });
       return {
         filename: `HDFC_CMS_Payout_${run.year}_${run.month}_${dateStr}.txt`,
@@ -249,11 +248,9 @@ export class IndiaPayrollStrategy implements ICountryPayrollStrategy {
         const mode = i.ifscOrRoutingCode.toUpperCase().startsWith("ICIC")
           ? "FT"
           : "NEFT";
-        return `${mode},"${i.employeeName.replace(/"/g, '""')}",${
-          i.accountNumber
-        },${i.netPay.toFixed(2)},${i.ifscOrRoutingCode},${
-          i.employeeCode
-        },"Salary for ${i.month}/${i.year}"`;
+        return `${mode},"${i.employeeName.replace(/"/g, '""')}",${i.accountNumber
+          },${i.netPay.toFixed(2)},${i.ifscOrRoutingCode},${i.employeeCode
+          },"Salary for ${i.month}/${i.year}"`;
       });
       return {
         filename: `ICICI_Salary_Payout_${run.year}_${run.month}_${dateStr}.csv`,
@@ -268,9 +265,8 @@ export class IndiaPayrollStrategy implements ICountryPayrollStrategy {
       const rows = validItems.map((i) => {
         return `${i.accountNumber},${i.netPay.toFixed(
           2
-        )},"${i.employeeName.replace(/"/g, '""')}","Salary ${i.month}/${
-          i.year
-        }",${run._id?.toString().slice(-8)}-${i.employeeCode}`;
+        )},"${i.employeeName.replace(/"/g, '""')}","Salary ${i.month}/${i.year
+          }",${run._id?.toString().slice(-8)}-${i.employeeCode}`;
       });
       return {
         filename: `SBI_Salary_Batch_${run.year}_${run.month}_${dateStr}.csv`,
@@ -283,13 +279,10 @@ export class IndiaPayrollStrategy implements ICountryPayrollStrategy {
     const headers =
       "Employee_Code,Employee_Name,Email,Phone,Bank_Name,Account_Number,IFSC_Code,Account_Type,Net_Pay,Currency,Payment_Month,Payment_Year,Narration";
     const rows = validItems.map((i) => {
-      return `${i.employeeCode},"${i.employeeName.replace(/"/g, '""')}",${
-        i.email
-      },${i.phone},"${i.bankName.replace(/"/g, '""')}",'${
-        i.accountNumber
-      }',${i.ifscOrRoutingCode},${i.accountType},${i.netPay.toFixed(2)},${
-        i.currency || "INR"
-      },${i.month},${i.year},"${i.narration}"`;
+      return `${i.employeeCode},"${i.employeeName.replace(/"/g, '""')}",${i.email
+        },${i.phone},"${i.bankName.replace(/"/g, '""')}",'${i.accountNumber
+        }',${i.ifscOrRoutingCode},${i.accountType},${i.netPay.toFixed(2)},${i.currency || "INR"
+        },${i.month},${i.year},"${i.narration}"`;
     });
 
     return {
@@ -349,9 +342,8 @@ export class IndiaPayrollStrategy implements ICountryPayrollStrategy {
           '""'
         )}",${pan},${p.grossEarned.toFixed(2)},${(
           p.annualTaxableIncome || 0
-        ).toFixed(2)},${(p.tdsAmount || 0).toFixed(2)},${
-          p.taxRegime || "NEW"
-        }`;
+        ).toFixed(2)},${(p.tdsAmount || 0).toFixed(2)},${p.taxRegime || "NEW"
+          }`;
       });
 
       return {

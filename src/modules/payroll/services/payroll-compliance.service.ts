@@ -34,10 +34,8 @@ export class PayrollComplianceService {
     return { run, payslips, empMap, branch, organization };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
   // 1. EPFO ECR GENERATOR (Electronic Challan cum Return)
   // Format: UAN#~#MEMBER_NAME#~#GROSS_WAGES#~#EPF_WAGES#~#EPS_WAGES#~#EDLI_WAGES#~#EE_SHARE#~#EPS_SHARE#~#ER_EPF_SHARE#~#NCP_DAYS#~#REFUND_ADVANCES
-  // ─────────────────────────────────────────────────────────────────────────
   async generateEpfoEcr(context: RequestContext, runId: string) {
     const { run, payslips, empMap } = await this.getRunAndPayslips(context, runId);
     const pfPayslips = payslips.filter((p) => (p.pfEmployeeContribution || 0) > 0);
@@ -79,10 +77,9 @@ export class PayrollComplianceService {
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
   // 2. ESIC MONTHLY RETURN CSV GENERATOR
   // Format: IP_Number,IP_Name,No_Of_Days_Wages_Paid,Total_Monthly_Wages,IP_Contribution,Reason_Code
-  // ─────────────────────────────────────────────────────────────────────────
+
   async generateEsicReturn(context: RequestContext, runId: string) {
     const { run, payslips, empMap } = await this.getRunAndPayslips(context, runId);
     const esiPayslips = payslips.filter((p) => (p.esiEmployeeContribution || 0) > 0);
@@ -111,9 +108,8 @@ export class PayrollComplianceService {
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
   // 3. PROFESSIONAL TAX (PT) STATEMENT
-  // ─────────────────────────────────────────────────────────────────────────
+
   async generatePtStatement(context: RequestContext, runId: string) {
     const { run, payslips, empMap, branch } = await this.getRunAndPayslips(context, runId);
     const ptPayslips = payslips.filter((p) => (p.ptAmount || 0) > 0);
@@ -142,9 +138,7 @@ export class PayrollComplianceService {
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
   // 4. TDS FORM 24Q MONTHLY REGISTER
-  // ─────────────────────────────────────────────────────────────────────────
   async generateTds24QRegister(context: RequestContext, runId: string) {
     const { run, payslips, empMap } = await this.getRunAndPayslips(context, runId);
     const tdsPayslips = payslips.filter((p) => (p.tdsAmount || 0) > 0);

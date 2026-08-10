@@ -18,21 +18,21 @@ export enum TaxRegime {
 export interface PTSlab {
   minSalary: number;
   maxSalary: number; // 0 represents no upper limit
-  ptAmount:  number;
+  ptAmount: number;
 }
 
 export interface ProfessionalTaxConfigDocument extends BaseDocument {
-  stateCode:     string;         // Upper-case short state code (e.g. "KA", "MH")
+  stateCode: string;         // Upper-case short state code (e.g. "KA", "MH")
   financialYear: string;         // Financial Year (e.g. "2025-26")
-  slabs:         PTSlab[];       // Slabs list
-  isActive:      boolean;
+  slabs: PTSlab[];       // Slabs list
+  isActive: boolean;
 }
 
 const PTSlabSchema = new mongoose.Schema(
   {
     minSalary: { type: Number, required: true, min: 0 },
     maxSalary: { type: Number, required: true, min: 0 },
-    ptAmount:  { type: Number, required: true, min: 0 },
+    ptAmount: { type: Number, required: true, min: 0 },
   },
   { _id: false }
 );
@@ -40,22 +40,22 @@ const PTSlabSchema = new mongoose.Schema(
 const ProfessionalTaxConfigSchema = createBaseSchema<ProfessionalTaxConfigDocument>(
   {
     stateCode: {
-      type:      String,
-      required:  true,
+      type: String,
+      required: true,
       uppercase: true,
-      trim:      true,
+      trim: true,
     },
     financialYear: {
-      type:     String,
+      type: String,
       required: true,
-      trim:     true,
+      trim: true,
     },
     slabs: {
-      type:    [PTSlabSchema],
+      type: [PTSlabSchema],
       default: [],
     },
     isActive: {
-      type:    Boolean,
+      type: Boolean,
       default: true,
     },
   },
@@ -75,43 +75,43 @@ export const ProfessionalTaxConfigModel = mongoose.model<ProfessionalTaxConfigDo
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface LWFConfigDocument extends BaseDocument {
-  stateCode:            string;
-  financialYear:        string;
-  deductionMonths:      number[];  // E.g., [6, 12] for June and December
+  stateCode: string;
+  financialYear: string;
+  deductionMonths: number[];  // E.g., [6, 12] for June and December
   employeeContribution: number;
   employerContribution: number;
-  isActive:             boolean;
+  isActive: boolean;
 }
 
 const LWFConfigSchema = createBaseSchema<LWFConfigDocument>(
   {
     stateCode: {
-      type:      String,
-      required:  true,
+      type: String,
+      required: true,
       uppercase: true,
-      trim:      true,
+      trim: true,
     },
     financialYear: {
-      type:     String,
+      type: String,
       required: true,
-      trim:     true,
+      trim: true,
     },
     deductionMonths: {
-      type:    [Number],
+      type: [Number],
       default: [],
     },
     employeeContribution: {
-      type:     Number,
+      type: Number,
       required: true,
-      min:      0,
+      min: 0,
     },
     employerContribution: {
-      type:     Number,
+      type: Number,
       required: true,
-      min:      0,
+      min: 0,
     },
     isActive: {
-      type:    Boolean,
+      type: Boolean,
       default: true,
     },
   },
@@ -131,48 +131,48 @@ export const LWFConfigModel = mongoose.model<LWFConfigDocument>(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface TaxDeclarationDocument extends BaseDocument {
-  employeeId:        mongoose.Types.ObjectId;
-  financialYear:     string;
-  regime:            TaxRegime;
-  rentPaidMonthly?:   number;
-  isMetroCity?:       boolean;
-  ltaAmount?:         number;
-  section80C?:        number;
-  section80D?:        number;
-  section80CCD1B?:    number;
-  homeLoanInterest?:  number;
-  submittedAt:        Date;
-  revisedAt?:         Date;
-  isProofSubmitted:   boolean;
+  employeeId: mongoose.Types.ObjectId;
+  financialYear: string;
+  regime: TaxRegime;
+  rentPaidMonthly?: number;
+  isMetroCity?: boolean;
+  ltaAmount?: number;
+  section80C?: number;
+  section80D?: number;
+  section80CCD1B?: number;
+  homeLoanInterest?: number;
+  submittedAt: Date;
+  revisedAt?: Date;
+  isProofSubmitted: boolean;
 }
 
 const TaxDeclarationSchema = createBaseSchema<TaxDeclarationDocument>(
   {
     employeeId: {
-      type:     mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref:      "Employee",
-      index:    true,
+      ref: "Employee",
+      index: true,
     },
     financialYear: {
-      type:     String,
+      type: String,
       required: true,
-      trim:     true,
+      trim: true,
     },
     regime: {
-      type:    String,
-      enum:    Object.values(TaxRegime),
+      type: String,
+      enum: Object.values(TaxRegime),
       default: TaxRegime.NEW,
     },
-    rentPaidMonthly:  { type: Number, default: 0 },
-    isMetroCity:      { type: Boolean, default: false },
-    ltaAmount:        { type: Number, default: 0 },
-    section80C:       { type: Number, default: 0 },
-    section80D:       { type: Number, default: 0 },
-    section80CCD1B:   { type: Number, default: 0 },
+    rentPaidMonthly: { type: Number, default: 0 },
+    isMetroCity: { type: Boolean, default: false },
+    ltaAmount: { type: Number, default: 0 },
+    section80C: { type: Number, default: 0 },
+    section80D: { type: Number, default: 0 },
+    section80CCD1B: { type: Number, default: 0 },
     homeLoanInterest: { type: Number, default: 0 },
-    submittedAt:      { type: Date, default: Date.now },
-    revisedAt:        { type: Date },
+    submittedAt: { type: Date, default: Date.now },
+    revisedAt: { type: Date },
     isProofSubmitted: { type: Boolean, default: false },
   },
   { collection: "payroll_tax_declarations" }
@@ -190,24 +190,24 @@ export const TaxDeclarationModel = mongoose.model<TaxDeclarationDocument>(
 // =============================================================================
 
 export interface OvertimeConfigDocument extends BaseDocument {
-  standardHoursPerDay:     number;
-  otMultiplier:            number;
-  holidayOtMultiplier:     number;
-  maxOtHoursPerDay:        number;
-  maxOtHoursPerWeek:       number;
+  standardHoursPerDay: number;
+  otMultiplier: number;
+  holidayOtMultiplier: number;
+  maxOtHoursPerDay: number;
+  maxOtHoursPerWeek: number;
   otEligibleEmployeeTypes: string[];
-  isActive:                boolean;
+  isActive: boolean;
 }
 
 const OvertimeConfigSchema = createBaseSchema<OvertimeConfigDocument>(
   {
-    standardHoursPerDay:     { type: Number, default: 8   },
-    otMultiplier:            { type: Number, default: 2.0 },
-    holidayOtMultiplier:     { type: Number, default: 2.0 },
-    maxOtHoursPerDay:        { type: Number, default: 4   },
-    maxOtHoursPerWeek:       { type: Number, default: 50  },
+    standardHoursPerDay: { type: Number, default: 8 },
+    otMultiplier: { type: Number, default: 2.0 },
+    holidayOtMultiplier: { type: Number, default: 2.0 },
+    maxOtHoursPerDay: { type: Number, default: 4 },
+    maxOtHoursPerWeek: { type: Number, default: 50 },
     otEligibleEmployeeTypes: {
-      type:    [String],
+      type: [String],
       default: ["FULL_TIME", "CONTRACT"],
     },
     isActive: { type: Boolean, default: true },

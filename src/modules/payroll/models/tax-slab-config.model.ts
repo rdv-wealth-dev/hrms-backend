@@ -24,7 +24,7 @@ const TaxSlabSchema = new mongoose.Schema(
   {
     minIncome: { type: Number, required: true, min: 0 },
     maxIncome: { type: Number, required: true, min: 0 },
-    rate:      { type: Number, required: true, min: 0, max: 1 },
+    rate: { type: Number, required: true, min: 0, max: 1 },
   },
   { _id: false }
 );
@@ -32,51 +32,51 @@ const TaxSlabSchema = new mongoose.Schema(
 const TaxSlabConfigSchema = createOrgLevelSchema<TaxSlabConfigDocument>(
   {
     regime: {
-      type:     String,
-      enum:     Object.values(TaxRegime),
+      type: String,
+      enum: Object.values(TaxRegime),
       required: true,
     },
     financialYear: {
-      type:     String,
+      type: String,
       required: true,
-      trim:     true,
+      trim: true,
     },
     slabs: {
-      type:     [TaxSlabSchema],
+      type: [TaxSlabSchema],
       required: true,
       validate: {
         validator: (v: TaxSlab[]) => Array.isArray(v) && v.length > 0,
-        message:   "At least one slab is required",
+        message: "At least one slab is required",
       },
     },
     standardDeduction: {
-      type:     Number,
+      type: Number,
       required: true,
-      min:      0,
+      min: 0,
     },
     rebateCeiling: {
-      type:    Number,
+      type: Number,
       default: 0,
-      min:     0,
+      min: 0,
     },
     rebateMaxAmount: {
-      type:    Number,
+      type: Number,
       default: 0,
-      min:     0,
+      min: 0,
     },
     marginalReliefUpperLimit: {
-      type:    Number,
+      type: Number,
       default: 0,
-      min:     0,
+      min: 0,
     },
     cessRate: {
-      type:    Number,
+      type: Number,
       default: 0.04,
-      min:     0,
-      max:     1,
+      min: 0,
+      max: 1,
     },
     isActive: {
-      type:    Boolean,
+      type: Boolean,
       default: true,
     },
   },

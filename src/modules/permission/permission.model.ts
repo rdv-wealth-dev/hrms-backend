@@ -2,43 +2,43 @@ import mongoose, { Document } from "mongoose";
 import { createPlatformSchema } from "../../shared/database/base.schema";
 
 export interface PermissionDocument extends Document {
-  module:      string;
-  action:      string;
-  resource:    string;
+  module: string;
+  action: string;
+  resource: string;
   description: string;
-  isActive:    boolean;
-  version:     number;
-  createdAt:   Date;
-  updatedAt:   Date;
+  isActive: boolean;
+  version: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const PermissionSchema = createPlatformSchema<PermissionDocument>({
   module: {
-    type:      String,
-    required:  true,
-    trim:      true,
+    type: String,
+    required: true,
+    trim: true,
     lowercase: true,
   },
   action: {
-    type:      String,
-    required:  true,
-    trim:      true,
+    type: String,
+    required: true,
+    trim: true,
     lowercase: true,
   },
   resource: {
-    type:      String,
-    required:  true,
-    trim:      true,
+    type: String,
+    required: true,
+    trim: true,
     lowercase: true,
     // NO unique:true here — defined below
   },
   description: {
-    type:     String,
+    type: String,
     required: true,
-    trim:     true,
+    trim: true,
   },
   isActive: {
-    type:    Boolean,
+    type: Boolean,
     default: true,
   },
 });

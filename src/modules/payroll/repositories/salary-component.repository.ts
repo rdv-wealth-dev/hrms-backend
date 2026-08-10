@@ -12,16 +12,16 @@ export class SalaryComponentRepository extends BaseRepository<SalaryComponentDoc
     async findByCode(context: RequestContext, code: string) {
         return SalaryComponentModel.findOne({
             tenantId: new mongoose.Types.ObjectId(context.tenantId),
-            code : code.toUpperCase(),
-            isDeleted : false,
+            code: code.toUpperCase(),
+            isDeleted: false,
         });
     }
 
-    async findAllByCodes(context: RequestContext, codes : string[]) {
+    async findAllByCodes(context: RequestContext, codes: string[]) {
         return SalaryComponentModel.find({
-            tenantId : new mongoose.Types.ObjectId(context.tenantId),
-            code : { $in: codes.map(c => c.toUpperCase() )},
-            isDeleted : false,
+            tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            code: { $in: codes.map(c => c.toUpperCase()) },
+            isDeleted: false,
         });
     }
 }

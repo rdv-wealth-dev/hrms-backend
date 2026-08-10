@@ -36,8 +36,8 @@ import {
 } from "./payroll-engine.service";
 
 const MONTH_NAMES = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
 ];
 
 function getPrecedingMonthsOfContributionPeriod(year: number, month: number): { year: number; month: number }[] {
@@ -69,10 +69,10 @@ function getPrecedingMonthsOfContributionPeriod(year: number, month: number): { 
 }
 
 export class PayrollRunService {
-  private runRepo        = new PayrollRunRepository();
-  private payslipRepo    = new PayslipRepository();
-  private structureRepo  = new SalaryStructureRepository();
-  private componentRepo  = new SalaryComponentRepository();
+  private runRepo = new PayrollRunRepository();
+  private payslipRepo = new PayslipRepository();
+  private structureRepo = new SalaryStructureRepository();
+  private componentRepo = new SalaryComponentRepository();
   private adjustmentRepo = new PayrollAdjustmentRepository();
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -98,15 +98,15 @@ export class PayrollRunService {
     const branch = await BranchModel.findById(branchId).select("countryCode currency").lean();
 
     return this.runRepo.create({
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId) as any,
-      branchId:  new mongoose.Types.ObjectId(branchId) as any,
+      tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+      branchId: new mongoose.Types.ObjectId(branchId) as any,
       createdBy: new mongoose.Types.ObjectId(context.userId) as any,
-      month:     input.month,
-      year:      input.year,
+      month: input.month,
+      year: input.year,
       countryCode: (branch as any)?.countryCode || "IN",
-      currency:    (branch as any)?.currency || "INR",
-      runLabel:  `${MONTH_NAMES[input.month - 1]} ${input.year}`,
-      status:    PayrollRunStatus.DRAFT,
+      currency: (branch as any)?.currency || "INR",
+      runLabel: `${MONTH_NAMES[input.month - 1]} ${input.year}`,
+      status: PayrollRunStatus.DRAFT,
     });
   }
 
@@ -121,7 +121,7 @@ export class PayrollRunService {
     if (!run) throw new AppError("Payroll run not found", 404);
 
     const branchId = (run.branchId as mongoose.Types.ObjectId).toString();
-    const period   = `${run.year}-${String(run.month).padStart(2, "0")}`;
+    const period = `${run.year}-${String(run.month).padStart(2, "0")}`;
     const errors: string[] = [];
 
     // ── Check 1: Attendance must be locked ────────────────────────────────
@@ -152,14 +152,14 @@ export class PayrollRunService {
 
     // ── Check 3: Per-employee validation ──────────────────────────────────
     const employees = await EmployeeModel.find({
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-      branchId:  new mongoose.Types.ObjectId(branchId),
-      isActive:  true,
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      branchId: new mongoose.Types.ObjectId(branchId),
+      isActive: true,
       isDeleted: false,
     }).select("_id employeeCode firstName lastName pan").lean();
 
     const fromDate = new Date(run.year, run.month - 1, 1);
-    const toDate   = new Date(run.year, run.month, 0, 23, 59, 59);
+    const toDate = new Date(run.year, run.month, 0, 23, 59, 59);
 
     for (const emp of employees) {
       const empLabel = `${emp.employeeCode} (${emp.firstName} ${emp.lastName})`;
@@ -195,10 +195,10 @@ export class PayrollRunService {
 
       // Attendance data exists for this period?
       const attCount = await AttendanceModel.countDocuments({
-        tenantId:       new mongoose.Types.ObjectId(context.tenantId),
-        employeeId:     emp._id,
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        employeeId: emp._id,
         attendanceDate: { $gte: fromDate, $lte: toDate },
-        isDeleted:      false,
+        isDeleted: false,
       });
 
       if (attCount === 0) {
@@ -216,13 +216,13 @@ export class PayrollRunService {
     }
 
     // Save validation results to the run record
-    run.validatedAt      = new Date();
+    run.validatedAt = new Date();
     run.validationErrors = errors;
     await this.runRepo.save(run);
 
     return {
-      valid:        errors.filter(e => e.startsWith("CRITICAL")).length === 0
-                    && errors.length === 0,
+      valid: errors.filter(e => e.startsWith("CRITICAL")).length === 0
+        && errors.length === 0,
       totalChecked: employees.length,
       errors,
     };
@@ -256,9 +256,9 @@ export class PayrollRunService {
       .lean();
 
     const statutory = (org?.statutory ?? {}) as {
-      pfEnabled:  boolean;
+      pfEnabled: boolean;
       esiEnabled: boolean;
-      ptEnabled:  boolean;
+      ptEnabled: boolean;
       tdsEnabled: boolean;
       lwfEnabled: boolean;
     };
@@ -269,19 +269,19 @@ export class PayrollRunService {
       .lean();
 
     const countryCode = (branch as any)?.countryCode || run.countryCode || "IN";
-    const currency    = (branch as any)?.currency || run.currency || "INR";
-    const stateCode   = (branch as any)?.stateOrRegionCode || ((branch as any)?.address?.state ? (branch as any).address.state.toUpperCase() : "");
+    const currency = (branch as any)?.currency || run.currency || "INR";
+    const stateCode = (branch as any)?.stateOrRegionCode || ((branch as any)?.address?.state ? (branch as any).address.state.toUpperCase() : "");
 
     const strategy = PayrollStrategyFactory.getStrategy(countryCode);
 
-    const financialYear   = getFinancialYear(run.year, run.month);
+    const financialYear = getFinancialYear(run.year, run.month);
     const monthsRemaining = getMonthsRemainingInFY(run.month);
 
     // ── Fetch all active employees for this branch ─────────────────────────
     const employees = await EmployeeModel.find({
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-      branchId:  new mongoose.Types.ObjectId(branchId),
-      isActive:  true,
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      branchId: new mongoose.Types.ObjectId(branchId),
+      isActive: true,
       isDeleted: false,
     }).lean();
 
@@ -294,7 +294,7 @@ export class PayrollRunService {
 
     // ── PER-EMPLOYEE LOOP ──────────────────────────────────────────────────
     for (const employee of employees) {
-      const empId    = (employee._id as mongoose.Types.ObjectId).toString();
+      const empId = (employee._id as mongoose.Types.ObjectId).toString();
       const empLabel = employee.employeeCode;
 
       try {
@@ -315,7 +315,7 @@ export class PayrollRunService {
 
         // STEP 3: Load component definitions
         const componentCodes = structure.lineItems.map(li => li.componentCode);
-        const components     = await this.componentRepo.findAllByCodes(
+        const components = await this.componentRepo.findAllByCodes(
           context, componentCodes
         );
         const componentMap = new Map(components.map(c => [c.code, c]));
@@ -353,7 +353,7 @@ export class PayrollRunService {
           earnings.push({
             componentCode: "OT",
             componentName: "Overtime Pay",
-            amount:        Math.round(otAmount * 100) / 100,
+            amount: Math.round(otAmount * 100) / 100,
           });
           grossEarned += otAmount;
         }
@@ -362,7 +362,7 @@ export class PayrollRunService {
         const deductions = deductionItems.map(li => ({
           componentCode: li.componentCode,
           componentName: componentMap.get(li.componentCode)?.name ?? li.componentCode,
-          amount:        li.amount,
+          amount: li.amount,
         }));
 
         // STEP 6.6: Ad-hoc / Variable pay adjustments (Bonuses, Incentives, Arrears, Reimbursements, Loan Deductions)
@@ -404,7 +404,7 @@ export class PayrollRunService {
         }
 
         const basicItem = earnings.find(e => e.componentCode === "BASIC");
-        const hraItem   = earnings.find(e => e.componentCode === "HRA");
+        const hraItem = earnings.find(e => e.componentCode === "HRA");
 
         const statutoryResult = await strategy.calculateStatutoryDeductions({
           tenantId: context.tenantId,
@@ -463,41 +463,41 @@ export class PayrollRunService {
 
         // STEP 13: Save payslip with multi-country & multi-currency metadata
         await this.payslipRepo.create({
-          tenantId:                new mongoose.Types.ObjectId(context.tenantId) as any,
-          branchId:                employee.branchId as any,
-          payrollRunId:            run._id as any,
-          employeeId:              employee._id as any,
-          salaryStructureId:       structure._id as any,
-          month:                   run.month,
-          year:                    run.year,
+          tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+          branchId: employee.branchId as any,
+          payrollRunId: run._id as any,
+          employeeId: employee._id as any,
+          salaryStructureId: structure._id as any,
+          month: run.month,
+          year: run.year,
           countryCode,
           currency,
           attendanceSummary,
           earnings,
           deductions,
-          grossEarned:             Math.round(grossEarned * 100) / 100,
-          totalDeductions:         totalDeductionsAmount,
+          grossEarned: Math.round(grossEarned * 100) / 100,
+          totalDeductions: totalDeductionsAmount,
           lopAmount,
           netPay,
           statutoryBreakdown,
           totalEmployerStatutoryCost: statutoryResult.totalEmployerStatutoryCost,
-          pfEmployeeContribution:  statutoryResult.metadata?.pfEmployee || 0,
-          pfEmployerContribution:  statutoryResult.metadata?.pfEmployer || 0,
+          pfEmployeeContribution: statutoryResult.metadata?.pfEmployee || 0,
+          pfEmployerContribution: statutoryResult.metadata?.pfEmployer || 0,
           esiEmployeeContribution: statutoryResult.metadata?.esiEmployee || 0,
           esiEmployerContribution: statutoryResult.metadata?.esiEmployer || 0,
-          ptAmount:                statutoryResult.metadata?.ptAmount || 0,
-          lwfEmployeeAmount:       statutoryResult.metadata?.lwfEmployee || 0,
-          lwfEmployerAmount:       statutoryResult.metadata?.lwfEmployer || 0,
-          tdsAmount:               statutoryResult.metadata?.tdsAmount || 0,
-          taxRegime:               statutoryResult.taxRegimeOrBracket,
-          annualTaxableIncome:     statutoryResult.annualTaxableIncome,
+          ptAmount: statutoryResult.metadata?.ptAmount || 0,
+          lwfEmployeeAmount: statutoryResult.metadata?.lwfEmployee || 0,
+          lwfEmployerAmount: statutoryResult.metadata?.lwfEmployer || 0,
+          tdsAmount: statutoryResult.metadata?.tdsAmount || 0,
+          taxRegime: statutoryResult.taxRegimeOrBracket,
+          annualTaxableIncome: statutoryResult.annualTaxableIncome,
           gratuityMonthlyProvision: statutoryResult.gratuityOrEndServiceProvision,
-          isFinalized:             false,
+          isFinalized: false,
         });
 
-        totalGross      += grossEarned;
+        totalGross += grossEarned;
         totalDeductions += totalDeductionsAmount;
-        totalNet        += netPay;
+        totalNet += netPay;
         generatedCount++;
 
       } catch (empError: any) {
@@ -507,14 +507,14 @@ export class PayrollRunService {
     }
 
     // ── Update run totals ──────────────────────────────────────────────────
-    run.status                = PayrollRunStatus.GENERATED;
-    run.totalEmployees        = generatedCount;
-    run.totalGrossAmount      = Math.round(totalGross * 100) / 100;
+    run.status = PayrollRunStatus.GENERATED;
+    run.totalEmployees = generatedCount;
+    run.totalGrossAmount = Math.round(totalGross * 100) / 100;
     run.totalDeductionsAmount = Math.round(totalDeductions * 100) / 100;
-    run.totalNetAmount        = Math.round(totalNet * 100) / 100;
-    run.generatedAt           = new Date();
-    run.skippedEmployees      = skipped;
-    run.erroredEmployees      = errored;
+    run.totalNetAmount = Math.round(totalNet * 100) / 100;
+    run.generatedAt = new Date();
+    run.skippedEmployees = skipped;
+    run.erroredEmployees = errored;
     await this.runRepo.save(run);
 
     // Mark processed adjustments
@@ -537,7 +537,7 @@ export class PayrollRunService {
       run,
       generatedCount,
       skippedCount: skipped.length,
-      errorCount:   errored.length,
+      errorCount: errored.length,
       skipped,
       errors: errored,
     };
@@ -550,8 +550,8 @@ export class PayrollRunService {
 
   async approve(
     context: RequestContext,
-    runId:   string,
-    input:   ApprovePayrollRunInput
+    runId: string,
+    input: ApprovePayrollRunInput
   ) {
     const run = await this.runRepo.findById(context, runId);
     if (!run) throw new AppError("Payroll run not found", 404);
@@ -572,7 +572,7 @@ export class PayrollRunService {
       );
     }
 
-    run.status     = PayrollRunStatus.APPROVED;
+    run.status = PayrollRunStatus.APPROVED;
     run.approvedBy = new mongoose.Types.ObjectId(context.userId);
     run.approvedAt = new Date();
     if (input.notes) run.notes = input.notes;
@@ -610,7 +610,7 @@ export class PayrollRunService {
     // Link payroll run to attendance lock
     // Prevents HR from unlocking attendance after salaries have been disbursed
     const branchId = (run.branchId as mongoose.Types.ObjectId).toString();
-    const period   = `${run.year}-${String(run.month).padStart(2, "0")}`;
+    const period = `${run.year}-${String(run.month).padStart(2, "0")}`;
 
     await AttendanceLockModel.findOneAndUpdate(
       {

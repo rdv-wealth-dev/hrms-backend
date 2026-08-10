@@ -8,30 +8,30 @@ import { createBaseSchema, BaseDocument } from "../../../shared/database/base.sc
 // active for that specific month.
 
 export interface SalaryLineItem {
-    componentId : mongoose.Types.ObjectId;
-    componentCode : string;     // denormalized for fast payslip rendering
-    amount : number;        // resolved monthly amount for this component
+  componentId: mongoose.Types.ObjectId;
+  componentCode: string;     // denormalized for fast payslip rendering
+  amount: number;        // resolved monthly amount for this component
 }
 
 export interface SalaryStructureDocument extends BaseDocument {
-    employeeId:      mongoose.Types.ObjectId;
-    effectiveFrom:   Date;
-    effectiveTo?:    Date | null;      // null = currently active
-    supersedes?:     mongoose.Types.ObjectId | null;
-    ctcAnnual:       number;    // total annual CTC this structure represents
-    lineItems:       SalaryLineItem[];
-    grossMonthly:    number;    // sum of EARNING components
-    totalDeductionsMonthly: number;  // sum of DEDUCTION components (excl. attendance-based LOP)
-    netMonthly:      number;    // gross - deductions, before LOP is applied at run time
-    wagesForStatutory: number;  // recalculated "wages" figure per 50% rule — used for PF/ESI/gratuity base
-    isActive:        boolean;
+  employeeId: mongoose.Types.ObjectId;
+  effectiveFrom: Date;
+  effectiveTo?: Date | null;      // null = currently active
+  supersedes?: mongoose.Types.ObjectId | null;
+  ctcAnnual: number;    // total annual CTC this structure represents
+  lineItems: SalaryLineItem[];
+  grossMonthly: number;    // sum of EARNING components
+  totalDeductionsMonthly: number;  // sum of DEDUCTION components (excl. attendance-based LOP)
+  netMonthly: number;    // gross - deductions, before LOP is applied at run time
+  wagesForStatutory: number;  // recalculated "wages" figure per 50% rule — used for PF/ESI/gratuity base
+  isActive: boolean;
 }
 
 const SalaryLineItemSchema = new mongoose.Schema(
   {
-    componentId:   { type: mongoose.Schema.Types.ObjectId, required: true },
+    componentId: { type: mongoose.Schema.Types.ObjectId, required: true },
     componentCode: { type: String, required: true, uppercase: true },
-    amount:        { type: Number, required: true, min: 0 },
+    amount: { type: Number, required: true, min: 0 },
   },
   { _id: false }
 );
@@ -39,53 +39,53 @@ const SalaryLineItemSchema = new mongoose.Schema(
 const SalaryStructureSchema = createBaseSchema<SalaryStructureDocument>(
   {
     employeeId: {
-      type:     mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
-      index:    true,
+      index: true,
     },
     effectiveFrom: {
-      type:     Date,
+      type: Date,
       required: true,
     },
     effectiveTo: {
-      type:    Date,
+      type: Date,
       default: null,
     },
     supersedes: {
-      type:    mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       default: null,
     },
     ctcAnnual: {
-      type:     Number,
+      type: Number,
       required: true,
-      min:      0,
+      min: 0,
     },
     lineItems: {
-      type:    [SalaryLineItemSchema],
+      type: [SalaryLineItemSchema],
       default: [],
     },
     grossMonthly: {
-      type:     Number,
+      type: Number,
       required: true,
-      min:      0,
+      min: 0,
     },
     totalDeductionsMonthly: {
-      type:    Number,
+      type: Number,
       default: 0,
-      min:     0,
+      min: 0,
     },
     netMonthly: {
-      type:     Number,
+      type: Number,
       required: true,
-      min:      0,
+      min: 0,
     },
     wagesForStatutory: {
-      type:     Number,
+      type: Number,
       required: true,
-      min:      0,
+      min: 0,
     },
     isActive: {
-      type:    Boolean,
+      type: Boolean,
       default: true,
     },
   },

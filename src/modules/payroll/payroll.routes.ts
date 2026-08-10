@@ -31,107 +31,107 @@ router.use(injectOnboardingStatus);
 // Self-service — blocked at Day 8+ until profile is complete.
 // Payslips require bank details and tax info to be meaningful/accurate.
 router.get(
-    "/payslips/me",
-    requireProfileForRestrictedFeature("payslip downloads"),
-    ctrl.getMyPayslips.bind(ctrl)
+  "/payslips/me",
+  requireProfileForRestrictedFeature("payslip downloads"),
+  ctrl.getMyPayslips.bind(ctrl)
 );
 
 router.get(
-    "/payslips/me/:id",
-    requireProfileForRestrictedFeature("payslip downloads"),
-    ctrl.getMyPayslipById.bind(ctrl)
+  "/payslips/me/:id",
+  requireProfileForRestrictedFeature("payslip downloads"),
+  ctrl.getMyPayslipById.bind(ctrl)
 );
 
 // Salary components (HR config)
 router.get(
-    "/components",
-    checkPermission("payroll.read"),
-    ctrl.listComponents.bind(ctrl)
+  "/components",
+  checkPermission("payroll.read"),
+  ctrl.listComponents.bind(ctrl)
 );
 
 router.post(
-    "/components",
-    checkPermission("payroll.create"),
-    validateBody(CreateSalaryComponentDto),
-    ctrl.createComponent.bind(ctrl)
+  "/components",
+  checkPermission("payroll.create"),
+  validateBody(CreateSalaryComponentDto),
+  ctrl.createComponent.bind(ctrl)
 );
 
 router.patch(
-    "/components/:id",
-    checkPermission("payroll.create"),
-    validateBody(UpdateSalaryComponentDto),
-    ctrl.updateComponent.bind(ctrl)
+  "/components/:id",
+  checkPermission("payroll.create"),
+  validateBody(UpdateSalaryComponentDto),
+  ctrl.updateComponent.bind(ctrl)
 );
 
 router.delete(
-    "/components/:id",
-    checkPermission("payroll.create"),
-    ctrl.deleteComponent.bind(ctrl)
+  "/components/:id",
+  checkPermission("payroll.create"),
+  ctrl.deleteComponent.bind(ctrl)
 );
 
 // Salary structure
 router.post(
-    "/structures",
-    checkPermission("payroll.create"),
-    validateBody(CreateSalaryStructureDto),
-    ctrl.createStructure.bind(ctrl)
+  "/structures",
+  checkPermission("payroll.create"),
+  validateBody(CreateSalaryStructureDto),
+  ctrl.createStructure.bind(ctrl)
 );
 
 router.get(
-    "/structures/:employeeId",
-    checkPermission("payroll.read"),
-    ctrl.getStructure.bind(ctrl)
+  "/structures/:employeeId",
+  checkPermission("payroll.read"),
+  ctrl.getStructure.bind(ctrl)
 );
 
 //Payroll runs
 router.get(
-    "/runs",
-    checkPermission("payroll.read"),
-    ctrl.listRuns.bind(ctrl)
+  "/runs",
+  checkPermission("payroll.read"),
+  ctrl.listRuns.bind(ctrl)
 );
 
 router.post(
-    "/runs",
-    checkPermission("payroll.create"),
-    validateBody(CreatePayrollRunDto),
-    ctrl.createRun.bind(ctrl)
+  "/runs",
+  checkPermission("payroll.create"),
+  validateBody(CreatePayrollRunDto),
+  ctrl.createRun.bind(ctrl)
 );
 
 router.get(
-    "/runs/:id",
-    checkPermission("payroll.read"),
-    ctrl.getRun.bind(ctrl)
+  "/runs/:id",
+  checkPermission("payroll.read"),
+  ctrl.getRun.bind(ctrl)
 );
 
 router.post(
-    "/runs/:id/generate",
-    checkPermission("payroll.run"),
-    heavyActionLimiter(2, 300), // Layer 3: max 2 generates per user per 5 min
-    ctrl.generatePayslips.bind(ctrl)
+  "/runs/:id/generate",
+  checkPermission("payroll.run"),
+  heavyActionLimiter(2, 300), // Layer 3: max 2 generates per user per 5 min
+  ctrl.generatePayslips.bind(ctrl)
 );
 
 router.get(
-    "/runs/:id/payslips",
-    checkPermission("payroll.read"),
-    ctrl.getRunPayslips.bind(ctrl)
+  "/runs/:id/payslips",
+  checkPermission("payroll.read"),
+  ctrl.getRunPayslips.bind(ctrl)
 );
 
 router.patch(
-    "/runs/:id/approve",
-    checkPermission("payroll.approve"),
-    validateBody(ApprovePayrollRunDto),
-    heavyActionLimiter(3, 300), // Layer 3: max 3 approvals per user per 5 min
-    ctrl.approveRun.bind(ctrl)
+  "/runs/:id/approve",
+  checkPermission("payroll.approve"),
+  validateBody(ApprovePayrollRunDto),
+  heavyActionLimiter(3, 300), // Layer 3: max 3 approvals per user per 5 min
+  ctrl.approveRun.bind(ctrl)
 );
 
 router.patch(
-    "/runs/:id/paid",
-    checkPermission("payroll.approve"),
-    ctrl.markRunPaid.bind(ctrl)
+  "/runs/:id/paid",
+  checkPermission("payroll.approve"),
+  ctrl.markRunPaid.bind(ctrl)
 );
 
 
-// ── Attendance Lock ───────────────────────────────────────────────────────
+// ── Attendance Lock 
 // HR locks attendance period before payroll can run
 // Unlock blocked if payroll already paid for that period
 
@@ -161,7 +161,7 @@ router.get(
   ctrl.listAttendanceLocksByYear.bind(ctrl)
 );
 
-// ── Pre-flight Validation ─────────────────────────────────────────────────
+// ── Pre-flight Validation 
 // Run before generate — surfaces per-employee errors HR must fix first
 
 router.post(
@@ -170,7 +170,7 @@ router.post(
   ctrl.validateRun.bind(ctrl)
 );
 
-// ── Overtime ──────────────────────────────────────────────────────────────
+// ── Overtime 
 // Manager approves/rejects OT before payroll generates
 
 router.get(
@@ -198,7 +198,7 @@ router.patch(
   ctrl.rejectOT.bind(ctrl)
 );
 
-// ── Statutory Config — PT slabs ───────────────────────────────────────────
+// ── Statutory Config — PT slabs 
 // Finance team updates these annually when state revises slabs
 
 router.get(
@@ -220,7 +220,7 @@ router.delete(
   ctrl.deletePTConfig.bind(ctrl)
 );
 
-// ── Statutory Config — LWF ────────────────────────────────────────────────
+// ── Statutory Config — LWF 
 
 router.get(
   "/statutory/lwf",
@@ -235,7 +235,7 @@ router.post(
   ctrl.upsertLWFConfig.bind(ctrl)
 );
 
-// ── Statutory Config — OT Rules ───────────────────────────────────────────
+// ── Statutory Config — OT Rules 
 
 router.get(
   "/statutory/ot-config",
@@ -250,7 +250,7 @@ router.post(
   ctrl.upsertOTConfig.bind(ctrl)
 );
 
-// ── Tax Declaration — Employee self-service ───────────────────────────────
+// ── Tax Declaration — Employee self-service 
 // Employee submits once per year, can revise before proof deadline.
 // Blocked at Day 8+ — tax declaration requires bank + identity details to be
 // present and accurate before it can be acted upon by payroll.
@@ -273,7 +273,7 @@ router.patch(
   ctrl.markTaxProofSubmitted.bind(ctrl)
 );
 
-// ── Step 3: Variable & Ad-Hoc Adjustments ──────────────────────────────────
+// ── Step 3: Variable & Ad-Hoc Adjustments 
 
 router.post(
   "/adjustments",
@@ -320,7 +320,7 @@ router.delete(
   ctrl.deleteAdjustment.bind(ctrl)
 );
 
-// ── Step 8: Period-over-Period Variance & Audit ───────────────────────────
+// ── Step 8: Period-over-Period Variance & Audit 
 
 router.get(
   "/runs/:id/variance-report",
@@ -328,7 +328,7 @@ router.get(
   ctrl.getVarianceReport.bind(ctrl)
 );
 
-// ── Step 10: Bank Disbursement Exports ────────────────────────────────────
+// ── Step 10: Bank Disbursement Exports 
 
 router.get(
   "/runs/:id/disbursement/summary",
@@ -342,7 +342,7 @@ router.get(
   ctrl.downloadDisbursementFile.bind(ctrl)
 );
 
-// ── Step 12 & 14: Statutory Compliance & Returns ─────────────────────────
+// ── Step 12 & 14: Statutory Compliance & Returns 
 
 router.get(
   "/runs/:id/statutory/epf-ecr",
@@ -368,7 +368,7 @@ router.get(
   ctrl.downloadTds24Q.bind(ctrl)
 );
 
-// ── Step 13: General Ledger Accounting ────────────────────────────────────
+// ── Step 13: General Ledger Accounting 
 
 router.get(
   "/gl-config",
@@ -389,4 +389,4 @@ router.get(
   ctrl.getOrDownloadGLJournal.bind(ctrl)
 );
 
-export default router;
+export default router;

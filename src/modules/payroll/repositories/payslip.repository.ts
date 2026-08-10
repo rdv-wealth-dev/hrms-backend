@@ -55,7 +55,7 @@ export class PayslipRepository {
     monthsList: { year: number; month: number }[]
   ): Promise<boolean> {
     if (monthsList.length === 0) return false;
-    
+
     const query = {
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       employeeId: new mongoose.Types.ObjectId(employeeId),
