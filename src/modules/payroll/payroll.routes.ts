@@ -136,27 +136,27 @@ router.patch(
 // Unlock blocked if payroll already paid for that period
 
 router.post(
-  "/attendance-lock/lock",
+  ["/attendance-lock/lock", "/attendance-locks/lock"],
   checkPermission("payroll.run"),
   validateBody(AttendanceLockDto),
   ctrl.lockAttendance.bind(ctrl)
 );
 
 router.post(
-  "/attendance-lock/unlock",
+  ["/attendance-lock/unlock", "/attendance-locks/unlock"],
   checkPermission("payroll.run"),
   validateBody(AttendanceUnlockDto),
   ctrl.unlockAttendance.bind(ctrl)
 );
 
 router.get(
-  "/attendance-lock/status/:year/:month",
+  ["/attendance-lock/status/:year/:month", "/attendance-locks/status/:year/:month", "/attendance-locks/:year/:month", "/attendance-lock/:year/:month"],
   checkPermission("payroll.read"),
   ctrl.getAttendanceLockStatus.bind(ctrl)
 );
 
 router.get(
-  "/attendance-lock/year/:year",
+  ["/attendance-lock/year/:year", "/attendance-locks/year/:year", "/attendance-locks/year/:year"],
   checkPermission("payroll.read"),
   ctrl.listAttendanceLocksByYear.bind(ctrl)
 );
