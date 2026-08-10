@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { EmployeeService } from "../services/employee.service";
 import { buildSuccessResponse } from "../../../shared/database/base.schema";
-import { ListEmployeesQueryDto, CalendarEventsQueryDto, CropAvatarDto } from "../dto/employee.dto";
+import { ListEmployeesQueryDto, CalendarEventsQueryDto, CropAvatarDto, EligibleManagersQueryDto } from "../dto/employee.dto";
 import { AppError } from "../../../shared/errors/app.error";
 import { parseImportFile, buildExportBuffer, buildImportTemplate } from "../utils/employee.utils";
 
@@ -34,6 +34,23 @@ export class EmployeeController {
       const query = ListEmployeesQueryDto.parse(req.query);
       const result = await empService.listEmployees(req.context, query);
       res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // GET /api/v1/employees/eligible-managers
+  async getEligibleManagers(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const query = EligibleManagersQueryDto.parse(req.query);
+      const result = await empService.getEligibleManagers(req.context, query);
+      res.status(200).json(
+        buildSuccessResponse(result, "Eligible managers retrieved successfully")
+      );
     } catch (error) {
       next(error);
     }

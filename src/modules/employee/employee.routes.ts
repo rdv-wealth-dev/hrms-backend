@@ -107,6 +107,13 @@ router.get(
   controller.getCalendarEvents.bind(controller)
 );
 
+// Dynamic Eligible Managers Query — static path, must be before /:id
+router.get(
+  "/eligible-managers",
+  checkPermission("employee.read"),
+  controller.getEligibleManagers.bind(controller)
+);
+
 // Bulk Import & Export — static paths, must be before /:id
 router.post(
   "/bulk-import",

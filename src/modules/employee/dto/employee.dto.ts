@@ -179,6 +179,17 @@ export const ListEmployeesQueryDto = z.object({
 
 export type ListEmployeesQuery = z.infer<typeof ListEmployeesQueryDto>;
 
+// Eligible Managers Query for dynamic department/branch assignment
+export const EligibleManagersQueryDto = z.object({
+  branchId: objectIdSchema.optional(),
+  departmentId: objectIdSchema.optional(),
+  designationId: objectIdSchema.optional(),
+  minLevel: z.string().optional().transform(v => (v ? parseInt(v, 10) : undefined)),
+  excludeEmployeeId: objectIdSchema.optional(),
+  search: z.string().trim().optional(),
+});
+export type EligibleManagersQuery = z.infer<typeof EligibleManagersQueryDto>;
+
 
 // Calendar events query
 export const CalendarEventsQueryDto = z.object({
