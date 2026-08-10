@@ -65,7 +65,8 @@ export class PayrollAuditService {
         prevMonth = 12;
         prevYear -= 1;
       }
-      previousRun = await this.runRepo.findByMonthYear(context, prevYear, prevMonth);
+      const branchId = (currentRun.branchId as mongoose.Types.ObjectId).toString();
+      previousRun = await this.runRepo.findByMonthYear(context, branchId, prevYear, prevMonth);
     }
 
     if (previousRun) {

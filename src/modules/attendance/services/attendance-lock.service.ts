@@ -10,16 +10,20 @@ export class AttendanceLockService {
 
   // Lock a period 
   async lockPeriod(
-    context: RequestContext,
-    year:    number,
-    month:   number
+    context:  RequestContext,
+    year:     number,
+    month:    number,
+    branchId?: string
   ) {
-    const branchId = context.branchIds[0] ?? "";
-    const period   = `${year}-${String(month).padStart(2, "0")}`;
+    const targetBranchId = branchId || context.branchIds[0] || "";
+    if (!targetBranchId) {
+      throw new AppError("branchId is required to lock attendance.", 400);
+    }
+    const period = `${year}-${String(month).padStart(2, "0")}`;
 
     const existing = await AttendanceLockModel.findOne({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
-      branchId: new mongoose.Types.ObjectId(branchId),
+      branchId: new mongoose.Types.ObjectId(targetBranchId),
       period,
     });
 
@@ -36,7 +40,7 @@ export class AttendanceLockService {
 
     return AttendanceLockModel.create({
       tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-      branchId:  new mongoose.Types.ObjectId(branchId),
+      branchId:  new mongoose.Types.ObjectId(targetBranchId),
       period,
       status:    AttendanceLockStatus.LOCKED,
       lockedAt:  new Date(),
@@ -49,14 +53,18 @@ export class AttendanceLockService {
     context:      RequestContext,
     year:         number,
     month:        number,
-    unlockReason: string
+    unlockReason: string,
+    branchId?:    string
   ) {
-    const branchId = context.branchIds[0] ?? "";
-    const period   = `${year}-${String(month).padStart(2, "0")}`;
+    const targetBranchId = branchId || context.branchIds[0] || "";
+    if (!targetBranchId) {
+      throw new AppError("branchId is required to unlock attendance.", 400);
+    }
+    const period = `${year}-${String(month).padStart(2, "0")}`;
 
     const lock = await AttendanceLockModel.findOne({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
-      branchId: new mongoose.Types.ObjectId(branchId),
+      branchId: new mongoose.Types.ObjectId(targetBranchId),
       period,
     });
 
@@ -89,16 +97,17 @@ export class AttendanceLockService {
 
   // Get lock status for one period 
   async getLockStatus(
-    context: RequestContext,
-    year:    number,
-    month:   number
+    context:  RequestContext,
+    year:     number,
+    month:    number,
+    branchId?: string
   ) {
-    const branchId = context.branchIds[0] ?? "";
-    const period   = `${year}-${String(month).padStart(2, "0")}`;
+    const targetBranchId = branchId || context.branchIds[0] || "";
+    const period = `${year}-${String(month).padStart(2, "0")}`;
 
     const lock = await AttendanceLockModel.findOne({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
-      branchId: new mongoose.Types.ObjectId(branchId),
+      branchId: new mongoose.Types.ObjectId(targetBranchId),
       period,
     }).lean();
 
@@ -112,13 +121,13 @@ export class AttendanceLockService {
   }
 
   // List all 12 months for a year
-  async listYearLocks(context: RequestContext, year: number) {
-    const branchId = context.branchIds[0] ?? "";
+  async listYearLocks(context: RequestContext, year: number, branchId?: string) {
+    const targetBranchId = branchId || context.branchIds[0] || "";
 
     const locks = await AttendanceLockModel.find({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
-      branchId: new mongoose.Types.ObjectId(branchId),
-      year,
+      branchId: new mongoose.Types.ObjectId(targetBranchId),
+      period:   { $regex: `^${year}-` },
     }).lean();
 
     // Derive month number from period string (e.g. "2026-07" → 7)

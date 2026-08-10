@@ -80,20 +80,22 @@ export class PayrollRunService {
   // ─────────────────────────────────────────────────────────────────────────
 
   async createRun(context: RequestContext, input: CreatePayrollRunInput) {
+    const branchId = input.branchId || context.branchIds[0] || "";
+    if (!branchId) {
+      throw new AppError("branchId is required to create a payroll run", 400);
+    }
+
     const existing = await this.runRepo.findByMonthYear(
-      context, input.year, input.month
+      context, branchId, input.year, input.month
     );
     if (existing) {
       throw new AppError(
-        `A payroll run for ${MONTH_NAMES[input.month - 1]} ${input.year} already exists`,
+        `A payroll run for ${MONTH_NAMES[input.month - 1]} ${input.year} already exists for this branch`,
         409
       );
     }
 
-    const branchId = context.branchIds[0] ?? "";
-    const branch = branchId
-      ? await BranchModel.findById(branchId).select("countryCode currency").lean()
-      : null;
+    const branch = await BranchModel.findById(branchId).select("countryCode currency").lean();
 
     return this.runRepo.create({
       tenantId:  new mongoose.Types.ObjectId(context.tenantId) as any,
@@ -626,8 +628,13 @@ export class PayrollRunService {
   // STANDARD CRUD
   // ─────────────────────────────────────────────────────────────────────────
 
-  async list(context: RequestContext, page: number, pageSize: number) {
-    return this.runRepo.findAll(context, page, pageSize);
+  async list(
+    context: RequestContext,
+    page: number,
+    pageSize: number,
+    filter?: { branchId?: string; year?: number; month?: number; status?: string }
+  ) {
+    return this.runRepo.findAll(context, page, pageSize, filter);
   }
 
   async getById(context: RequestContext, id: string) {

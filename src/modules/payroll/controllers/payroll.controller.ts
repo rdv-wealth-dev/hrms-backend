@@ -160,7 +160,17 @@ export class PayrollController {
     try {
       const page = parseInt(req.query.pageNumber as string) || 1;
       const pageSize = parseInt(req.query.pageSize as string) || 20;
-      const result = await runService.list(req.context, page, pageSize);
+      const branchId = req.query.branchId as string;
+      const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+      const month = req.query.month ? parseInt(req.query.month as string) : undefined;
+      const status = req.query.status as string;
+
+      const result = await runService.list(req.context!, page, pageSize, {
+        branchId,
+        year,
+        month,
+        status,
+      });
       res.status(200).json(result);
     } catch (e) { 
         next(e); 
@@ -286,9 +296,9 @@ export class PayrollController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { year, month } = req.body;
+      const { year, month, branchId } = req.body;
       const result = await lockService.lockPeriod(
-        req.context!, parseInt(year), parseInt(month)
+        req.context!, parseInt(year), parseInt(month), branchId
       );
       res.status(200).json(
         buildSuccessResponse(result, `Attendance locked for ${year}-${String(month).padStart(2, "0")}`)
@@ -302,9 +312,9 @@ export class PayrollController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { year, month, reason } = req.body;
+      const { year, month, reason, branchId } = req.body;
       const result = await lockService.unlockPeriod(
-        req.context!, parseInt(year), parseInt(month), reason
+        req.context!, parseInt(year), parseInt(month), reason, branchId
       );
       res.status(200).json(
         buildSuccessResponse(result, `Attendance unlocked for ${year}-${String(month).padStart(2, "0")}`)
@@ -318,10 +328,12 @@ export class PayrollController {
     next: NextFunction
   ): Promise<void> {
     try {
+      const branchId = req.query.branchId as string;
       const result = await lockService.getLockStatus(
         req.context!,
         parseInt(req.params.year),
-        parseInt(req.params.month)
+        parseInt(req.params.month),
+        branchId
       );
       res.status(200).json(buildSuccessResponse(result, "Lock status fetched"));
     } catch (e) { next(e); }
@@ -333,8 +345,9 @@ export class PayrollController {
     next: NextFunction
   ): Promise<void> {
     try {
+      const branchId = req.query.branchId as string;
       const result = await lockService.listYearLocks(
-        req.context!, parseInt(req.params.year)
+        req.context!, parseInt(req.params.year), branchId
       );
       res.status(200).json(buildSuccessResponse(result, "Year lock statuses fetched"));
     } catch (e) { next(e); }

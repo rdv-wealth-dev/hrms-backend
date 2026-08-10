@@ -41,6 +41,7 @@ export type CreateSalaryStructureInput = z.infer<typeof CreateSalaryStructureDto
 
 //Payroll Run
 export const CreatePayrollRunDto = z.object({
+  branchId: objectIdSchema.optional(),
   month: z.number().min(1).max(12),
   year:  z.number().min(2020).max(2100),
 });
@@ -56,12 +57,14 @@ export type ApprovePayrollRunInput = z.infer<typeof ApprovePayrollRunDto>;
 // ── Attendance Lock ───────────────────────────────────────────────────────
 
 export const AttendanceLockDto = z.object({
+  branchId: objectIdSchema.optional(),
   year:  z.number().min(2020).max(2100),
   month: z.number().min(1).max(12),
 });
 export type AttendanceLockInput = z.infer<typeof AttendanceLockDto>;
 
 export const AttendanceUnlockDto = z.object({
+  branchId: objectIdSchema.optional(),
   year:   z.number().min(2020).max(2100),
   month:  z.number().min(1).max(12),
   reason: safeStringSchema(5, 500),

@@ -3,7 +3,8 @@ import { receiveRawBiometricWebhook } from "./device-webhook.controller";
 
 const router = Router();
 
-// Biometric webhook endpoint - generic, supports dynamic tenantId and provider route params
-router.post("/:tenantId/:provider", receiveRawBiometricWebhook);
+// Biometric webhook endpoints supporting both branchId and tenantId routing
+router.post("/:identifier/:provider", receiveRawBiometricWebhook);
+router.post("/:tenantId/:branchId/:provider", receiveRawBiometricWebhook);
 
 export default router;

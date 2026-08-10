@@ -11,6 +11,14 @@ export const CreateBranchDto = z.object({
     .min(2, "Code must be at least 2 characters")
     .max(20, "Code must not exceed 20 characters"),
 
+  legalEntityName: safeStringSchema(2, 300).optional(),
+  countryCode: z.string().trim().toUpperCase().length(2).optional().default("IN"),
+  currency: z.string().trim().toUpperCase().length(3).optional().default("INR"),
+  taxRegistrationNumber: z.string().trim().optional(),
+  stateOrRegionCode: z.string().trim().toUpperCase().optional(),
+  isHeadquarters: z.boolean().optional(),
+  isHeadOffice: z.boolean().optional(),
+
   parentBranchId: z.string().optional(),
 
   address: z.object({
