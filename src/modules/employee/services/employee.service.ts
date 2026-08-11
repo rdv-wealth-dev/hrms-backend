@@ -407,9 +407,21 @@ export class EmployeeService {
     context: RequestContext,
     id: string
   ) {
-    const employee = await this.empRepo.findById(context, id, {
-      populate: ["departmentId", "designationId"],
-    });
+    let employee: any = null;
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      employee = await this.empRepo.findById(context, id, {
+        populate: ["departmentId", "designationId"],
+      });
+    }
+
+    if (!employee) {
+      employee = await EmployeeModel.findOne({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        employeeCode: id.trim(),
+        isDeleted: false,
+      }).populate(["departmentId", "designationId"]);
+    }
 
     if (!employee) {
       throw new AppError("Employee not found", 404);
@@ -417,6 +429,7 @@ export class EmployeeService {
 
     return employee;
   }
+
 
   //Get complete employee profile (for HR/Admin)
   async getCompleteEmployeeProfile(
@@ -671,9 +684,38 @@ export class EmployeeService {
       _id: new mongoose.Types.ObjectId(context.userId),
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
-    }).select("employeeId");
+    }).select("employeeId email firstName lastName role");
 
-    if (!user || !user.employeeId) {
+    let employeeId = user?.employeeId?.toString();
+
+    if (!employeeId && user) {
+      const emp = await EmployeeModel.findOne({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        $or: [
+          { userId: user._id },
+          { email: user.email },
+        ],
+        isDeleted: false,
+      });
+
+      if (emp) {
+        employeeId = emp._id.toString();
+        await UserModel.updateOne({ _id: user._id }, { employeeId: emp._id });
+      }
+    }
+
+    if (!employeeId) {
+      if (context.role === "ORG_ADMIN" || context.role === "SUPER_ADMIN") {
+        const firstEmp = await EmployeeModel.findOne({
+          tenantId: new mongoose.Types.ObjectId(context.tenantId),
+          isDeleted: false,
+        }).populate(["departmentId", "designationId"]);
+
+        if (firstEmp) {
+          return firstEmp;
+        }
+      }
+
       throw new AppError(
         "No employee record is linked to this account",
         404
@@ -682,7 +724,7 @@ export class EmployeeService {
 
     const employee = await this.empRepo.findById(
       context,
-      user.employeeId.toString(),
+      employeeId,
       { populate: ["departmentId", "designationId"] }
     );
 
@@ -690,8 +732,8 @@ export class EmployeeService {
       throw new AppError("Employee record not found", 404);
     }
     return employee;
-
   }
+
 
   // Self-service — employee updates only their own profile fields
   async updateMyProfile(
@@ -732,15 +774,25 @@ export class EmployeeService {
     employeeId: string,
     input: AddBankAccountInput
   ) {
-    const employee = await this.empRepo.findById(context, employeeId);
+    let employee = mongoose.Types.ObjectId.isValid(employeeId)
+      ? await this.empRepo.findById(context, employeeId)
+      : null;
+    if (!employee) {
+      employee = await EmployeeModel.findOne({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        employeeCode: employeeId.trim(),
+        isDeleted: false,
+      });
+    }
     if (!employee) throw new AppError("Employee not found", 404);
+    const resolvedEmployeeId = employee._id.toString();
 
     // If isPrimary — unset all existing primary accounts first
     if (input.isPrimary) {
       await mongoose.model("EmployeeBankAccount").updateMany(
         {
           tenantId: new mongoose.Types.ObjectId(context.tenantId),
-          employeeId: new mongoose.Types.ObjectId(employeeId),
+          employeeId: new mongoose.Types.ObjectId(resolvedEmployeeId),
           isDeleted: false,
         },
         { isPrimary: false }
@@ -750,7 +802,7 @@ export class EmployeeService {
     const account = await this.empRepo.addBankAccount({
       tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
       branchId: employee.branchId as any,
-      employeeId: new mongoose.Types.ObjectId(employeeId) as any,
+      employeeId: new mongoose.Types.ObjectId(resolvedEmployeeId) as any,
       bankName: input.bankName,
       accountNumber: input.accountNumber,
       ifscCode: input.ifscCode,
@@ -762,7 +814,7 @@ export class EmployeeService {
     });
 
     // Return with masked account number
-    await recalculateProfileCompletion(context.tenantId, employeeId);
+    await recalculateProfileCompletion(context.tenantId, resolvedEmployeeId);
     return {
       ...account.toObject(),
       accountNumber: maskAccountNumber(account.accountNumber),
@@ -773,8 +825,18 @@ export class EmployeeService {
     context: RequestContext,
     employeeId: string
   ) {
-    const employee = await this.empRepo.findById(context, employeeId);
+    let employee = mongoose.Types.ObjectId.isValid(employeeId)
+      ? await this.empRepo.findById(context, employeeId)
+      : null;
+    if (!employee) {
+      employee = await EmployeeModel.findOne({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        employeeCode: employeeId.trim(),
+        isDeleted: false,
+      });
+    }
     if (!employee) throw new AppError("Employee not found", 404);
+
 
     const accounts = await this.empRepo.getBankAccounts(context, employeeId);
 

@@ -52,16 +52,25 @@ export class DesignationService {
   //List all
   async listDesignations(
     context:    RequestContext,
-    pagination: PaginationOptions
+    pagination: PaginationOptions,
+    filter:     { departmentId?: string; branchId?: string } = {}
   ) {
-    // Designations are org-level master data — NOT branch-scoped.
+    const queryFilter: Record<string, any> = { isActive: true };
+    if (filter.departmentId && mongoose.Types.ObjectId.isValid(filter.departmentId)) {
+      queryFilter.departmentId = new mongoose.Types.ObjectId(filter.departmentId);
+    }
+    if (filter.branchId && mongoose.Types.ObjectId.isValid(filter.branchId)) {
+      queryFilter.branchId = new mongoose.Types.ObjectId(filter.branchId);
+    }
+
     return this.desgRepo.findAll(
       { ...context, branchIds: [] },
-      { isActive: true },
+      queryFilter,
       pagination,
       { sort: { departmentId: 1, level: 1, name: 1 } }
     );
   }
+
 
   //Get by ID
   async getDesignationById(

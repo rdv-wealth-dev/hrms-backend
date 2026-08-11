@@ -57,18 +57,22 @@ export class DepartmentService {
   // List all
   async listDepartments(
     context:    RequestContext,
-    pagination: PaginationOptions
+    pagination: PaginationOptions,
+    filter:     { branchId?: string } = {}
   ) {
-    // Departments are org-level master data — NOT branch-scoped.
-    // We deliberately skip the base repo's branchId filter here so that
-    // all departments across all branches are visible to every user.
+    const queryFilter: Record<string, any> = { isActive: true };
+    if (filter.branchId && mongoose.Types.ObjectId.isValid(filter.branchId)) {
+      queryFilter.branchId = new mongoose.Types.ObjectId(filter.branchId);
+    }
+
     return this.deptRepo.findAll(
       { ...context, branchIds: [] },   // clear branchIds so base filter doesn't scope it
-      { isActive: true },
+      queryFilter,
       pagination,
       { sort: { name: 1 } }
     );
   }
+
 
   //Get by ID
   async getDepartmentById(

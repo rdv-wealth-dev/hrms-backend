@@ -34,15 +34,18 @@ export class DepartmentController {
   ): Promise<void> {
     try {
       const { pageNumber, pageSize } = paginationSchema.parse(req.query);
+      const branchId = typeof req.query.branchId === "string" ? req.query.branchId.trim() : undefined;
       const result = await deptService.listDepartments(
         req.context,
-        { pageNumber, pageSize }
+        { pageNumber, pageSize },
+        { branchId }
       );
       res.status(200).json(result);
     } catch (error) {
       next(error);
     }
   }
+
 
   // GET /api/v1/departments/:id
   async getById(

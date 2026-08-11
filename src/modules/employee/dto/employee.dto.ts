@@ -3,6 +3,7 @@ import {
   safeStringSchema,
   objectIdSchema,
   emailSchema,
+  anyEmailSchema,
   phoneSchema,
   panSchema,
   aadhaarSchema,
@@ -15,89 +16,107 @@ import {
 } from "../../../shared/validators/common.validator";
 
 
+
 //Create Employee
-export const CreateEmployeeDto = withPhoneValidation(z.object({
-  // Identity
-  firstName:     safeStringSchema(2, 100),
-  lastName:      safeStringSchema(2, 100),
-  email:         emailSchema,
-  phone:         phoneSchema.optional(),
-  countryCode:   countryCodeSchema,
-  pfOnActuals:   z.boolean().optional().default(false),
-  dateOfBirth:   dateSchema.optional(),
-  gender:        z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
-  bloodGroup:    z.enum(["A+","A-","B+","B-","O+","O-","AB+","AB-"]).optional(),
-  maritalStatus: z.enum(["SINGLE","MARRIED","DIVORCED","WIDOWED"]).optional(),
-  nationality:   safeStringSchema(2, 100).optional(),
-  pan:            panSchema.optional(),
-  aadhaar:        aadhaarSchema.optional(),
-  passportNo:     passportSchema.optional(),
-  drivingLicense: drivingLicenseSchema.optional(),
-  voterId:        voterIdSchema.optional(),
+export const CreateEmployeeDto = withPhoneValidation(
+  z.object({
+    // Identity
+    firstName:     safeStringSchema(2, 100),
+    lastName:      safeStringSchema(2, 100),
+    email:         anyEmailSchema.optional(),
+    workEmail:     anyEmailSchema.optional(),
+    phone:         phoneSchema.optional(),
+    countryCode:   countryCodeSchema.optional().default("IN"),
+    pfOnActuals:   z.boolean().optional().default(false),
+    dateOfBirth:   dateSchema.optional(),
+    gender:        z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+    bloodGroup:    z.enum(["A+","A-","B+","B-","O+","O-","AB+","AB-"]).optional(),
+    maritalStatus: z.enum(["SINGLE","MARRIED","DIVORCED","WIDOWED"]).optional(),
+    nationality:   safeStringSchema(2, 100).optional(),
+    pan:            panSchema.optional(),
+    aadhaar:        aadhaarSchema.optional(),
+    passportNo:     passportSchema.optional(),
+    drivingLicense: drivingLicenseSchema.optional(),
+    voterId:        voterIdSchema.optional(),
 
-  // Organisation
-  branchId: z.preprocess(
-    (val) => (val === "" ? undefined : val),
-    objectIdSchema.optional()
-  ),
-  departmentId:  objectIdSchema,
-  designationId: objectIdSchema,
-  managerId:     objectIdSchema.optional(),
-  employeeType:  z.enum([
-    "FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"
-  ]).default("FULL_TIME"),
-  joiningDate:   dateSchema,
-  probationEndDate: dateSchema.optional(),
-  shiftId: objectIdSchema.optional(),
+    // Organisation
+    branchId: z.preprocess(
+      (val) => (val === "" ? undefined : val),
+      objectIdSchema.optional()
+    ),
+    departmentId:  objectIdSchema,
+    designationId: objectIdSchema,
+    managerId:     objectIdSchema.optional(),
+    employeeType:  z.enum([
+      "FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"
+    ]).optional().default("FULL_TIME"),
+    employmentType: z.enum([
+      "FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"
+    ]).optional(),
+    joiningDate:   dateSchema.optional(),
+    dateOfJoining: dateSchema.optional(),
+    probationEndDate: dateSchema.optional(),
+    shiftId: objectIdSchema.optional(),
 
-  // Address
-  currentAddress: z.object({
-    addressLine1: safeStringSchema(1, 200).optional(),
-    addressLine2: safeStringSchema(1, 200).optional(),
-    city:         safeStringSchema(1, 100).optional(),
-    state:        safeStringSchema(1, 100).optional(),
-    countryCode:  z.string().length(2).toUpperCase().optional(),
-    zip:          z.string().trim().optional(),
-  }).optional(),
+    // Address
+    currentAddress: z.object({
+      addressLine1: safeStringSchema(1, 200).optional(),
+      addressLine2: safeStringSchema(1, 200).optional(),
+      city:         safeStringSchema(1, 100).optional(),
+      state:        safeStringSchema(1, 100).optional(),
+      countryCode:  z.string().length(2).toUpperCase().optional(),
+      zip:          z.string().trim().optional(),
+    }).optional(),
 
-  permanentAddress: z.object({
-    addressLine1: safeStringSchema(1, 200).optional(),
-    addressLine2: safeStringSchema(1, 200).optional(),
-    city:         safeStringSchema(1, 100).optional(),
-    state:        safeStringSchema(1, 100).optional(),
-    countryCode:  z.string().length(2).toUpperCase().optional(),
-    zip:          z.string().trim().optional(),
-  }).optional(),
+    permanentAddress: z.object({
+      addressLine1: safeStringSchema(1, 200).optional(),
+      addressLine2: safeStringSchema(1, 200).optional(),
+      city:         safeStringSchema(1, 100).optional(),
+      state:        safeStringSchema(1, 100).optional(),
+      countryCode:  z.string().length(2).toUpperCase().optional(),
+      zip:          z.string().trim().optional(),
+    }).optional(),
 
-  // Emergency contacts
-  emergencyContacts: z.array(
-    z.object({
-      name:         safeStringSchema(2, 100),
-      relationship: safeStringSchema(2, 50),
-      phone:        phoneSchema,
-      email:        emailSchema.optional(),
-    })
-  ).optional().default([]),
+    // Emergency contacts
+    emergencyContacts: z.array(
+      z.object({
+        name:         safeStringSchema(2, 100),
+        relationship: safeStringSchema(2, 50),
+        phone:        phoneSchema,
+        email:        anyEmailSchema.optional(),
+      })
+    ).optional().default([]),
 
-  // Mandatory — attach salary structure in the same onboarding call
-  salaryStructure: z.object({
-    ctcAnnual: z.number().min(0),
-    lineItems: z.array(z.object({
-      componentCode: z.string().trim().toUpperCase(),
-      amount:        z.number().min(0),
-    })).min(1),
-  }),
+    // Salary structure (optional on onboarding)
+    salaryStructure: z.object({
+      ctcAnnual: z.number().min(0),
+      lineItems: z.array(z.object({
+        componentCode: z.string().trim().toUpperCase(),
+        amount:        z.number().min(0),
+      })).min(1),
+    }).optional(),
 
-  // Optional — attach a bank account in the same onboarding call
-  bankAccount: z.object({
-    bankName:      z.string().trim().min(2),
-    accountNumber: z.string().trim().min(8).max(20),
-    ifscCode:      z.string().trim().toUpperCase().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/),
-    accountType:   z.enum(["SAVINGS","CURRENT","SALARY"]).optional().default("SALARY"),
-  }).optional(),
-}));
+    // Optional bank account
+    bankAccount: z.object({
+      bankName:      z.string().trim().min(2),
+      accountNumber: z.string().trim().min(8).max(20),
+      ifscCode:      z.string().trim().toUpperCase().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/),
+      accountType:   z.enum(["SAVINGS","CURRENT","SALARY"]).optional().default("SALARY"),
+    }).optional(),
+  })
+).transform((data) => ({
+  ...data,
+  email: (data.email || data.workEmail || "").trim(),
+  countryCode: data.countryCode || "IN",
+  joiningDate: data.joiningDate || data.dateOfJoining || new Date().toISOString().split("T")[0],
+  employeeType: data.employeeType || data.employmentType || "FULL_TIME",
+})).refine((data) => !!data.email && data.email.includes("@"), {
+  message: "Work email (or email) is required",
+  path: ["email"],
+});
 
 export type CreateEmployeeInput = z.infer<typeof CreateEmployeeDto>;
+
 
 //Update Employee
 export const UpdateEmployeeDto = withPhoneValidation(z.object({
@@ -162,15 +181,23 @@ export type UpdateEmployeeStatusInput = z.infer<typeof UpdateEmployeeStatusDto>;
 
 //Add Bank Account
 export const AddBankAccountDto = z.object({
-  bankName:      safeStringSchema(2, 200),
-  accountNumber: z.string().trim().min(8).max(20),
-  ifscCode:      z.string().trim().toUpperCase()
-    .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code"),
-  accountType:   z.enum(["SAVINGS","CURRENT","SALARY"]).default("SALARY"),
-  isPrimary:     z.boolean().default(false),
+  bankName:          safeStringSchema(2, 200),
+  accountHolderName: safeStringSchema(2, 200).optional(),
+  accountNumber:     z.string().trim().min(8).max(20),
+  ifscCode:          z.string().trim().toUpperCase().optional(),
+  ifsc:              z.string().trim().toUpperCase().optional(),
+  accountType:       z.enum(["SAVINGS","CURRENT","SALARY"]).optional().default("SALARY"),
+  isPrimary:         z.boolean().optional().default(false),
+}).transform((data) => ({
+  ...data,
+  ifscCode: (data.ifscCode || data.ifsc || "").toUpperCase(),
+})).refine((data) => /^[A-Z]{4}0[A-Z0-9]{6}$/.test(data.ifscCode), {
+  message: "Invalid IFSC code format (e.g. HDFC0000123)",
+  path: ["ifscCode"],
 });
 
 export type AddBankAccountInput = z.infer<typeof AddBankAccountDto>;
+
 
 
 //List Employees Query

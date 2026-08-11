@@ -34,15 +34,19 @@ export class DesignationController {
   ): Promise<void> {
     try {
       const { pageNumber, pageSize } = paginationSchema.parse(req.query);
+      const departmentId = typeof req.query.departmentId === "string" ? req.query.departmentId.trim() : undefined;
+      const branchId = typeof req.query.branchId === "string" ? req.query.branchId.trim() : undefined;
       const result = await desgService.listDesignations(
         req.context,
-        { pageNumber, pageSize }
+        { pageNumber, pageSize },
+        { departmentId, branchId }
       );
       res.status(200).json(result);
     } catch (error) {
       next(error);
     }
   }
+
 
   // GET /api/v1/designations/:id
   async getById(
