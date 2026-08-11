@@ -834,10 +834,11 @@ export class AuthService {
   }
 
   async changePassword(userId: string, input: ChangePasswordInput) {
-    const user = await UserModel.findById(userId);
+    const user = await UserModel.findById(userId).select("+passwordHash");
     if (!user) {
       throw new AppError("User not found", 404);
     }
+
 
     const isCurrentPasswordValid = await bcrypt.compare(input.currentPassword, user.passwordHash);
     if (!isCurrentPasswordValid) {

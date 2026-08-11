@@ -4,6 +4,10 @@ export interface IBiometricRawLog extends Document {
   tenantId: mongoose.Types.ObjectId;
   branchId?: mongoose.Types.ObjectId;
   provider: string;
+  employeeID?: string;
+  deviceSerialno?: string;
+  punchDate?: string;
+  punchTime?: string;
   receivedAt: Date;
   payload: any;
 }
@@ -13,11 +17,21 @@ const rawLogSchema = new Schema<IBiometricRawLog>(
     tenantId: { type: Schema.Types.ObjectId, required: true, index: true },
     branchId: { type: Schema.Types.ObjectId, index: true },
     provider: { type: String, required: true, index: true },
+    employeeID: { type: String, index: true },
+    deviceSerialno: { type: String },
+    punchDate: { type: String },
+    punchTime: { type: String },
     receivedAt: { type: Date, default: Date.now },
     payload: { type: Schema.Types.Mixed, required: true },
   },
   { timestamps: true, collection: "webhook_raw_biometrics" }
 );
+
+rawLogSchema.index(
+  { branchId: 1, employeeID: 1, punchDate: 1, punchTime: 1 },
+  { unique: true, sparse: true, name: "uniq_branch_employee_punch" }
+);
+
 
 export interface IBiometricPunch extends Document {
   employeeID: string;
