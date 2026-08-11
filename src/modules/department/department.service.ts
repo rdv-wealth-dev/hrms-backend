@@ -5,6 +5,9 @@ import { AppError } from "../../shared/errors/app.error";
 import { RequestContext } from "../../shared/types/request-context.interface";
 import { PaginationOptions,} from "../../shared/database/base.repository";
 import { BranchRepository } from "../branch/branch.repository";
+import { seedDepartments } from "../../database/seeds/department.seed";
+import { seedDesignations } from "../../database/seeds/designation.seed";
+
 
 export class DepartmentService {
   private deptRepo = new DepartmentRepository();
@@ -118,4 +121,32 @@ export class DepartmentService {
     await this.deptRepo.softDeleteById(context, id);
     return { message: "Department deleted successfully" };
   }
-}
+
+  // Seed default departments & designations
+  async seedMasterData(context: RequestContext, branchId?: string) {
+    let targetBranchId = branchId;
+    if (!targetBranchId) {
+      const branchRepo = new BranchRepository();
+      const headOffice = await branchRepo.findHeadOffice(context.tenantId);
+      if (headOffice) {
+        targetBranchId = headOffice._id.toString();
+      } else {
+        const branches = await branchRepo.findAllByTenant(context.tenantId);
+        if (branches.length > 0) {
+          targetBranchId = branches[0]._id.toString();
+        } else {
+          throw new AppError("No branch found for organization. Please create a branch first.", 400);
+        }
+      }
+    }
+
+    const deptMap = await seedDepartments(context.tenantId, targetBranchId);
+    await seedDesignations(context.tenantId, targetBranchId, deptMap);
+
+    return {
+      message: "Standard departments and designations seeded successfully",
+      branchId: targetBranchId,
+      departmentsSeeded: deptMap.size,
+    };
+  }
+}

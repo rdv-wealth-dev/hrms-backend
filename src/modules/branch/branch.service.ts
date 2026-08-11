@@ -8,6 +8,9 @@ import { geocodingService } from "../../shared/services/geocoding.service";
 import { seedStatutoryNationalHolidays } from "../../database/seeds/holiday.seed";
 import { seedLeaveTypes } from "../../database/seeds/leave-type.seed";
 import { seedShifts } from "../../database/seeds/shift.seed";
+import { seedDepartments } from "../../database/seeds/department.seed";
+import { seedDesignations } from "../../database/seeds/designation.seed";
+
 
 export class BranchService {
   private branchRepo = new BranchRepository();
@@ -105,19 +108,35 @@ export class BranchService {
     context: RequestContext,
     id: string
   ) {
-    const branch = await this.branchRepo.findById(id);
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError("Invalid branch ID format", 400);
+    }
+
+    let branch = await this.branchRepo.findById(id);
+
+    // Graceful fallback: If ID passed is the Tenant/Organization ID, resolve the tenant's primary/head office branch
+    if (!branch && id === context.tenantId.toString()) {
+      branch = await this.branchRepo.findHeadOffice(context.tenantId);
+      if (!branch) {
+        const branches = await this.branchRepo.findAllByTenant(context.tenantId);
+        if (branches.length > 0) {
+          branch = branches[0];
+        }
+      }
+    }
 
     if (!branch) {
       throw new AppError("Branch not found", 404);
     }
 
     // Verify branch belongs to this tenant
-    if (branch.tenantId.toString() !== context.tenantId) {
+    if (branch.tenantId.toString() !== context.tenantId.toString()) {
       throw new AppError("Branch not found", 404);
     }
 
     return branch;
   }
+
 
   //Get head office
   async getHeadOffice(context: RequestContext) {
@@ -230,17 +249,29 @@ export class BranchService {
     return { message: "Branch deleted successfully" };
   }
 
-  // Seed leave types and shifts for an existing branch
+  // Seed leave types, shifts, departments, and designations for an existing branch
   async seedBranchData(context: RequestContext, id: string) {
-    const branch = await this.branchRepo.findById(id);
+    let branch = await this.branchRepo.findById(id);
+    if (!branch && id === context.tenantId.toString()) {
+      branch = await this.branchRepo.findHeadOffice(context.tenantId);
+    }
     if (!branch) {
       throw new AppError("Branch not found", 404);
     }
-    if (branch.tenantId.toString() !== context.tenantId) {
+    if (branch.tenantId.toString() !== context.tenantId.toString()) {
       throw new AppError("Branch not found", 404);
     }
-    await seedLeaveTypes(context.tenantId, id);
-    await seedShifts(context.tenantId, id);
-    return { message: "Leave types and shifts seeded successfully for the branch" };
+
+    const branchId = branch._id.toString();
+    await seedLeaveTypes(context.tenantId, branchId);
+    await seedShifts(context.tenantId, branchId);
+    const deptMap = await seedDepartments(context.tenantId, branchId);
+    await seedDesignations(context.tenantId, branchId, deptMap);
+
+    return {
+      message: "Branch master data (Leave Types, Shifts, Departments, Designations) seeded successfully",
+      branchId,
+      departmentsSeeded: deptMap.size,
+    };
   }
-}
+}

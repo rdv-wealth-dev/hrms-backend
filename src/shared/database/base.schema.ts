@@ -250,6 +250,8 @@ export function buildSuccessResponse<T>(
 ) {
   return { succeeded: true, message, errors: [], data: cleanResponseData(data) };
 }
+
+
 export function buildErrorResponse(
   message: string,
   errors: any[] = [],

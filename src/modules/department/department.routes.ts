@@ -23,11 +23,18 @@ router.post(
   controller.create.bind(controller)
 );
 
+router.post(
+  "/seed",
+  checkPermission("department.create"),
+  controller.seed.bind(controller)
+);
+
 router.get(
   "/:id",
   checkPermission("department.read"),
   controller.getById.bind(controller)
 );
+
 
 router.patch(
   "/:id",

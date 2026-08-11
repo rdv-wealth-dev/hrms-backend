@@ -4,7 +4,8 @@ import { safeStringSchema, objectIdSchema, } from "../../shared/validators/commo
 
 //Create Designation
 export const CreateDesignationDto = z.object({
-  name: safeStringSchema(2, 200),
+  name: safeStringSchema(2, 200).optional(),
+  title: safeStringSchema(2, 200).optional(),
   code: z
     .string()
     .trim()
@@ -18,9 +19,16 @@ export const CreateDesignationDto = z.object({
     objectIdSchema.optional()
   ),
   level:        z.number().min(1).max(10).optional().default(1),
+}).transform((data) => ({
+  ...data,
+  name: data.name || data.title || "",
+})).refine((data) => data.name.length >= 2, {
+  message: "Designation name (or title) must be at least 2 characters",
+  path: ["name"],
 });
 
 export type CreateDesignationInput = z.infer<typeof CreateDesignationDto>;
+
 
 //Update Designation
 export const UpdateDesignationDto = z.object({

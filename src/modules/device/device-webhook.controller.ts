@@ -7,6 +7,15 @@ import { logger } from "../../config/logger.config";
 
 // Biometric webhook endpoint supporting direct branchId/tenantId resolution
 export async function receiveRawBiometricWebhook(req: Request, res: Response) {
+  let tenantObjectId: mongoose.Types.ObjectId | undefined;
+  let branchObjectId: mongoose.Types.ObjectId | undefined;
+  let provider = "realtime";
+  const payload = req.body || {};
+  let employeeID = "";
+  let punchDate = "";
+  let punchTime = "";
+  let deviceSerialno = "";
+
   try {
     const identifier = typeof req.params.identifier === "string" ? req.params.identifier.trim() : "";
 
@@ -15,20 +24,18 @@ export async function receiveRawBiometricWebhook(req: Request, res: Response) {
     const bodyProvider = typeof req.body?.provider === "string" ? req.body.provider.trim() : "";
     const queryProvider = typeof req.query?.provider === "string" ? (req.query.provider as string).trim() : "";
 
-    const provider = (providerParam || bodyProvider || queryProvider || "realtime").toLowerCase();
+    provider = (providerParam || bodyProvider || queryProvider || "realtime").toLowerCase();
 
     // 2. Validate Identifier
     if (!identifier) {
-      return res.status(400).json({ isSuccess: "N", outputMessage: "Missing branchId/tenantId in webhook URL" });
+      return res.status(400).json({ isSuccess: false, outputMessage: "Missing branchId/tenantId in webhook URL" });
     }
 
     if (!mongoose.Types.ObjectId.isValid(identifier)) {
-      return res.status(400).json({ isSuccess: "N", outputMessage: "Invalid ID format" });
+      return res.status(400).json({ isSuccess: false, outputMessage: "Invalid ID format" });
     }
 
     const id = new mongoose.Types.ObjectId(identifier);
-    let tenantObjectId: mongoose.Types.ObjectId;
-    let branchObjectId: mongoose.Types.ObjectId | undefined;
 
     // 3. Resolve Branch / Tenant from DB
     const branch = await BranchModel.findOne({ _id: id, isDeleted: false }).select("_id tenantId").lean();
@@ -42,29 +49,28 @@ export async function receiveRawBiometricWebhook(req: Request, res: Response) {
         tenantObjectId = org._id;
       } else {
         return res.status(404).json({
-          isSuccess: "N",
+          isSuccess: false,
           outputMessage: "No matching Branch or Organization found for the given identifier",
         });
       }
     }
 
-    const payload = req.body || {};
     const RawLogModel = getRawLogModel();
 
     // 4. Extract Punch Info if available
-    const employeeID = String(
+    employeeID = String(
       payload.employeeID || payload.EmployeeCode || payload.userId || payload.EnrollNo || payload.badgenumber || payload.emp_code || ""
     ).trim();
 
-    const punchDate = String(
+    punchDate = String(
       payload.punchDate || payload.date || payload.RecordDate || payload.LogDate || ""
     ).trim();
 
-    const punchTime = String(
+    punchTime = String(
       payload.punchTime || payload.time || payload.RecordTime || payload.LogTime || ""
     ).trim();
 
-    const deviceSerialno = String(
+    deviceSerialno = String(
       payload.deviceSerialno || payload.SerialNumber || payload.device_sn || payload.DeviceSerialNo || payload.deviceID || ""
     ).trim();
 
@@ -79,7 +85,7 @@ export async function receiveRawBiometricWebhook(req: Request, res: Response) {
 
       if (duplicate) {
         // Return 200 to acknowledge device so it clears its internal send buffer
-        return res.status(200).json({ isSuccess: "Y", outputMessage: "Added Successfully" });
+        return res.status(200).json({ isSuccess: true, outputMessage: "Added Successfully" });
       }
     }
 
@@ -95,17 +101,39 @@ export async function receiveRawBiometricWebhook(req: Request, res: Response) {
       payload,
     });
 
-    return res.status(200).json({ isSuccess: "Y", outputMessage: "Added Successfully" });
+    return res.status(200).json({ isSuccess: true, outputMessage: "Added Successfully" });
   } catch (err: any) {
     // 7. Handle Mongo Duplicate Key Error (Code 11000) gracefully
     if (err.code === 11000) {
-      return res.status(200).json({ isSuccess: "Y", outputMessage: "Added Successfully" });
+      if (employeeID && punchDate && punchTime) {
+        return res.status(200).json({ isSuccess: true, outputMessage: "Added Successfully" });
+      }
+      // If legacy unique index collided on null fields, drop old index and retry insert
+      try {
+        const RawLogModel = getRawLogModel();
+        await RawLogModel.collection.dropIndex("uniq_branch_employee_punch").catch(() => {});
+        await RawLogModel.syncIndexes().catch(() => {});
+        if (tenantObjectId) {
+          await RawLogModel.create({
+            tenantId: tenantObjectId,
+            ...(branchObjectId ? { branchId: branchObjectId } : {}),
+            provider,
+            payload,
+          });
+          return res.status(200).json({ isSuccess: true, outputMessage: "Added Successfully" });
+        }
+      } catch (retryErr: any) {
+        logger.error(`Error retrying raw biometric insert: ${retryErr.message}`);
+      }
     }
 
     logger.error(`Failed to store raw biometric log: ${err.message}`);
-    return res.status(500).json({ isSuccess: "N", outputMessage: "Internal server error" });
+    return res.status(500).json({ isSuccess: false, outputMessage: "Internal server error" });
   }
 }
+
+
+
 
 
 

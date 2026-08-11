@@ -29,8 +29,17 @@ const rawLogSchema = new Schema<IBiometricRawLog>(
 
 rawLogSchema.index(
   { branchId: 1, employeeID: 1, punchDate: 1, punchTime: 1 },
-  { unique: true, sparse: true, name: "uniq_branch_employee_punch" }
+  {
+    unique: true,
+    partialFilterExpression: {
+      employeeID: { $type: "string" },
+      punchDate: { $type: "string" },
+      punchTime: { $type: "string" },
+    },
+    name: "uniq_branch_employee_punch",
+  }
 );
+
 
 
 export interface IBiometricPunch extends Document {

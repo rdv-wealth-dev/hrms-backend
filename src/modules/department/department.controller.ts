@@ -101,4 +101,23 @@ export class DepartmentController {
       next(error);
     }
   }
-}
+
+  // POST /api/v1/departments/seed
+  async seed(
+    req:  Request,
+    res:  Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await deptService.seedMasterData(
+        req.context,
+        req.body?.branchId
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, "Departments seeded successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+}

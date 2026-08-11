@@ -34,12 +34,14 @@ export class BranchController {
     try {
       const result = await branchService.listBranches(req.context);
       res.status(200).json(
-        buildSuccessResponse(result, "Branches fetched successfully")
+        buildSuccessResponse(result, `Branches fetched successfully count is ${result.length}`)
       );
     } catch (error) {
       next(error);
     }
   }
+
+
 
   // GET /api/v1/branches/head-office
   async getHeadOffice(
