@@ -18,6 +18,7 @@ import { AttendanceModel } from "../../attendance/models/attendance.model";
 import { AttendanceLockModel, AttendanceLockStatus } from "../../attendance/models/attendance-lock.model";
 import { ComponentType } from "../models/salary-component.model";
 import { PayrollStrategyFactory } from "../strategies";
+import { PayrollCalendarPolicyService } from "./payroll-calendar-policy.service";
 
 import {
   assertAttendanceLocked,
@@ -74,6 +75,7 @@ export class PayrollRunService {
   private structureRepo = new SalaryStructureRepository();
   private componentRepo = new SalaryComponentRepository();
   private adjustmentRepo = new PayrollAdjustmentRepository();
+  private calendarPolicyService = new PayrollCalendarPolicyService();
 
   // ─────────────────────────────────────────────────────────────────────────
   // CREATE RUN
@@ -277,6 +279,14 @@ export class PayrollRunService {
     const financialYear = getFinancialYear(run.year, run.month);
     const monthsRemaining = getMonthsRemainingInFY(run.month);
 
+    // ── Load Payroll Calendar Policy for LOP calculation base ──────────────
+    const calendarPolicy = await this.calendarPolicyService.getPolicy(context);
+    const lopDivisor = this.calendarPolicyService.getEffectiveLOPDivisor(
+      calendarPolicy,
+      run.year,
+      run.month
+    );
+
     // ── Fetch all active employees for this branch ─────────────────────────
     const employees = await EmployeeModel.find({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
@@ -332,11 +342,11 @@ export class PayrollRunService {
           context.tenantId, empId, run.year, run.month
         );
 
-        // STEP 5: Pro-rate earnings by payable days
+        // STEP 5: Pro-rate earnings by payable days & configured LOP divisor
         const earnings = proRateEarnings(
           earningItems,
           attendanceSummary.payableDays,
-          attendanceSummary.totalDaysInMonth
+          lopDivisor
         ).map(e => ({
           ...e,
           componentName: componentMap.get(e.componentCode)?.name ?? e.componentCode,

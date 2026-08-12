@@ -14,6 +14,8 @@ import {
   CreatePayrollAdjustmentDto, BulkCreatePayrollAdjustmentDto, RejectAdjustmentDto,
   UpsertPayrollGLConfigDto,
 } from "./dto/payroll.dto";
+import { PayrollCalendarPolicyController } from "./controllers/payroll-calendar-policy.controller";
+import { UpsertPayrollCalendarPolicyDto } from "./dto/payroll-calendar-policy.dto";
 
 import {
   injectOnboardingStatus,
@@ -22,6 +24,7 @@ import {
 
 const router = Router();
 const ctrl = new PayrollController();
+const calendarPolicyCtrl = new PayrollCalendarPolicyController();
 
 router.use(authenticate);
 // Stamps req.context with onboarding phase. Never blocks on its own.
@@ -389,4 +392,33 @@ router.get(
   ctrl.getOrDownloadGLJournal.bind(ctrl)
 );
 
+// ── Step 14: Payroll Calendar Policy ──
+
+router.get(
+  "/calendar-policy",
+  checkPermission("payroll.read"),
+  calendarPolicyCtrl.getPolicy.bind(calendarPolicyCtrl)
+);
+
+router.post(
+  "/calendar-policy",
+  checkPermission("payroll.create"),
+  validateBody(UpsertPayrollCalendarPolicyDto),
+  calendarPolicyCtrl.upsertPolicy.bind(calendarPolicyCtrl)
+);
+
+router.put(
+  "/calendar-policy",
+  checkPermission("payroll.create"),
+  validateBody(UpsertPayrollCalendarPolicyDto),
+  calendarPolicyCtrl.upsertPolicy.bind(calendarPolicyCtrl)
+);
+
+router.get(
+  "/calendar-policy/preview",
+  checkPermission("payroll.read"),
+  calendarPolicyCtrl.previewCycle.bind(calendarPolicyCtrl)
+);
+
 export default router;
+
