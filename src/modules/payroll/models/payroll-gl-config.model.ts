@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import {
-  createBaseSchema,
+  createOrgLevelSchema,
   BaseDocument,
 } from "../../../shared/database/base.schema";
 
@@ -34,8 +34,13 @@ const GLAccountMappingSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const PayrollGLConfigSchema = createBaseSchema<PayrollGLConfigDocument>(
+const PayrollGLConfigSchema = createOrgLevelSchema<PayrollGLConfigDocument>(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      unique: true,
+    },
     grossSalaryExpenseAccount: {
       type: GLAccountMappingSchema,
       default: { accountCode: "5001", accountName: "Salaries and Wages Expense" },
@@ -84,8 +89,6 @@ const PayrollGLConfigSchema = createBaseSchema<PayrollGLConfigDocument>(
   },
   { collection: "payroll_gl_configs" }
 );
-
-PayrollGLConfigSchema.index({ tenantId: 1 }, { unique: true });
 
 export const PayrollGLConfigModel = mongoose.model<PayrollGLConfigDocument>(
   "PayrollGLConfig",

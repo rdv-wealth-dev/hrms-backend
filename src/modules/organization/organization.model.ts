@@ -221,7 +221,6 @@ OrganizationSchema.index({ "subscription.status": 1 });
 OrganizationSchema.index({ isActive: 1, isDeleted: 1 });
 OrganizationSchema.index({ gstin: 1 }, { sparse: true });
 OrganizationSchema.index({ pan: 1 }, { sparse: true });
-OrganizationSchema.index({ workspaceSlug: 1 }, { unique: true });
 
 export const OrganizationModel = mongoose.model<OrganizationDocument>(
   "Organization",
