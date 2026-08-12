@@ -38,6 +38,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@swc/core": "^1.15.47",
+    "@swc/helpers": "^0.5.23",
     "@types/bcrypt": "^6.0.0",
     "@types/compression": "^1.8.1",
     "@types/cors": "^2.8.19",
