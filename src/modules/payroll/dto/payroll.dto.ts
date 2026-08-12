@@ -6,15 +6,26 @@ export const CreateSalaryComponentDto = z.object({
   name: safeStringSchema(2, 100),
   code: z.string().trim().toUpperCase().min(1).max(20),
   type: z.enum(["EARNING", "DEDUCTION"]),
-  calculationType: z.enum(["FLAT", "PERCENTAGE_OF", "FORMULA"]).optional().default("FLAT"),
+  calculationType: z.enum(["FLAT", "PERCENTAGE_OF", "PERCENTAGE", "FORMULA"]).optional().default("FLAT"),
   percentageOf: z.string().trim().toUpperCase().optional(),
   percentageValue: z.number().min(0).max(100).optional(),
+  value: z.number().min(0).optional(),
   isTaxable: z.boolean().optional().default(true),
   isPartOfWages: z.boolean().optional().default(true),
+}).transform((data) => {
+  let calcType = data.calculationType;
+  if (calcType === "PERCENTAGE") calcType = "FLAT";
+  const pctVal = data.percentageValue !== undefined ? data.percentageValue : data.value;
+  return {
+    ...data,
+    calculationType: calcType as "FLAT" | "PERCENTAGE_OF" | "FORMULA",
+    percentageValue: pctVal,
+  };
 }).refine(
   (data) => data.calculationType !== "PERCENTAGE_OF" || (!!data.percentageOf && data.percentageValue !== undefined),
   { message: "percentageOf and percentageValue are required when calculationType is PERCENTAGE_OF" }
 );
+
 
 export type CreateSalaryComponentInput = z.infer<typeof CreateSalaryComponentDto>;
 
@@ -29,15 +40,39 @@ export type UpdateSalaryComponentInput = z.infer<typeof UpdateSalaryComponentDto
 
 //Salary Structure
 export const CreateSalaryStructureDto = z.object({
-  employeeId: objectIdSchema,
+  employeeId: z.string().trim().min(1),
   ctcAnnual: z.number().min(0),
+
   lineItems: z.array(z.object({
     componentCode: z.string().trim().toUpperCase(),
-    amount: z.number().min(0),
+    amount: z.number().min(0).optional(),
+    value: z.number().min(0).optional(),
+    percentage: z.number().min(0).optional(),
   })).min(1, "At least one salary component is required"),
+}).transform((data) => {
+  const monthlyGross = data.ctcAnnual > 0 ? data.ctcAnnual / 12 : 0;
+  return {
+    ...data,
+    lineItems: data.lineItems.map((li) => {
+      let amount = li.amount;
+      if (amount === undefined) {
+        const val = li.value !== undefined ? li.value : (li.percentage !== undefined ? li.percentage : 0);
+        if (val <= 100 && monthlyGross > 0) {
+          amount = Math.round((monthlyGross * val) / 100);
+        } else {
+          amount = val;
+        }
+      }
+      return {
+        componentCode: li.componentCode,
+        amount,
+      };
+    }),
+  };
 });
 
 export type CreateSalaryStructureInput = z.infer<typeof CreateSalaryStructureDto>;
+
 
 //Payroll Run
 export const CreatePayrollRunDto = z.object({

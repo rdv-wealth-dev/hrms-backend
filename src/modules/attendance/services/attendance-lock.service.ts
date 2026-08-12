@@ -8,6 +8,21 @@ import { RequestContext } from "../../../shared/types/request-context.interface"
 
 export class AttendanceLockService {
 
+  private async resolveBranchId(context: RequestContext, branchId?: string): Promise<string> {
+    if (branchId && mongoose.Types.ObjectId.isValid(branchId)) {
+      return branchId;
+    }
+    if (context.branchIds?.[0] && mongoose.Types.ObjectId.isValid(context.branchIds[0])) {
+      return context.branchIds[0];
+    }
+    const branch = await mongoose.model("Branch").findOne({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted: false,
+    }).sort({ isHeadOffice: -1, createdAt: 1 });
+
+    return branch?._id ? branch._id.toString() : "";
+  }
+
   // Lock a period 
   async lockPeriod(
     context:  RequestContext,
@@ -15,7 +30,7 @@ export class AttendanceLockService {
     month:    number,
     branchId?: string
   ) {
-    const targetBranchId = branchId || context.branchIds[0] || "";
+    const targetBranchId = await this.resolveBranchId(context, branchId);
     if (!targetBranchId) {
       throw new AppError("branchId is required to lock attendance.", 400);
     }
@@ -56,7 +71,7 @@ export class AttendanceLockService {
     unlockReason: string,
     branchId?:    string
   ) {
-    const targetBranchId = branchId || context.branchIds[0] || "";
+    const targetBranchId = await this.resolveBranchId(context, branchId);
     if (!targetBranchId) {
       throw new AppError("branchId is required to unlock attendance.", 400);
     }
@@ -102,14 +117,18 @@ export class AttendanceLockService {
     month:    number,
     branchId?: string
   ) {
-    const targetBranchId = branchId || context.branchIds[0] || "";
+    const targetBranchId = await this.resolveBranchId(context, branchId);
     const period = `${year}-${String(month).padStart(2, "0")}`;
 
-    const lock = await AttendanceLockModel.findOne({
+    const query: Record<string, any> = {
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
-      branchId: new mongoose.Types.ObjectId(targetBranchId),
       period,
-    }).lean();
+    };
+    if (targetBranchId && mongoose.Types.ObjectId.isValid(targetBranchId)) {
+      query.branchId = new mongoose.Types.ObjectId(targetBranchId);
+    }
+
+    const lock = await AttendanceLockModel.findOne(query).lean();
 
     return {
       period,
@@ -122,13 +141,17 @@ export class AttendanceLockService {
 
   // List all 12 months for a year
   async listYearLocks(context: RequestContext, year: number, branchId?: string) {
-    const targetBranchId = branchId || context.branchIds[0] || "";
+    const targetBranchId = await this.resolveBranchId(context, branchId);
 
-    const locks = await AttendanceLockModel.find({
+    const query: Record<string, any> = {
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
-      branchId: new mongoose.Types.ObjectId(targetBranchId),
       period:   { $regex: `^${year}-` },
-    }).lean();
+    };
+    if (targetBranchId && mongoose.Types.ObjectId.isValid(targetBranchId)) {
+      query.branchId = new mongoose.Types.ObjectId(targetBranchId);
+    }
+
+    const locks = await AttendanceLockModel.find(query).lean();
 
     // Derive month number from period string (e.g. "2026-07" → 7)
     const lockMap = new Map(locks.map(l => [parseInt(l.period.split("-")[1], 10), l]));

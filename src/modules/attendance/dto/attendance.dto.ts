@@ -13,102 +13,102 @@ export type PunchInput = z.infer<typeof PunchDto>;
 // ─── MANUAL ATTENDANCE ────────────────────────────────────────────────────────
 
 export const ManualAttendanceDto = z.object({
-    employeeId     : objectIdSchema,
-    attendanceDate : dateSchema,
-    checkIn        : z.string().datetime().optional(),
-    checkOut       : z.string().datetime().optional(),
-    status         : z.enum(["PRESENT","LATE","HALF_DAY","HALF_DAY_MORNING","HALF_DAY_AFTERNOON","ABSENT","ON_LEAVE","HOLIDAY","WEEK_OFF"]).optional(),
-    notes          : safeStringSchema(0,500).optional(),
+    employeeId: objectIdSchema,
+    attendanceDate: dateSchema,
+    checkIn: z.string().datetime().optional(),
+    checkOut: z.string().datetime().optional(),
+    status: z.enum(["PRESENT", "LATE", "HALF_DAY", "HALF_DAY_MORNING", "HALF_DAY_AFTERNOON", "ABSENT", "ON_LEAVE", "HOLIDAY", "WEEK_OFF"]).optional(),
+    notes: safeStringSchema(0, 500).optional(),
 })
 export type ManualAttendanceInput = z.infer<typeof ManualAttendanceDto>;
 
 // ─── REGULARIZATION ───────────────────────────────────────────────────────────
 
 export const CreateRegularizationDto = z.object({
-    attendanceId      : objectIdSchema,
-    requestedCheckIn  : z.string().datetime().optional(),
-    requestedCheckOut : z.string().datetime().optional(),
-    reason            : safeStringSchema(10, 500),
+    attendanceId: objectIdSchema,
+    requestedCheckIn: z.string().datetime().optional(),
+    requestedCheckOut: z.string().datetime().optional(),
+    reason: safeStringSchema(10, 500),
 }).refine(
     (data) => data.requestedCheckIn || data.requestedCheckOut,
-    { message : "At least one of requestedCheckIn or requestedCheckOut is required"}
+    { message: "At least one of requestedCheckIn or requestedCheckOut is required" }
 );
 export type CreateRegularizationInput = z.infer<typeof CreateRegularizationDto>;
 
-export const ReviewRegularizationDto  = z.object({
-    status         : z.enum(["APPROVED", "REJECTED"]),
-    reviewComments : safeStringSchema(0, 500).optional()
+export const ReviewRegularizationDto = z.object({
+    status: z.enum(["APPROVED", "REJECTED"]),
+    reviewComments: safeStringSchema(0, 500).optional()
 });
 export type ReviewRegularizationInput = z.infer<typeof ReviewRegularizationDto>;
 
 //SHIFT 
 
 export const CreateShiftDto = z.object({
-    name                    : safeStringSchema(2, 100),
-    code                    : z.string().trim().toUpperCase().min(2).max(20),
-    startTime               : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format"),
-    endTime                 : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format"),
-    gracePeriodMinutes           : z.number().min(0).max(120).optional().default(15),
-    graceLimitPerMonth           : z.number().min(0).optional().default(0),
-    halfDayThresholdMinutes      : z.number().min(0).optional().default(240),
-    fullDayMinutes               : z.number().min(0).optional().default(480),
-    breakDurationMinutes         : z.number().min(0).optional().default(60),
-    isDefault                    : z.boolean().optional().default(false),
+    name: safeStringSchema(2, 100),
+    code: z.string().trim().toUpperCase().min(2).max(20),
+    startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format"),
+    endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format"),
+    gracePeriodMinutes: z.number().min(0).max(120).optional().default(15),
+    graceLimitPerMonth: z.number().min(0).optional().default(0),
+    halfDayThresholdMinutes: z.number().min(0).optional().default(240),
+    fullDayMinutes: z.number().min(0).optional().default(480),
+    breakDurationMinutes: z.number().min(0).optional().default(60),
+    isDefault: z.boolean().optional().default(false),
     // ─── Industry-standard cutoff & minimum thresholds ─────────────────────────────
-    firstHalfCutoffMinutes       : z.number().min(0).optional().default(240),
-    secondHalfCutoffMinutes      : z.number().min(0).optional().default(210),
-    minimumWorkMinutesForHalfDay : z.number().min(0).optional().default(270),
+    firstHalfCutoffMinutes: z.number().min(0).optional().default(240),
+    secondHalfCutoffMinutes: z.number().min(0).optional().default(210),
+    minimumWorkMinutesForHalfDay: z.number().min(0).optional().default(270),
     // ─── Check-in window & Early-leave window ────────────────────────────────
-    checkInWindowStart           : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
-    checkInWindowEnd             : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
-    allowedCheckInFromTime       : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    checkInWindowStart: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    checkInWindowEnd: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    allowedCheckInFromTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
     // Checkout after this time but before endTime = allowed early leave (quota-tracked, no penalty).
     // e.g. "18:00" means leaving 6 PM–7:30 PM is acceptable early leave.
-    earlyLeaveStartTime          : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    earlyLeaveStartTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
     // ─── Monthly soft quotas (soft limit — HR flag only, no punch block) ─────────────
-    lateArrivalQuotaPerMonth     : z.number().min(0).optional().default(3),
-    earlyLeaveQuotaPerMonth      : z.number().min(0).optional().default(3),
-    halfDayWeight                : z.number().min(0).max(1).optional().default(0.5),
-    rejectEarlyPunch             : z.boolean().optional().default(false),
+    lateArrivalQuotaPerMonth: z.number().min(0).optional().default(3),
+    earlyLeaveQuotaPerMonth: z.number().min(0).optional().default(3),
+    halfDayWeight: z.number().min(0).max(1).optional().default(0.5),
+    rejectEarlyPunch: z.boolean().optional().default(false),
 });
 export type CreateShiftInput = z.infer<typeof CreateShiftDto>;
 export const UpdateShiftDto = z.object({
-    name                    : safeStringSchema(2, 100).optional(),
-    code                    : z.string().trim().toUpperCase().min(2).max(20).optional(),
-    startTime               : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
-    endTime                 : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
-    gracePeriodMinutes           : z.number().min(0).max(120).optional(),
-    graceLimitPerMonth           : z.number().min(0).optional(),
-    halfDayThresholdMinutes      : z.number().min(0).optional(),
-    fullDayMinutes               : z.number().min(0).optional(),
-    breakDurationMinutes         : z.number().min(0).optional(),
-    isDefault                    : z.boolean().optional(),
-    firstHalfCutoffMinutes       : z.number().min(0).optional(),
-    secondHalfCutoffMinutes      : z.number().min(0).optional(),
-    minimumWorkMinutesForHalfDay : z.number().min(0).optional(),
-    checkInWindowStart           : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
-    checkInWindowEnd             : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
-    allowedCheckInFromTime       : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
-    earlyLeaveStartTime          : z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
-    lateArrivalQuotaPerMonth     : z.number().min(0).optional(),
-    earlyLeaveQuotaPerMonth      : z.number().min(0).optional(),
-    halfDayWeight                : z.number().min(0).max(1).optional(),
-    rejectEarlyPunch             : z.boolean().optional(),
+    name: safeStringSchema(2, 100).optional(),
+    code: z.string().trim().toUpperCase().min(2).max(20).optional(),
+    startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    gracePeriodMinutes: z.number().min(0).max(120).optional(),
+    graceLimitPerMonth: z.number().min(0).optional(),
+    halfDayThresholdMinutes: z.number().min(0).optional(),
+    fullDayMinutes: z.number().min(0).optional(),
+    breakDurationMinutes: z.number().min(0).optional(),
+    isDefault: z.boolean().optional(),
+    firstHalfCutoffMinutes: z.number().min(0).optional(),
+    secondHalfCutoffMinutes: z.number().min(0).optional(),
+    minimumWorkMinutesForHalfDay: z.number().min(0).optional(),
+    checkInWindowStart: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    checkInWindowEnd: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    allowedCheckInFromTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    earlyLeaveStartTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
+    lateArrivalQuotaPerMonth: z.number().min(0).optional(),
+    earlyLeaveQuotaPerMonth: z.number().min(0).optional(),
+    halfDayWeight: z.number().min(0).max(1).optional(),
+    rejectEarlyPunch: z.boolean().optional(),
 });
 export type UpdateShiftInput = z.infer<typeof UpdateShiftDto>;
 
 //ATTENDANCE REPORT QUERY 
 
 export const AttendanceReportQueryDto = z.object({
-  fromDate     : dateSchema,
-  toDate       : dateSchema,
-  employeeId   : objectIdSchema.optional(),
-  branchId     : objectIdSchema.optional(),
-  departmentId : objectIdSchema.optional(),
-  designationId: objectIdSchema.optional(),
-  search       : z.string().optional(),
-  status       : z.enum(["PRESENT","LATE","HALF_DAY","HALF_DAY_MORNING","HALF_DAY_AFTERNOON","ABSENT","ON_LEAVE","HOLIDAY","WEEK_OFF"]).optional(),
-  pageNumber   : z.string().optional().transform(v => v ? parseInt(v) : 1),
-  pageSize     : z.string().optional().transform(v => v ? parseInt(v) : 20),
+    fromDate: dateSchema,
+    toDate: dateSchema,
+    employeeId: objectIdSchema.optional(),
+    branchId: objectIdSchema.optional(),
+    departmentId: objectIdSchema.optional(),
+    designationId: objectIdSchema.optional(),
+    search: z.string().optional(),
+    status: z.enum(["PRESENT", "LATE", "HALF_DAY", "HALF_DAY_MORNING", "HALF_DAY_AFTERNOON", "ABSENT", "ON_LEAVE", "HOLIDAY", "WEEK_OFF"]).optional(),
+    pageNumber: z.string().optional().transform(v => v ? parseInt(v) : 1),
+    pageSize: z.string().optional().transform(v => v ? parseInt(v) : 20),
 });
 export type AttendanceReportQuery = z.infer<typeof AttendanceReportQueryDto>;

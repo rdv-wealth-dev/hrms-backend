@@ -32,15 +32,13 @@ export class LeaveRequestController {
   // GET /api/v1/leave/balances/me?year=2026
   async getMyBalances(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const user = await UserModel.findOne({ _id: req.context.userId }).select("employeeId");
-      if (!user?.employeeId) {
-        throw new AppError("No employee record is linked to this account", 404);
-      }
+      const employeeId = await leaveReqService.resolveOwnEmployeeId(req.context);
       const year = parseInt(req.query.year as string) || new Date().getFullYear();
-      const result = await balanceService.getMyBalances(req.context, user.employeeId.toString(), year);
+      const result = await balanceService.getMyBalances(req.context, employeeId, year);
       res.status(200).json(buildSuccessResponse(result, "Leave balances fetched"));
     } catch (error) { next(error); }
   }
+
 
   // PATCH /api/v1/leave/requests/:id/cancel
   async cancel(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {

@@ -6,12 +6,12 @@ import { PunchInput, ManualAttendanceInput } from "../dto/attendance.dto";
 import { AppError } from "../../../shared/errors/app.error";
 import { RequestContext } from "../../../shared/types/request-context.interface";
 import {
-    checkGeofence,
-    calculateAttendanceStatus,
-    calculateWorkedMinutes,
-    normalizeToMidnight,
-    isCheckInLate,
-    checkIfCheckOutEarly
+  checkGeofence,
+  calculateAttendanceStatus,
+  calculateWorkedMinutes,
+  normalizeToMidnight,
+  isCheckInLate,
+  checkIfCheckOutEarly
 } from "../attendance.util"
 import { UserModel } from "../../user/user.model";
 import { BranchModel } from "../../branch/branch.model";
@@ -22,26 +22,55 @@ import { OvertimeService } from "../../payroll/services/overtime.service";
 
 
 export class AttendanceService {
-  private attRepo         = new AttendanceRepository();
-  private shiftRepo       = new ShiftRepository();
-  private graceRepo       = new GraceUsageRepository();
-  private quotaRepo       = new ShiftQuotaUsageRepository();
+  private attRepo = new AttendanceRepository();
+  private shiftRepo = new ShiftRepository();
+  private graceRepo = new GraceUsageRepository();
+  private quotaRepo = new ShiftQuotaUsageRepository();
   private overtimeService = new OvertimeService();
 
   // Resolve the calling user's own employeeId
   private async resolveOwnEmployeeId(context: RequestContext): Promise<string> {
     const user = await UserModel.findOne({
-      _id:       new mongoose.Types.ObjectId(context.userId),
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
+      _id: new mongoose.Types.ObjectId(context.userId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
-    }).select("employeeId");
+    }).select("employeeId email");
 
-    if (!user || !user.employeeId) {
+    let employeeId = user?.employeeId?.toString();
+
+    if (!employeeId && user) {
+      const emp = await EmployeeModel.findOne({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        $or: [
+          { userId: user._id },
+          { email: user.email },
+        ],
+        isDeleted: false,
+      });
+
+      if (emp) {
+        employeeId = emp._id.toString();
+        await UserModel.updateOne({ _id: user._id }, { employeeId: emp._id });
+      }
+    }
+
+    if (!employeeId && (context.role === "ORG_ADMIN" || context.role === "SUPER_ADMIN")) {
+      const firstEmp = await EmployeeModel.findOne({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        isDeleted: false,
+      });
+      if (firstEmp) {
+        employeeId = firstEmp._id.toString();
+      }
+    }
+
+    if (!employeeId) {
       throw new AppError("No employee record is linked to this account", 404);
     }
 
-    return user.employeeId.toString();
+    return employeeId;
   }
+
 
   private resolveBranchId(
     employeeBranchId: mongoose.Types.ObjectId | undefined | null,
@@ -66,23 +95,20 @@ export class AttendanceService {
   //Self-service punch — check-in / break-out / break-in / check-out
   async punch(
     context: RequestContext,
-    input:   PunchInput,
-    source:  PunchSource,
+    input: PunchInput,
+    source: PunchSource,
     ipAddress?: string,
     deviceInfo?: string
   ) {
+    const employeeId = await this.resolveOwnEmployeeId(context);
     const user = await UserModel.findOne({
-      _id:       new mongoose.Types.ObjectId(context.userId),
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
+      _id: new mongoose.Types.ObjectId(context.userId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
-    }).select("employeeId branchIds");
+    }).select("branchIds");
 
-    if (!user?.employeeId) {
-      throw new AppError("No employee record is linked to this account", 404);
-    }
-
-    const employeeId = user.employeeId.toString();
     const today = normalizeToMidnight(new Date());
+
 
     // Resolve shift — 3-tier: Employee Shift → Branch Default Shift → Org Default Shift
     const employeeDoc = await EmployeeModel.findById(employeeId).select("shiftId branchId");
@@ -104,17 +130,31 @@ export class AttendanceService {
     }
 
     if (!shift) {
+      // Tier 4: fall back to any active shift in tenant
+      const anyShift = await mongoose.model("Shift").findOne({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        isDeleted: false,
+        isActive: true,
+      });
+      if (anyShift) {
+        shift = anyShift as any;
+      }
+    }
+
+    if (!shift) {
       throw new AppError(
-        "No default shift configured for this organization. Contact HR.",
+        "No shift configured for this organization. Please run branch seed or create a shift.",
         400
       );
     }
 
+
     const branchId = this.resolveBranchId(
       employeeDoc?.branchId,
       context,
-      user.branchIds,
+      user?.branchIds,
     );
+
 
     // Geofence check — only meaningful for MOBILE punches
     let withinGeofence: boolean | null = null;
@@ -162,15 +202,15 @@ export class AttendanceService {
       }
 
       attendance = await this.attRepo.create({
-        tenantId:       new mongoose.Types.ObjectId(context.tenantId) as any,
-        branchId:       new mongoose.Types.ObjectId(branchId) as any,
-        employeeId:     new mongoose.Types.ObjectId(employeeId) as any,
-        shiftId:        shift._id as any,
+        tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+        branchId: new mongoose.Types.ObjectId(branchId) as any,
+        employeeId: new mongoose.Types.ObjectId(employeeId) as any,
+        shiftId: shift._id as any,
         attendanceDate: today,
-        sessions:       [],
-        status:         AttendanceStatus.ABSENT,
-        workedMinutes:  0,
-        isRegularized:  false,
+        sessions: [],
+        status: AttendanceStatus.ABSENT,
+        workedMinutes: 0,
+        isRegularized: false,
       });
     } else {
       // Validate punch sequence — can't check in twice, can't check out before checking in, etc.
@@ -182,11 +222,11 @@ export class AttendanceService {
     }
 
     attendance.sessions.push({
-      type:      input.type as SessionType,
+      type: input.type as SessionType,
       timestamp: new Date(),
       source,
-      lat:       input.lat,
-      lng:       input.lng,
+      lat: input.lat,
+      lng: input.lng,
       ipAddress,
       deviceInfo,
       withinGeofence,
@@ -220,7 +260,7 @@ export class AttendanceService {
       shift.graceLimitPerMonth,
       attendance.lastCheckOut ?? null,
     );
-    attendance.status    = statusResult.status;
+    attendance.status = statusResult.status;
     attendance.halfDayType = statusResult.halfDayType ?? undefined;
     attendance.isLate = isCheckInLate(
       shift,
@@ -233,7 +273,7 @@ export class AttendanceService {
       attendance.lastCheckOut ?? null,
       attendance.attendanceDate
     );
-    attendance.isCheckOutEarly    = earlyResult.isEarly;
+    attendance.isCheckOutEarly = earlyResult.isEarly;
     attendance.isAllowedEarlyLeave = earlyResult.isAllowedEarlyLeave;
 
     // If check-in was within grace period, increment the monthly grace counter
@@ -297,11 +337,11 @@ export class AttendanceService {
     const last = existingTypes[existingTypes.length - 1];
 
     const validNext: Record<string, string[]> = {
-      [""]:                        [SessionType.CHECK_IN],
-      [SessionType.CHECK_IN]:      [SessionType.BREAK_OUT, SessionType.CHECK_OUT],
-      [SessionType.BREAK_OUT]:     [SessionType.BREAK_IN],
-      [SessionType.BREAK_IN]:      [SessionType.BREAK_OUT, SessionType.CHECK_OUT],
-      [SessionType.CHECK_OUT]:     [], // day is closed
+      [""]: [SessionType.CHECK_IN],
+      [SessionType.CHECK_IN]: [SessionType.BREAK_OUT, SessionType.CHECK_OUT],
+      [SessionType.BREAK_OUT]: [SessionType.BREAK_IN],
+      [SessionType.BREAK_IN]: [SessionType.BREAK_OUT, SessionType.CHECK_OUT],
+      [SessionType.CHECK_OUT]: [], // day is closed
     };
 
     const allowed = validNext[last ?? ""] ?? [];
@@ -346,16 +386,16 @@ export class AttendanceService {
 
     if (!attendance) {
       attendance = await this.attRepo.create({
-        tenantId:       new mongoose.Types.ObjectId(context.tenantId) as any,
-        branchId:       new mongoose.Types.ObjectId(branchId) as any,
-        employeeId:     new mongoose.Types.ObjectId(input.employeeId) as any,
-        shiftId:        shift._id as any,
+        tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+        branchId: new mongoose.Types.ObjectId(branchId) as any,
+        employeeId: new mongoose.Types.ObjectId(input.employeeId) as any,
+        shiftId: shift._id as any,
         attendanceDate: date,
-        sessions:       [],
-        status:         AttendanceStatus.ABSENT,
-        workedMinutes:  0,
-        isRegularized:  true,
-        notes:          input.notes,
+        sessions: [],
+        status: AttendanceStatus.ABSENT,
+        workedMinutes: 0,
+        isRegularized: true,
+        notes: input.notes,
       });
     }
 
@@ -367,7 +407,7 @@ export class AttendanceService {
       });
       attendance.firstCheckIn = new Date(input.checkIn);
     }
-    
+
     if (input.checkOut) {
       attendance.sessions.push({
         type: SessionType.CHECK_OUT,
@@ -389,7 +429,7 @@ export class AttendanceService {
     attendance.status = resolvedStatus;
     attendance.isLate = isCheckInLate(shift, attendance.firstCheckIn ?? null);
     const manualEarlyRes = checkIfCheckOutEarly(shift, attendance.lastCheckOut ?? null, attendance.attendanceDate);
-    attendance.isCheckOutEarly     = manualEarlyRes.isEarly;
+    attendance.isCheckOutEarly = manualEarlyRes.isEarly;
     attendance.isAllowedEarlyLeave = manualEarlyRes.isAllowedEarlyLeave;
     attendance.isRegularized = true;
     if (input.notes) attendance.notes = input.notes;
@@ -420,7 +460,7 @@ export class AttendanceService {
   // Admin — report/list
   async getReport(
     context: RequestContext,
-    query:   any
+    query: any
   ) {
     return this.attRepo.findReport(context, query);
   }

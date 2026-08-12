@@ -14,12 +14,42 @@ export class CompOffService {
     const user = await UserModel.findOne({
       _id: new mongoose.Types.ObjectId(context.userId),
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
-    }).select("employeeId");
-    if (!user?.employeeId) {
+    }).select("employeeId email");
+
+    let employeeId = user?.employeeId?.toString();
+
+    if (!employeeId && user) {
+      const emp = await EmployeeModel.findOne({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        $or: [
+          { userId: user._id },
+          { email: user.email },
+        ],
+        isDeleted: false,
+      });
+
+      if (emp) {
+        employeeId = emp._id.toString();
+        await UserModel.updateOne({ _id: user._id }, { employeeId: emp._id });
+      }
+    }
+
+    if (!employeeId && (context.role === "ORG_ADMIN" || context.role === "SUPER_ADMIN")) {
+      const firstEmp = await EmployeeModel.findOne({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        isDeleted: false,
+      });
+      if (firstEmp) {
+        employeeId = firstEmp._id.toString();
+      }
+    }
+
+    if (!employeeId) {
       throw new AppError("No employee record is linked to this account", 404);
     }
-    return user.employeeId.toString();
+    return employeeId;
   }
+
 
   // Credited by HR when an employee is confirmed to have worked a
   // holiday/weekly-off — not self-service, since it requires verification
