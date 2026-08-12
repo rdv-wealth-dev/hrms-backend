@@ -54,10 +54,58 @@ export class OnboardingWizardService {
     await recalculateProfileCompletion(context.tenantId, employee._id.toString());
     const refreshed = await EmployeeModel.findById(employee._id);
 
+    // ── 1. Step 1 Data (Personal Details) ──
+    const step1Data = {
+      dateOfBirth: refreshed?.dateOfBirth,
+      gender: refreshed?.gender,
+      bloodGroup: refreshed?.bloodGroup,
+      maritalStatus: refreshed?.maritalStatus,
+      phone: refreshed?.phone,
+      currentAddress: refreshed?.currentAddress,
+      emergencyContact: refreshed?.emergencyContacts,
+      pan: refreshed?.pan,
+      aadhaar: refreshed?.aadhaar,
+      passportNo: refreshed?.passportNo,
+    };
+
+    // ── 2. Step 2 Data (Family Details) ──
+    const familyDocs = await this.familyRepo.findAllForEmployee(context, employee._id.toString());
+    const step2Data = {
+      familyMembers: (familyDocs || []).map((m: any) => ({
+        fullName: m.fullName,
+        relationship: m.relationship,
+        dateOfBirth: m.dateOfBirth,
+        gender: m.gender,
+        isDependent: m.isDependent,
+        occupation: m.occupation,
+        phone: m.phone,
+        isNominee: m.isNominee,
+      })),
+    };
+
+    // ── 3. Step 3 Data (Bank Details) ──
+    const bank = await EmployeeBankAccountModel.findOne({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      employeeId: employee._id,
+      isActive: true,
+      isDeleted: false,
+    });
+    const step3Data = bank
+      ? {
+          bankName: bank.bankName,
+          accountNumber: bank.accountNumber,
+          ifscCode: bank.ifscCode,
+          accountType: bank.accountType,
+        }
+      : {};
+
     return {
       onboardingStep:            refreshed!.onboardingStep,
       onboardingComplete:        refreshed!.onboardingComplete,
       onboardingStepsCompleted:  refreshed!.onboardingStepsCompleted,
+      step1Data,
+      step2Data,
+      step3Data,
     };
   }
 

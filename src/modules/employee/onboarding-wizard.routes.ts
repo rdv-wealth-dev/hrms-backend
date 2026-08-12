@@ -16,7 +16,7 @@ router.use(authenticate);
 // route that completes the profile, gating it here would create a lock-out
 
 router.get(
-    "/status",  
+    ["/status", "/me/status"],  
     controller.getStatus.bind(controller)
 );
 
