@@ -381,9 +381,16 @@ export class AttendanceService {
   async manualEntry(context: RequestContext, input: ManualAttendanceInput) {
     const date = normalizeToMidnight(new Date(input.attendanceDate));
 
-    let attendance = await this.attRepo.findByEmployeeAndDate(
+    const existing = await this.attRepo.findByEmployeeAndDate(
       context, input.employeeId, date
     );
+
+    if (existing) {
+      throw new AppError(
+        "Attendance record already exists for this employee on this date. Only one manual entry is allowed.",
+        400
+      );
+    }
 
     const shift = await this.shiftRepo.findDefault(context);
     if (!shift) throw new AppError("No default shift configured", 400);
@@ -393,20 +400,18 @@ export class AttendanceService {
 
     const branchId = this.resolveBranchId(employee.branchId, context);
 
-    if (!attendance) {
-      attendance = await this.attRepo.create({
-        tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
-        branchId: new mongoose.Types.ObjectId(branchId) as any,
-        employeeId: new mongoose.Types.ObjectId(input.employeeId) as any,
-        shiftId: shift._id as any,
-        attendanceDate: date,
-        sessions: [],
-        status: AttendanceStatus.ABSENT,
-        workedMinutes: 0,
-        isRegularized: true,
-        notes: input.notes,
-      });
-    }
+    let attendance = await this.attRepo.create({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+      branchId: new mongoose.Types.ObjectId(branchId) as any,
+      employeeId: new mongoose.Types.ObjectId(input.employeeId) as any,
+      shiftId: shift._id as any,
+      attendanceDate: date,
+      sessions: [],
+      status: AttendanceStatus.ABSENT,
+      workedMinutes: 0,
+      isRegularized: true,
+      notes: input.notes,
+    });
 
     if (input.checkIn) {
       attendance.sessions.push({
