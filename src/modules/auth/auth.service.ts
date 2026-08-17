@@ -399,6 +399,7 @@ export class AuthService {
         email:            user.email,
         firstName:        user.firstName,
         lastName:         user.lastName,
+        phone:            user.phone,           // 👈 FIX: needed by frontend useUserOrgData() to pre-fill profile
         role:             user.role,
         isOrgAdmin:       user.isOrgAdmin,
         branchIds:        (user.branchIds || []).map((b: any) => b.toString()),
@@ -409,13 +410,15 @@ export class AuthService {
         lastLoginDevice:  user.lastLoginDevice,
       },
       organization: {
-        id:            org!._id,
-        companyName:   org!.companyName,
-        slug:          org!.slug,
-        workspaceSlug: org!.workspaceSlug,
-        subscription:  org!.subscription,
-        modules:       org!.modules,
-        branding:      org!.branding,          // logo + primaryColor for workspace theming
+        id:                  org!._id,
+        companyName:         org!.companyName,
+        slug:                org!.slug,
+        workspaceSlug:       org!.workspaceSlug,
+        employeeCountRange:  org!.employeeCountRange, // 👈 FIX: needed by frontend to pre-fill company size
+        locale:              org!.locale,              // 👈 FIX: needed by frontend to pre-fill timezone/locale
+        subscription:        org!.subscription,
+        modules:             org!.modules,
+        branding:            org!.branding,            // logo + primaryColor for workspace theming
       },
       branch: headOffice ? {
         id:   headOffice._id,
