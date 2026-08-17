@@ -276,13 +276,22 @@ export class AttendanceService {
     attendance.isCheckOutEarly = earlyResult.isEarly;
     attendance.isAllowedEarlyLeave = earlyResult.isAllowedEarlyLeave;
 
-    // If check-in was within grace period, increment the monthly grace counter
-    if (input.type === SessionType.CHECK_IN && attendance.status === AttendanceStatus.PRESENT && attendance.firstCheckIn) {
-      const now = new Date();
-      const [shiftHour, shiftMin] = shift.startTime.split(":").map(Number);
+    // If check-in was late (past the shift-start deadline), increment the monthly grace counter.
+    // Use the same baseline as isCheckInLate: checkInWindowEnd ?? startTime.
+    // BUG-FIX: was using shift.startTime directly — ignored checkInWindowEnd, causing
+    // grace to increment even when the employee arrived within the allowed check-in window.
+    if (input.type === SessionType.CHECK_IN && attendance.firstCheckIn) {
+      const baselineStr = (shift.checkInWindowEnd?.trim()) || shift.startTime;
+      const [shiftHour, shiftMin] = baselineStr.split(":").map(Number);
       const shiftStart = new Date(attendance.firstCheckIn);
       shiftStart.setHours(shiftHour, shiftMin, 0, 0);
-      if (attendance.firstCheckIn > shiftStart) {
+      const minutesLate = Math.floor(
+        Math.max(0, (attendance.firstCheckIn.getTime() - shiftStart.getTime()) / 60000)
+      );
+      // Increment grace when employee arrived late but status is PRESENT (grace absorbed the lateness).
+      // Also covers LATE status: grace counter tracks usage even when limit is exhausted.
+      if (minutesLate > 0) {
+        const now = new Date();
         await this.graceRepo.increment(
           context, employeeId, now.getFullYear(), now.getMonth() + 1, branchId
         );
@@ -427,7 +436,9 @@ export class AttendanceService {
       attendance.halfDayType = sr.halfDayType ?? undefined;
     }
     attendance.status = resolvedStatus;
-    attendance.isLate = isCheckInLate(shift, attendance.firstCheckIn ?? null);
+    // Manual entry: no grace tracking (admin override) — but apply grace limit=0
+    // so isCheckInLate uses the baseline consistently (checkInWindowEnd || startTime).
+    attendance.isLate = isCheckInLate(shift, attendance.firstCheckIn ?? null, 0, 0);
     const manualEarlyRes = checkIfCheckOutEarly(shift, attendance.lastCheckOut ?? null, attendance.attendanceDate);
     attendance.isCheckOutEarly = manualEarlyRes.isEarly;
     attendance.isAllowedEarlyLeave = manualEarlyRes.isAllowedEarlyLeave;

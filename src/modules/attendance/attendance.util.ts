@@ -174,12 +174,17 @@ export function calculateAttendanceStatus(
   }
 
   // Build shift-start and shift-end Date objects anchored to the check-in day
-  const baselineTimeStr = shift.checkInWindowEnd || shift.startTime;
+  // Use checkInWindowEnd as the authoritative "shift-start" deadline for late calculation.
+  // Falls back to startTime only when checkInWindowEnd is not configured.
+  // Trim guards against accidental empty-string values stored in DB.
+  const baselineTimeStr = (shift.checkInWindowEnd?.trim()) || shift.startTime;
   const [shiftHour, shiftMin] = baselineTimeStr.split(":").map(Number);
   const shiftStart = new Date(firstCheckIn);
   shiftStart.setHours(shiftHour, shiftMin, 0, 0);
 
-  const minutesLate = Math.max(0, (firstCheckIn.getTime() - shiftStart.getTime()) / 60000);
+  // Use integer minutes (Math.floor) to eliminate sub-minute clock-skew false positives.
+  // e.g. a punch at 10:00:03 vs shiftStart 10:00:00 = 0 minutes late, NOT 0.05 minutes late.
+  const minutesLate = Math.floor(Math.max(0, (firstCheckIn.getTime() - shiftStart.getTime()) / 60000));
 
   // ── 1. Arrival-based ABSENT: arrived after absent threshold (e.g. 255 mins = ~2:15 PM) ────
   const absentThresholdMins = shift.absentThresholdMinutes ?? 255;
@@ -267,16 +272,27 @@ export function isCheckInLate(
   graceLimit?:   number
 ): boolean {
   if (!firstCheckIn) return false;
-  const baselineTimeStr = shift.checkInWindowEnd || shift.startTime;
+
+  // Must use the same baseline as calculateAttendanceStatus:
+  // checkInWindowEnd is the "no-late-before" deadline; fall back to startTime.
+  // Trim guards against accidental empty-string values stored in DB.
+  const baselineTimeStr = (shift.checkInWindowEnd?.trim()) || shift.startTime;
   const [shiftHour, shiftMin] = baselineTimeStr.split(":").map(Number);
   const shiftStart = new Date(firstCheckIn);
   shiftStart.setHours(shiftHour, shiftMin, 0, 0);
 
-  const hasGraceLeft = !graceLimit || (graceUsed ?? 0) < graceLimit;
-  const effectiveGraceMinutes = hasGraceLeft ? shift.gracePeriodMinutes : 0;
-  const lateThreshold = new Date(shiftStart.getTime() + effectiveGraceMinutes * 60000);
+  // Integer minutes — eliminates sub-minute clock-skew false positives.
+  // Employee punching at 10:00:03 with shift at 10:00 = 0 minutes late.
+  const minutesLate = Math.floor(
+    Math.max(0, (firstCheckIn.getTime() - shiftStart.getTime()) / 60000)
+  );
 
-  return firstCheckIn > lateThreshold;
+  const hasGraceLeft = !graceLimit || (graceUsed ?? 0) < graceLimit;
+  // ?? 15: gracePeriodMinutes has a schema default of 15, but guard against
+  // undefined in case the shift document was created before the field existed.
+  const effectiveGraceMinutes = hasGraceLeft ? (shift.gracePeriodMinutes ?? 15) : 0;
+
+  return minutesLate > effectiveGraceMinutes;
 }
 
 // Returns two flags:

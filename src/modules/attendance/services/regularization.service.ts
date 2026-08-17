@@ -142,7 +142,9 @@ export class RegularizationService {
           );
           attendance.status      = sr.status;
           attendance.halfDayType = sr.halfDayType ?? undefined;
-          attendance.isLate = isCheckInLate(shift, attendance.firstCheckIn ?? null);
+          // Admin-approved correction: no grace tracking, but isCheckInLate still needs
+          // params so it uses checkInWindowEnd||startTime baseline correctly (not undefined/NaN).
+          attendance.isLate = isCheckInLate(shift, attendance.firstCheckIn ?? null, 0, 0);
           const earlyRes = checkIfCheckOutEarly(shift, attendance.lastCheckOut ?? null, attendance.attendanceDate);
           attendance.isCheckOutEarly    = earlyRes.isEarly;
           attendance.isAllowedEarlyLeave = earlyRes.isAllowedEarlyLeave;
