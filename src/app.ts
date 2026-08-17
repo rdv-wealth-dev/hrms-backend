@@ -22,6 +22,8 @@ import onboardingWizardRoutes from "./modules/employee/onboarding-wizard.routes"
 import auditRoutes from "./modules/audit";
 import employeeDocumentRoutes from "./modules/employee-document/employee-document.routes";
 import deviceRoutes from "./modules/device/device.routes";
+import orgTreeRoutes from "./modules/org-tree/org-tree.routes";
+
 
 const app: Application = express();
 
@@ -54,6 +56,7 @@ app.use("/api/v1/payroll", authenticate, tenantLimiter, payrollRoutes);
 app.use("/api/v1/events", authenticate, tenantLimiter, eventRoutes);
 app.use("/api/v1/audit", authenticate, tenantLimiter, auditRoutes);
 app.use("/api/v1/employee-documents", authenticate, tenantLimiter, employeeDocumentRoutes);
+app.use("/api/v1/org-tree", authenticate, tenantLimiter, orgTreeRoutes);
 
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({
