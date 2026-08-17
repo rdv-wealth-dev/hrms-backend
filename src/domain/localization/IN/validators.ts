@@ -15,7 +15,7 @@ export const PAN_STATUS_MAP: Record<string, string> = {
   E: "Limited Liability Partnership",
 };
 
-// ── DOCUMENT REGISTRY SPECIFICATION ────────────────────────────────────────
+// ── DOCUMENT REGISTRY SPECIFICATION 
 
 export interface DocumentValidationRule {
   key: string;
@@ -30,7 +30,7 @@ export interface DocumentValidationRule {
   format: (val: string) => string;
 }
 
-// ── 1. PAN SPECIFICATION (10 Chars: AAAAA9999A) ─────────────────────────────
+// ── 1. PAN SPECIFICATION (10 Chars: AAAAA9999A) 
 const panRule: DocumentValidationRule = {
   key: "pan",
   name: "Permanent Account Number (PAN)",
@@ -55,7 +55,7 @@ const panRule: DocumentValidationRule = {
   },
 };
 
-// ── 2. AADHAAR SPECIFICATION (12 Digits: 2-9 Start) ─────────────────────────
+// ── 2. AADHAAR SPECIFICATION (12 Digits: 2-9 Start) 
 const aadhaarRule: DocumentValidationRule = {
   key: "aadhaar",
   name: "UIDAI Aadhaar Number",
@@ -85,7 +85,7 @@ const aadhaarRule: DocumentValidationRule = {
   },
 };
 
-// ── 3. PASSPORT SPECIFICATION (8 Chars: 1 Letter + 7 Digits) ────────────────
+// ── 3. PASSPORT SPECIFICATION (8 Chars: 1 Letter + 7 Digits) 
 const passportRule: DocumentValidationRule = {
   key: "passport",
   name: "Indian Passport",
@@ -110,7 +110,7 @@ const passportRule: DocumentValidationRule = {
   },
 };
 
-// ── 4. DRIVING LICENSE SPECIFICATION (15 Chars: SS-RR-YYYYNNNNNNN) ───────────
+// ── 4. DRIVING LICENSE SPECIFICATION (15 Chars: SS-RR-YYYYNNNNNNN) 
 const drivingLicenseRule: DocumentValidationRule = {
   key: "drivingLicense",
   name: "Indian Driving License (DL)",
@@ -140,7 +140,7 @@ const drivingLicenseRule: DocumentValidationRule = {
   },
 };
 
-// ── 5. VOTER ID (EPIC) SPECIFICATION (10 Chars: AAA1234567) ─────────────────
+// ── 5. VOTER ID (EPIC) SPECIFICATION (10 Chars: AAA1234567) 
 const voterIdRule: DocumentValidationRule = {
   key: "voterId",
   name: "Electors Photo Identity Card (Voter ID / EPIC)",
@@ -165,7 +165,7 @@ const voterIdRule: DocumentValidationRule = {
   },
 };
 
-// ── MASTER CENTRALIZED DOCUMENT REGISTRY ────────────────────────────────────
+// ── MASTER CENTRALIZED DOCUMENT REGISTRY 
 
 export const INDIAN_DOCUMENT_REGISTRY: Record<string, DocumentValidationRule> = {
   pan: panRule,
@@ -175,7 +175,7 @@ export const INDIAN_DOCUMENT_REGISTRY: Record<string, DocumentValidationRule> = 
   voterId: voterIdRule,
 };
 
-// ── DYNAMIC DOCUMENT ENGINE UTILITIES ──────────────────────────────────────
+// ── DYNAMIC DOCUMENT ENGINE UTILITIES 
 
 /**
  * Validates any Indian statutory document dynamically by key.
@@ -208,7 +208,7 @@ export function getDocumentRule(key: string): DocumentValidationRule | undefined
   return INDIAN_DOCUMENT_REGISTRY[key];
 }
 
-// ── DIRECT EXPORTS (Convenience Wrappers) ───────────────────────────────────
+// ── DIRECT EXPORTS (Convenience Wrappers) 
 
 export const validatePAN = panRule.validate;
 export const maskPAN = panRule.mask;
