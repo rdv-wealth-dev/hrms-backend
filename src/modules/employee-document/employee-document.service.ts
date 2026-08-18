@@ -61,8 +61,8 @@ export class EmployeeDocumentService {
     // Dynamic country plugin validation hook for verifying document type eligibility
     const countryCode = employee.countryCode || "IN";
     const plugin = CountryRegistry.resolve(countryCode);
-    const isValidType = plugin.statutoryFields.some(f => f.key.toUpperCase() === input.documentType.toUpperCase()) || 
-                        ["PASSPORT", "DRIVING_LICENSE", "OFFER_LETTER", "RESUME", "DEGREE", "EXPERIENCE", "OTHER"].includes(input.documentType);
+    const isValidType = plugin.statutoryFields.some(f => f.key.toUpperCase() === input.documentType.toUpperCase()) ||
+      ["PASSPORT", "DRIVING_LICENSE", "OFFER_LETTER", "RESUME", "DEGREE", "EXPERIENCE", "OTHER"].includes(input.documentType);
     if (!isValidType) {
       throw new AppError(`Document type "${input.documentType}" is not supported for country ${countryCode}`, 400);
     }

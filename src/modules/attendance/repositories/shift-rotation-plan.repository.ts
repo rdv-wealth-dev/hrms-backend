@@ -6,7 +6,7 @@ export class ShiftRotationPlanRepository {
 
   private tenantFilter(context: RequestContext) {
     return {
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
     };
   }
@@ -32,7 +32,7 @@ export class ShiftRotationPlanRepository {
     id: string
   ): Promise<ShiftRotationPlanDocument | null> {
     return ShiftRotationPlanModel.findOne({
-      _id:      new mongoose.Types.ObjectId(id),
+      _id: new mongoose.Types.ObjectId(id),
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
     }).populate("slots.shiftId", "name code startTime endTime gracePeriodMinutes graceLimitPerMonth halfDayThresholdMinutes fullDayMinutes breakDurationMinutes");
@@ -40,7 +40,7 @@ export class ShiftRotationPlanRepository {
 
   async findByIdRaw(id: string): Promise<ShiftRotationPlanDocument | null> {
     return ShiftRotationPlanModel.findOne({
-      _id:       new mongoose.Types.ObjectId(id),
+      _id: new mongoose.Types.ObjectId(id),
       isDeleted: false,
     });
   }
@@ -52,7 +52,7 @@ export class ShiftRotationPlanRepository {
   ): Promise<ShiftRotationPlanDocument | null> {
     return ShiftRotationPlanModel.findOneAndUpdate(
       {
-        _id:      new mongoose.Types.ObjectId(id),
+        _id: new mongoose.Types.ObjectId(id),
         tenantId: new mongoose.Types.ObjectId(context.tenantId),
         isDeleted: false,
       },
@@ -64,7 +64,7 @@ export class ShiftRotationPlanRepository {
   async softDeleteById(context: RequestContext, id: string): Promise<void> {
     await ShiftRotationPlanModel.findOneAndUpdate(
       {
-        _id:      new mongoose.Types.ObjectId(id),
+        _id: new mongoose.Types.ObjectId(id),
         tenantId: new mongoose.Types.ObjectId(context.tenantId),
       },
       { $set: { isDeleted: true } }

@@ -8,65 +8,65 @@ export enum RegularizationStatus {
 }
 
 export interface RegularizationDocument extends BaseDocument {
-  employeeId:      mongoose.Types.ObjectId;
-  attendanceId:    mongoose.Types.ObjectId;
-  attendanceDate:  Date;
-  requestedCheckIn?:  Date;
-  requestedCheckOut?: Date;
-  reason:          string;
-  status:          RegularizationStatus;
-  reviewedBy?:     mongoose.Types.ObjectId;
-  reviewedAt?:     Date;
-  reviewComments?: string;
+    employeeId: mongoose.Types.ObjectId;
+    attendanceId: mongoose.Types.ObjectId;
+    attendanceDate: Date;
+    requestedCheckIn?: Date;
+    requestedCheckOut?: Date;
+    reason: string;
+    status: RegularizationStatus;
+    reviewedBy?: mongoose.Types.ObjectId;
+    reviewedAt?: Date;
+    reviewComments?: string;
 }
 
 const RegularizationSchema = createBaseSchema<RegularizationDocument>(
     {
-        employeeId : {
-            type : mongoose.Schema.Types.ObjectId,
-            ref : "Employee",
-            required : true,
-            index : true,
+        employeeId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Employee",
+            required: true,
+            index: true,
         },
-        attendanceId : {
-            type : mongoose.Schema.Types.ObjectId,
-            ref : "Attendance",
-            required : true,
+        attendanceId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Attendance",
+            required: true,
         },
-        attendanceDate : {
-            type : Date,
-            required : true,
+        attendanceDate: {
+            type: Date,
+            required: true,
         },
-        requestedCheckIn : {
-            type : Date,
+        requestedCheckIn: {
+            type: Date,
         },
-        requestedCheckOut : {
-            type : Date,
+        requestedCheckOut: {
+            type: Date,
         },
-        reason : {
-            type : String,
-            required : true,
-            trim : true,
-            maxLength : 500,
+        reason: {
+            type: String,
+            required: true,
+            trim: true,
+            maxLength: 500,
         },
-        status : {
-            type : String,
-            enum : Object.values(RegularizationStatus),
-            default : RegularizationStatus.PENDING,
+        status: {
+            type: String,
+            enum: Object.values(RegularizationStatus),
+            default: RegularizationStatus.PENDING,
         },
-        reviewedBy : {
-            type : mongoose.Schema.Types.ObjectId,
+        reviewedBy: {
+            type: mongoose.Schema.Types.ObjectId,
         },
-        reviewedAt : {
-            type : Date,
+        reviewedAt: {
+            type: Date,
         },
-        reviewComments : {
-            type : String,
-            trim : true
+        reviewComments: {
+            type: String,
+            trim: true
         },
-        
+
     },
-    { collection : "attendance_regularizations"}
+    { collection: "attendance_regularizations" }
 );
 
 

@@ -11,58 +11,58 @@ export enum SessionEventType {
 
 
 export interface SessionLogDocument extends OrgLevelDocument {
-    userId? : mongoose.Types.ObjectId;
-    email : string;
-    eventType : SessionEventType;
-    ipAddress? : string;
-    userAgent? : string;
-    jti? : string;
-    failureReason? : string;
-    sessionStart? : Date;
-    sessionEnd? : Date;
+    userId?: mongoose.Types.ObjectId;
+    email: string;
+    eventType: SessionEventType;
+    ipAddress?: string;
+    userAgent?: string;
+    jti?: string;
+    failureReason?: string;
+    sessionStart?: Date;
+    sessionEnd?: Date;
 }
 
 const SessionLogSchema = createOrgLevelSchema<SessionLogDocument>(
-  {
-    userId: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        index: true 
+    {
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            index: true
+        },
+        email: {
+            type: String,
+            required: true,
+            lowercase: true,
+            trim: true
+        },
+        eventType: {
+            type: String,
+            enum: Object.values(SessionEventType),
+            required: true
+        },
+        ipAddress: {
+            type: String,
+            trim: true
+        },
+        userAgent: {
+            type: String,
+            trim: true
+        },
+        jti: {
+            type: String,
+            trim: true
+        },
+        failureReason: {
+            type: String,
+            trim: true
+        },
+        sessionStart: {
+            type: Date
+        },
+        sessionEnd: {
+            type: Date
+        },
     },
-    email: { 
-        type: String, 
-        required: true, 
-        lowercase: true, 
-        trim: true 
-    },
-    eventType: { 
-        type: String, 
-        enum: Object.values(SessionEventType), 
-        required: true 
-    },
-    ipAddress: { 
-        type: String, 
-        trim: true 
-    },
-    userAgent: { 
-        type: String, 
-        trim: true 
-    },
-    jti: { 
-        type: String, 
-        trim: true 
-    },
-    failureReason: { 
-        type: String, 
-        trim: true 
-    },
-    sessionStart: { 
-        type: Date 
-    },
-    sessionEnd: { 
-    type: Date 
-},
-  },
-  { collection: "session_logs" }
+    { collection: "session_logs" }
 );
 
 

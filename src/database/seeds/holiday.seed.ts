@@ -10,14 +10,14 @@ import { logger } from "../../config/logger.config";
  * If a stateCode is provided, it seeds both country-wide and state-specific statutory holidays.
  */
 export async function seedStatutoryNationalHolidays(
-  tenantId:    string,
+  tenantId: string,
   countryCode: string = "IN",
-  stateCode?:  string | null | undefined,
-  createdBy:   string = "system"
+  stateCode?: string | null | undefined,
+  createdBy: string = "system"
 ): Promise<void> {
   const cc = countryCode.toUpperCase();
   const tenantOId = new mongoose.Types.ObjectId(tenantId);
-  const now       = new Date();
+  const now = new Date();
   const currentYear = new Date().getUTCFullYear();
   const yearsToSeed = 2;
 
@@ -27,7 +27,7 @@ export async function seedStatutoryNationalHolidays(
   try {
     // 1. Initialize date-holidays with optional state/canton code
     const hd = new Holidays();
-    
+
     // Check if country is supported
     const countries = hd.getCountries();
     if (!countries[cc]) {
@@ -53,7 +53,7 @@ export async function seedStatutoryNationalHolidays(
 
     const collection = mongoose.connection.collection("holidays");
     let inserted = 0;
-    let skipped  = 0;
+    let skipped = 0;
 
     // 2. Loop through a 2-year rolling window
     for (let i = 0; i < yearsToSeed; i++) {
@@ -71,9 +71,9 @@ export async function seedStatutoryNationalHolidays(
         // Normalize Date to UTC Midnight (Y-M-D) to eliminate timezone shifts
         const dateStr = typeof item.date === "string" ? item.date : new Date(item.date).toISOString();
         const dateParts = dateStr.split(" ")[0].split("T")[0].split("-");
-        const year      = parseInt(dateParts[0], 10);
-        const month     = parseInt(dateParts[1], 10) - 1;
-        const day       = parseInt(dateParts[2], 10);
+        const year = parseInt(dateParts[0], 10);
+        const month = parseInt(dateParts[1], 10) - 1;
+        const day = parseInt(dateParts[2], 10);
 
         const holidayDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
 
@@ -81,37 +81,37 @@ export async function seedStatutoryNationalHolidays(
         // In date-holidays, state-specific holidays returned when initialized with (country, state)
         // have an 'item.state' property set to the state code.
         const isStateHoliday = !!(item as any).state;
-        const resolvedScope  = isStateHoliday ? HolidayScope.STATE : HolidayScope.COUNTRY;
-        const resolvedState  = isStateHoliday ? normalizedState : null;
+        const resolvedScope = isStateHoliday ? HolidayScope.STATE : HolidayScope.COUNTRY;
+        const resolvedState = isStateHoliday ? normalizedState : null;
 
         const query = {
-          tenantId:    tenantOId,
-          scope:       resolvedScope,
+          tenantId: tenantOId,
+          scope: resolvedScope,
           countryCode: cc,
-          stateCode:   resolvedState,
-          date:        holidayDate,
-          isDeleted:   false,
+          stateCode: resolvedState,
+          date: holidayDate,
+          isDeleted: false,
         };
 
         const doc = {
-          tenantId:    tenantOId,
-          name:        item.name,
-          date:        holidayDate,
-          type:        HolidayType.NATIONAL,
-          scope:       resolvedScope,
-          isOptional:  false,
-          description: isStateHoliday 
-            ? `Statutory State Holiday for ${cc}-${normalizedState}` 
+          tenantId: tenantOId,
+          name: item.name,
+          date: holidayDate,
+          type: HolidayType.NATIONAL,
+          scope: resolvedScope,
+          isOptional: false,
+          description: isStateHoliday
+            ? `Statutory State Holiday for ${cc}-${normalizedState}`
             : `Statutory National Holiday for ${cc}`,
-          branchId:    null,
+          branchId: null,
           countryCode: cc,
-          stateCode:   resolvedState,
+          stateCode: resolvedState,
           createdBy,
-          updatedBy:   createdBy,
-          isDeleted:   false,
-          version:     1,
-          createdAt:   now,
-          updatedAt:   now,
+          updatedBy: createdBy,
+          isDeleted: false,
+          version: 1,
+          createdAt: now,
+          updatedAt: now,
         };
 
         // Idempotent upsert via MongoDB updateOne with $setOnInsert
@@ -143,7 +143,7 @@ export async function seedStatutoryNationalHolidays(
     logger.error({
       message: "Seeding statutory holidays failed",
       tenantId,
-      error:   error.message,
+      error: error.message,
     });
     throw error;
   }

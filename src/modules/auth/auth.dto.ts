@@ -32,8 +32,8 @@ export type RegisterInput = z.infer<typeof RegisterDto>;
 
 // Login DTO
 export const LoginDto = z.object({
-  email:          emailSchema,
-  password:       z.string().min(1, "Password is required"),
+  email: emailSchema,
+  password: z.string().min(1, "Password is required"),
   rememberDevice: z.boolean().optional().default(false),
 });
 

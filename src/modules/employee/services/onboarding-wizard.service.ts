@@ -18,7 +18,7 @@ import { EmployeeBankAccountModel } from "../models/employee-bank-account.model"
 
 export class OnboardingWizardService {
   private familyRepo = new EmployeeFamilyRepository();
-  private empRepo    = new EmployeeRepository();
+  private empRepo = new EmployeeRepository();
 
   private async resolveOwnEmployee(context: RequestContext) {
     const user = await UserModel.findOne({
@@ -49,7 +49,7 @@ export class OnboardingWizardService {
   // Get current wizard state — frontend calls this to know where to render 
   async getStatus(context: RequestContext) {
     const employee = await this.resolveOwnEmployee(context);
-    
+
     // Sync onboardingStep and stepsCompleted based on current DB state (in case HR updated details)
     await recalculateProfileCompletion(context.tenantId, employee._id.toString());
     const refreshed = await EmployeeModel.findById(employee._id);
@@ -92,17 +92,17 @@ export class OnboardingWizardService {
     });
     const step3Data = bank
       ? {
-          bankName: bank.bankName,
-          accountNumber: bank.accountNumber,
-          ifscCode: bank.ifscCode,
-          accountType: bank.accountType,
-        }
+        bankName: bank.bankName,
+        accountNumber: bank.accountNumber,
+        ifscCode: bank.ifscCode,
+        accountType: bank.accountType,
+      }
       : {};
 
     return {
-      onboardingStep:            refreshed!.onboardingStep,
-      onboardingComplete:        refreshed!.onboardingComplete,
-      onboardingStepsCompleted:  refreshed!.onboardingStepsCompleted,
+      onboardingStep: refreshed!.onboardingStep,
+      onboardingComplete: refreshed!.onboardingComplete,
+      onboardingStepsCompleted: refreshed!.onboardingStepsCompleted,
       step1Data,
       step2Data,
       step3Data,
@@ -136,12 +136,12 @@ export class OnboardingWizardService {
     }
 
     // Apply values to employee model
-    employee.dateOfBirth       = dateOfBirth;
-    employee.gender            = gender as any;
-    employee.bloodGroup        = bloodGroup as any;
-    employee.maritalStatus     = maritalStatus as any;
-    employee.phone             = phone;
-    employee.currentAddress    = currentAddress as any;
+    employee.dateOfBirth = dateOfBirth;
+    employee.gender = gender as any;
+    employee.bloodGroup = bloodGroup as any;
+    employee.maritalStatus = maritalStatus as any;
+    employee.phone = phone;
+    employee.currentAddress = currentAddress as any;
     employee.emergencyContacts = emergencyContacts as any;
 
     // Save optional document numbers (e.g. PAN, Aadhaar, Passport)
@@ -209,17 +209,17 @@ export class OnboardingWizardService {
     }
 
     await this.empRepo.addBankAccount({
-      tenantId:      employee.tenantId as any,
-      branchId:      employee.branchId as any,
-      employeeId:    employee._id as any,
-      bankName:      bankName,
+      tenantId: employee.tenantId as any,
+      branchId: employee.branchId as any,
+      employeeId: employee._id as any,
+      bankName: bankName,
       accountNumber: accountNumber,
-      ifscCode:      ifscCode,
-      accountType:   accountType as any,
-      isPrimary:     true,
-      isActive:      true,
-      createdBy:     new mongoose.Types.ObjectId(context.userId) as any,
-      updatedBy:     new mongoose.Types.ObjectId(context.userId) as any,
+      ifscCode: ifscCode,
+      accountType: accountType as any,
+      isPrimary: true,
+      isActive: true,
+      createdBy: new mongoose.Types.ObjectId(context.userId) as any,
+      updatedBy: new mongoose.Types.ObjectId(context.userId) as any,
     });
 
     employee.onboardingStepsCompleted.bankDetails = true;
@@ -256,7 +256,7 @@ export class OnboardingWizardService {
 
       const documentLabels: Record<string, string> = {
         PAN: "PAN Card",
-        AADHAAR: "Aadhaar Card", 
+        AADHAAR: "Aadhaar Card",
         PASSPORT: "Passport",
         DRIVING_LICENSE: "Driving License",
         OFFER_LETTER: "Offer Letter",
@@ -271,14 +271,14 @@ export class OnboardingWizardService {
       required.forEach((t: string) => {
         const label = documentLabels[t] || t;
         if (t === "PAN") {
-          const hasIt = isIndia 
+          const hasIt = isIndia
             ? (!!refreshed!.pan || uploadedTypes.includes("PAN"))
             : uploadedTypes.includes("PAN");
           if (!hasIt) {
             missing.push(isIndia ? `${label} Number or Document` : `${label} Document`);
           }
         } else if (t === "AADHAAR") {
-          const hasIt = isIndia 
+          const hasIt = isIndia
             ? (!!refreshed!.aadhaar || uploadedTypes.includes("AADHAAR"))
             : uploadedTypes.includes("AADHAAR");
           if (!hasIt) {
@@ -326,7 +326,7 @@ export class OnboardingWizardService {
 
     employee.onboardingStepsCompleted.reviewed = true;
     employee.onboardingComplete = true;
-    employee.isProfileComplete  = true; // ties into the existing dashboard gate
+    employee.isProfileComplete = true; // ties into the existing dashboard gate
 
     await employee.save();
     return { message: "Onboarding complete! Welcome to the team." };

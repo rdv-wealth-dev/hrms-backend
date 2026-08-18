@@ -38,7 +38,7 @@ export async function recalculateProfileCompletion(
       employeeId: new mongoose.Types.ObjectId(employeeId),
       isDeleted: false,
     }) as unknown as string[];
-    
+
     // Check if document numbers are filled for mandatory types (PAN, AADHAAR, PASSPORT)
     // or if the document file itself has been uploaded.
     const isIndia = (employee.countryCode || "IN").toUpperCase() === "IN";

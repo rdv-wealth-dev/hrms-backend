@@ -36,7 +36,7 @@ router.use(injectOnboardingStatus);
 
 router.post("/me/punch/web",
   validateBody(PunchDto),
-  attCtrl.punchWeb.bind(attCtrl)  
+  attCtrl.punchWeb.bind(attCtrl)
 );
 
 router.post("/me/punch/mobile",

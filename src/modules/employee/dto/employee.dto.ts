@@ -21,39 +21,39 @@ import {
 export const CreateEmployeeDto = withPhoneValidation(
   z.object({
     // Identity
-    firstName:     safeStringSchema(2, 100),
-    lastName:      safeStringSchema(2, 100),
-    email:         anyEmailSchema.optional(),
-    workEmail:     anyEmailSchema.optional(),
-    phone:         phoneSchema.optional(),
-    countryCode:   countryCodeSchema.optional().default("IN"),
-    pfOnActuals:   z.boolean().optional().default(false),
-    dateOfBirth:   dateSchema.optional(),
-    gender:        z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
-    bloodGroup:    z.enum(["A+","A-","B+","B-","O+","O-","AB+","AB-"]).optional(),
-    maritalStatus: z.enum(["SINGLE","MARRIED","DIVORCED","WIDOWED"]).optional(),
-    nationality:   safeStringSchema(2, 100).optional(),
-    pan:            panSchema.optional(),
-    aadhaar:        aadhaarSchema.optional(),
-    passportNo:     passportSchema.optional(),
+    firstName: safeStringSchema(2, 100),
+    lastName: safeStringSchema(2, 100),
+    email: anyEmailSchema.optional(),
+    workEmail: anyEmailSchema.optional(),
+    phone: phoneSchema.optional(),
+    countryCode: countryCodeSchema.optional().default("IN"),
+    pfOnActuals: z.boolean().optional().default(false),
+    dateOfBirth: dateSchema.optional(),
+    gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+    bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]).optional(),
+    maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]).optional(),
+    nationality: safeStringSchema(2, 100).optional(),
+    pan: panSchema.optional(),
+    aadhaar: aadhaarSchema.optional(),
+    passportNo: passportSchema.optional(),
     drivingLicense: drivingLicenseSchema.optional(),
-    voterId:        voterIdSchema.optional(),
+    voterId: voterIdSchema.optional(),
 
     // Organisation
     branchId: z.preprocess(
       (val) => (val === "" ? undefined : val),
       objectIdSchema.optional()
     ),
-    departmentId:  objectIdSchema,
+    departmentId: objectIdSchema,
     designationId: objectIdSchema,
-    managerId:     objectIdSchema.optional(),
-    employeeType:  z.enum([
+    managerId: objectIdSchema.optional(),
+    employeeType: z.enum([
       "FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"
     ]).optional().default("FULL_TIME"),
     employmentType: z.enum([
       "FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"
     ]).optional(),
-    joiningDate:   dateSchema.optional(),
+    joiningDate: dateSchema.optional(),
     dateOfJoining: dateSchema.optional(),
     probationEndDate: dateSchema.optional(),
     shiftId: objectIdSchema.optional(),
@@ -62,28 +62,28 @@ export const CreateEmployeeDto = withPhoneValidation(
     currentAddress: z.object({
       addressLine1: safeStringSchema(1, 200).optional(),
       addressLine2: safeStringSchema(1, 200).optional(),
-      city:         safeStringSchema(1, 100).optional(),
-      state:        safeStringSchema(1, 100).optional(),
-      countryCode:  z.string().length(2).toUpperCase().optional(),
-      zip:          z.string().trim().optional(),
+      city: safeStringSchema(1, 100).optional(),
+      state: safeStringSchema(1, 100).optional(),
+      countryCode: z.string().length(2).toUpperCase().optional(),
+      zip: z.string().trim().optional(),
     }).optional(),
 
     permanentAddress: z.object({
       addressLine1: safeStringSchema(1, 200).optional(),
       addressLine2: safeStringSchema(1, 200).optional(),
-      city:         safeStringSchema(1, 100).optional(),
-      state:        safeStringSchema(1, 100).optional(),
-      countryCode:  z.string().length(2).toUpperCase().optional(),
-      zip:          z.string().trim().optional(),
+      city: safeStringSchema(1, 100).optional(),
+      state: safeStringSchema(1, 100).optional(),
+      countryCode: z.string().length(2).toUpperCase().optional(),
+      zip: z.string().trim().optional(),
     }).optional(),
 
     // Emergency contacts
     emergencyContacts: z.array(
       z.object({
-        name:         safeStringSchema(2, 100),
+        name: safeStringSchema(2, 100),
         relationship: safeStringSchema(2, 50),
-        phone:        phoneSchema,
-        email:        anyEmailSchema.optional(),
+        phone: phoneSchema,
+        email: anyEmailSchema.optional(),
       })
     ).optional().default([]),
 
@@ -92,16 +92,16 @@ export const CreateEmployeeDto = withPhoneValidation(
       ctcAnnual: z.number().min(0),
       lineItems: z.array(z.object({
         componentCode: z.string().trim().toUpperCase(),
-        amount:        z.number().min(0),
+        amount: z.number().min(0),
       })).min(1),
     }).optional(),
 
     // Optional bank account
     bankAccount: z.object({
-      bankName:      z.string().trim().min(2),
+      bankName: z.string().trim().min(2),
       accountNumber: z.string().trim().min(8).max(20),
-      ifscCode:      z.string().trim().toUpperCase().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/),
-      accountType:   z.enum(["SAVINGS","CURRENT","SALARY"]).optional().default("SALARY"),
+      ifscCode: z.string().trim().toUpperCase().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/),
+      accountType: z.enum(["SAVINGS", "CURRENT", "SALARY"]).optional().default("SALARY"),
     }).optional(),
   })
 ).transform((data) => ({
@@ -120,49 +120,49 @@ export type CreateEmployeeInput = z.infer<typeof CreateEmployeeDto>;
 
 //Update Employee
 export const UpdateEmployeeDto = withPhoneValidation(z.object({
-  firstName:        safeStringSchema(2, 100).optional(),
-  lastName:         safeStringSchema(2, 100).optional(),
-  phone:            phoneSchema.optional(),
-  countryCode:      countryCodeSchema.optional(),
-  pfOnActuals:      z.boolean().optional(),
-  dateOfBirth:      dateSchema.optional(),
-  gender:           z.enum(["MALE","FEMALE","OTHER"]).optional(),
-  bloodGroup:       z.enum(["A+","A-","B+","B-","O+","O-","AB+","AB-"]).optional(),
-  maritalStatus:    z.enum(["SINGLE","MARRIED","DIVORCED","WIDOWED"]).optional(),
-  nationality:      safeStringSchema(2, 100).optional(),
-  pan:              panSchema.optional(),
-  aadhaar:          aadhaarSchema.optional(),
-  passportNo:       passportSchema.optional(),
-  drivingLicense:   drivingLicenseSchema.optional(),
-  voterId:          voterIdSchema.optional(),
-  departmentId:     objectIdSchema.optional(),
-  designationId:    objectIdSchema.optional(),
-  managerId:        objectIdSchema.optional(),
-  employeeType:     z.enum(["FULL_TIME","PART_TIME","CONTRACT","INTERN","CONSULTANT"]).optional(),
+  firstName: safeStringSchema(2, 100).optional(),
+  lastName: safeStringSchema(2, 100).optional(),
+  phone: phoneSchema.optional(),
+  countryCode: countryCodeSchema.optional(),
+  pfOnActuals: z.boolean().optional(),
+  dateOfBirth: dateSchema.optional(),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
+  bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]).optional(),
+  maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]).optional(),
+  nationality: safeStringSchema(2, 100).optional(),
+  pan: panSchema.optional(),
+  aadhaar: aadhaarSchema.optional(),
+  passportNo: passportSchema.optional(),
+  drivingLicense: drivingLicenseSchema.optional(),
+  voterId: voterIdSchema.optional(),
+  departmentId: objectIdSchema.optional(),
+  designationId: objectIdSchema.optional(),
+  managerId: objectIdSchema.optional(),
+  employeeType: z.enum(["FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"]).optional(),
   confirmationDate: dateSchema.optional(),
   probationEndDate: dateSchema.optional(),
-  currentAddress:   z.object({
+  currentAddress: z.object({
     addressLine1: safeStringSchema(1, 200).optional(),
     addressLine2: safeStringSchema(1, 200).optional(),
-    city:         safeStringSchema(1, 100).optional(),
-    state:        safeStringSchema(1, 100).optional(),
-    countryCode:  z.string().length(2).toUpperCase().optional(),
-    zip:          z.string().trim().optional(),
+    city: safeStringSchema(1, 100).optional(),
+    state: safeStringSchema(1, 100).optional(),
+    countryCode: z.string().length(2).toUpperCase().optional(),
+    zip: z.string().trim().optional(),
   }).optional(),
   permanentAddress: z.object({
     addressLine1: safeStringSchema(1, 200).optional(),
     addressLine2: safeStringSchema(1, 200).optional(),
-    city:         safeStringSchema(1, 100).optional(),
-    state:        safeStringSchema(1, 100).optional(),
-    countryCode:  z.string().length(2).toUpperCase().optional(),
-    zip:          z.string().trim().optional(),
+    city: safeStringSchema(1, 100).optional(),
+    state: safeStringSchema(1, 100).optional(),
+    countryCode: z.string().length(2).toUpperCase().optional(),
+    zip: z.string().trim().optional(),
   }).optional(),
   emergencyContacts: z.array(
     z.object({
-      name:         safeStringSchema(2, 100),
+      name: safeStringSchema(2, 100),
       relationship: safeStringSchema(2, 50),
-      phone:        phoneSchema,
-      email:        emailSchema.optional(),
+      phone: phoneSchema,
+      email: emailSchema.optional(),
     })
   ).optional(),
   avatarUrl: z.string().url().optional(),
@@ -172,8 +172,8 @@ export type UpdateEmployeeInput = z.infer<typeof UpdateEmployeeDto>;
 
 //Update Status
 export const UpdateEmployeeStatusDto = z.object({
-  status:     z.enum(["ACTIVE","INACTIVE","ON_LEAVE","TERMINATED","RESIGNED"]),
-  exitDate:   dateSchema.optional(),
+  status: z.enum(["ACTIVE", "INACTIVE", "ON_LEAVE", "TERMINATED", "RESIGNED"]),
+  exitDate: dateSchema.optional(),
   exitReason: safeStringSchema(2, 500).optional(),
 });
 
@@ -181,13 +181,13 @@ export type UpdateEmployeeStatusInput = z.infer<typeof UpdateEmployeeStatusDto>;
 
 //Add Bank Account
 export const AddBankAccountDto = z.object({
-  bankName:          safeStringSchema(2, 200),
+  bankName: safeStringSchema(2, 200),
   accountHolderName: safeStringSchema(2, 200).optional(),
-  accountNumber:     z.string().trim().min(8).max(20),
-  ifscCode:          z.string().trim().toUpperCase().optional(),
-  ifsc:              z.string().trim().toUpperCase().optional(),
-  accountType:       z.enum(["SAVINGS","CURRENT","SALARY"]).optional().default("SALARY"),
-  isPrimary:         z.boolean().optional().default(false),
+  accountNumber: z.string().trim().min(8).max(20),
+  ifscCode: z.string().trim().toUpperCase().optional(),
+  ifsc: z.string().trim().toUpperCase().optional(),
+  accountType: z.enum(["SAVINGS", "CURRENT", "SALARY"]).optional().default("SALARY"),
+  isPrimary: z.boolean().optional().default(false),
 }).transform((data) => ({
   ...data,
   ifscCode: (data.ifscCode || data.ifsc || "").toUpperCase(),
@@ -202,13 +202,13 @@ export type AddBankAccountInput = z.infer<typeof AddBankAccountDto>;
 
 //List Employees Query
 export const ListEmployeesQueryDto = z.object({
-  pageNumber:    z.string().optional().transform(v => v ? parseInt(v) : 1),
-  pageSize:      z.string().optional().transform(v => v ? parseInt(v) : 10),
-  status:        z.enum(["ACTIVE","INACTIVE","ON_LEAVE","TERMINATED","RESIGNED"]).optional(),
-  departmentId:  objectIdSchema.optional(),
+  pageNumber: z.string().optional().transform(v => v ? parseInt(v) : 1),
+  pageSize: z.string().optional().transform(v => v ? parseInt(v) : 10),
+  status: z.enum(["ACTIVE", "INACTIVE", "ON_LEAVE", "TERMINATED", "RESIGNED"]).optional(),
+  departmentId: objectIdSchema.optional(),
   designationId: objectIdSchema.optional(),
-  branchId:      objectIdSchema.optional(),
-  search:        z.string().trim().optional(),
+  branchId: objectIdSchema.optional(),
+  search: z.string().trim().optional(),
   joiningPeriod: z.enum(["this_month", "last_3_months", "last_6_months", "last_year"]).optional(),
 });
 
@@ -244,9 +244,9 @@ export interface CalendarEvent {
 }
 
 export const CropAvatarDto = z.object({
-  cropX:      z.string().optional().transform(v => v ? parseInt(v) : undefined),
-  cropY:      z.string().optional().transform(v => v ? parseInt(v) : undefined),
-  cropWidth:  z.string().optional().transform(v => v ? parseInt(v) : undefined),
+  cropX: z.string().optional().transform(v => v ? parseInt(v) : undefined),
+  cropY: z.string().optional().transform(v => v ? parseInt(v) : undefined),
+  cropWidth: z.string().optional().transform(v => v ? parseInt(v) : undefined),
   cropHeight: z.string().optional().transform(v => v ? parseInt(v) : undefined),
 });
-export type CropAvatarInput = z.infer<typeof CropAvatarDto>;
+export type CropAvatarInput = z.infer<typeof CropAvatarDto>;

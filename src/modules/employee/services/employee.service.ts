@@ -249,8 +249,8 @@ export class EmployeeService {
       try {
         salaryStructure = await this.salaryStructureService.createOrRevise(context, {
           employeeId: employee._id.toString(),
-          ctcAnnual:  input.salaryStructure.ctcAnnual,
-          lineItems:  input.salaryStructure.lineItems,
+          ctcAnnual: input.salaryStructure.ctcAnnual,
+          lineItems: input.salaryStructure.lineItems,
         });
       } catch (err) {
         // Don't fail the whole onboarding if salary setup has an issue (e.g. 50%
@@ -262,17 +262,17 @@ export class EmployeeService {
     let bankAccount = null;
     if (input.bankAccount) {
       const acc = await this.empRepo.addBankAccount({
-        tenantId:      new mongoose.Types.ObjectId(context.tenantId) as any,
-        branchId:      employee.branchId as any,
-        employeeId:    employee._id as any,
-        bankName:      input.bankAccount.bankName,
+        tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+        branchId: employee.branchId as any,
+        employeeId: employee._id as any,
+        bankName: input.bankAccount.bankName,
         accountNumber: input.bankAccount.accountNumber,
-        ifscCode:      input.bankAccount.ifscCode,
-        accountType:   input.bankAccount.accountType as any,
-        isPrimary:     true,
-        isActive:      true,
-        createdBy:     new mongoose.Types.ObjectId(context.userId) as any,
-        updatedBy:     new mongoose.Types.ObjectId(context.userId) as any,
+        ifscCode: input.bankAccount.ifscCode,
+        accountType: input.bankAccount.accountType as any,
+        isPrimary: true,
+        isActive: true,
+        createdBy: new mongoose.Types.ObjectId(context.userId) as any,
+        updatedBy: new mongoose.Types.ObjectId(context.userId) as any,
       });
       bankAccount = { ...acc.toObject(), accountNumber: undefined }; // mask fully in onboarding response
     }
@@ -463,7 +463,7 @@ export class EmployeeService {
     const org = await OrganizationModel.findById(context.tenantId)
       .select("mandatoryDocumentTypes");
     const mandatoryDocumentTypes = org?.mandatoryDocumentTypes ?? [];
-    
+
     // Calculate missing documents
     const isIndia = (employee.countryCode || "IN").toUpperCase() === "IN";
     const uploadedDocTypes = documents.map(doc => doc.documentType) as string[];
@@ -485,7 +485,7 @@ export class EmployeeService {
     // Document labels for frontend
     const documentLabels = {
       PAN: "PAN Card",
-      AADHAAR: "Aadhaar Card", 
+      AADHAAR: "Aadhaar Card",
       PASSPORT: "Passport",
       DRIVING_LICENSE: "Driving License",
       OFFER_LETTER: "Offer Letter",
@@ -504,7 +504,7 @@ export class EmployeeService {
       profileCompletion.bankDetails,
       profileCompletion.mandatoryDocs
     ].filter(Boolean).length;
-    
+
     const overallScore = Math.round((completedSections / 5) * 100);
 
     // Summary calculations
@@ -1054,22 +1054,22 @@ export class EmployeeService {
     // Done after bulkCreate so we have the _id for each record
     for (const emp of dbResult.records) {
       try {
-        const rawToken    = crypto.randomBytes(32).toString("hex");
+        const rawToken = crypto.randomBytes(32).toString("hex");
         const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
 
         const userAccount = new UserModel({
-          tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-          email:     emp.email.toLowerCase(),
+          tenantId: new mongoose.Types.ObjectId(context.tenantId),
+          email: emp.email.toLowerCase(),
           passwordHash: null,
           firstName: emp.firstName,
-          lastName:  emp.lastName,
-          role:      "EMPLOYEE",
+          lastName: emp.lastName,
+          role: "EMPLOYEE",
           isOrgAdmin: false,
-          isActive:  false,
+          isActive: false,
           isEmailVerified: false,
           branchIds: [emp.branchId],
           employeeId: emp._id,
-          accountActivationToken:   hashedToken,
+          accountActivationToken: hashedToken,
           accountActivationExpires: new Date(Date.now() + 72 * 60 * 60 * 1000),
         });
 
@@ -1095,7 +1095,7 @@ export class EmployeeService {
             </p>
           </div>
           `
-        ).catch(() => {}); // never fail the import because of email
+        ).catch(() => { }); // never fail the import because of email
 
       } catch (userError) {
         // User account creation failure must not fail the whole import
@@ -1104,16 +1104,16 @@ export class EmployeeService {
       }
 
       // Recalculate profile completion async
-      recalculateProfileCompletion(context.tenantId, emp._id.toString()).catch(() => {});
+      recalculateProfileCompletion(context.tenantId, emp._id.toString()).catch(() => { });
     }
 
     return {
       totalProcessed: parsedData.totalRows,
-      insertedCount:  dbResult.insertedCount,
-      failedCount:    parsedData.errors.length,
-      errors:         parsedData.errors,
-      warnings:       parsedData.warnings,   // ← ADD
-      created:        parsedData.created,    // ← ADD
+      insertedCount: dbResult.insertedCount,
+      failedCount: parsedData.errors.length,
+      errors: parsedData.errors,
+      warnings: parsedData.warnings,   // ← ADD
+      created: parsedData.created,    // ← ADD
     };
   }
 
@@ -1137,8 +1137,8 @@ export class EmployeeService {
 
     // 2. Transform DB records into requested export format buffer
     const fileBuffer = await buildExportBuffer(employees, format);
-    const mimeType = format === "xlsx" 
-      ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" 
+    const mimeType = format === "xlsx"
+      ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       : "text/csv";
 
     const fileName = `employees_export_${Date.now()}.${format}`;
@@ -1316,22 +1316,22 @@ export class EmployeeService {
     // Create user accounts + send welcome emails
     for (const emp of dbResult.records) {
       try {
-        const rawToken    = crypto.randomBytes(32).toString("hex");
+        const rawToken = crypto.randomBytes(32).toString("hex");
         const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
 
         const userAccount = new UserModel({
-          tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-          email:     emp.email.toLowerCase(),
+          tenantId: new mongoose.Types.ObjectId(context.tenantId),
+          email: emp.email.toLowerCase(),
           passwordHash: null,
           firstName: emp.firstName,
-          lastName:  emp.lastName,
-          role:      "EMPLOYEE",
+          lastName: emp.lastName,
+          role: "EMPLOYEE",
           isOrgAdmin: false,
-          isActive:  false,
+          isActive: false,
           isEmailVerified: false,
           branchIds: [emp.branchId],
           employeeId: emp._id,
-          accountActivationToken:   hashedToken,
+          accountActivationToken: hashedToken,
           accountActivationExpires: new Date(Date.now() + 72 * 60 * 60 * 1000),
         });
 
@@ -1356,14 +1356,14 @@ export class EmployeeService {
             </p>
           </div>
           `
-        ).catch(() => {});
+        ).catch(() => { });
 
       } catch (userError) {
         console.error(`Failed to create user account for ${emp.email}:`, userError);
       }
 
       // Recalculate profile completion async
-      recalculateProfileCompletion(context.tenantId, emp._id.toString()).catch(() => {});
+      recalculateProfileCompletion(context.tenantId, emp._id.toString()).catch(() => { });
     }
 
     session.status = 'committed';

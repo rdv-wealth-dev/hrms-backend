@@ -12,7 +12,7 @@ export class DesignationService {
   //Create
   async createDesignation(
     context: RequestContext,
-    input:   CreateDesignationInput
+    input: CreateDesignationInput
   ) {
     const existing = await this.desgRepo.findByCode(context, input.code);
     if (existing) {
@@ -36,14 +36,14 @@ export class DesignationService {
     }
 
     const designation = await this.desgRepo.create(context, {
-      tenantId:     new mongoose.Types.ObjectId(context.tenantId) as any,
-      branchId:     new mongoose.Types.ObjectId(branchId)   as any,
+      tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+      branchId: new mongoose.Types.ObjectId(branchId) as any,
       departmentId: new mongoose.Types.ObjectId(input.departmentId) as any,
-      name:         input.name,
-      code:         input.code,
-      description:  input.description ?? "",
-      level:        input.level ?? 1,
-      isActive:     true,
+      name: input.name,
+      code: input.code,
+      description: input.description ?? "",
+      level: input.level ?? 1,
+      isActive: true,
     });
 
     return designation;
@@ -51,9 +51,9 @@ export class DesignationService {
 
   //List all
   async listDesignations(
-    context:    RequestContext,
+    context: RequestContext,
     pagination: PaginationOptions,
-    filter:     { departmentId?: string; branchId?: string } = {}
+    filter: { departmentId?: string; branchId?: string } = {}
   ) {
     const queryFilter: Record<string, any> = { isActive: true };
     if (filter.departmentId && mongoose.Types.ObjectId.isValid(filter.departmentId)) {
@@ -75,7 +75,7 @@ export class DesignationService {
   //Get by ID
   async getDesignationById(
     context: RequestContext,
-    id:      string
+    id: string
   ) {
     const desg = await this.desgRepo.findById(context, id);
     if (!desg) {
@@ -87,8 +87,8 @@ export class DesignationService {
   //Update
   async updateDesignation(
     context: RequestContext,
-    id:      string,
-    input:   UpdateDesignationInput
+    id: string,
+    input: UpdateDesignationInput
   ) {
     const desg = await this.desgRepo.findById(context, id);
     if (!desg) {
@@ -112,7 +112,7 @@ export class DesignationService {
   //Delete
   async deleteDesignation(
     context: RequestContext,
-    id:      string
+    id: string
   ) {
     const desg = await this.desgRepo.findById(context, id);
     if (!desg) {

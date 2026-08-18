@@ -1,126 +1,126 @@
-import mongoose      from "mongoose";
+import mongoose from "mongoose";
 import { RoleModel } from "../../modules/role/role.model";
-import { logger }    from "../../config/logger.config";
+import { logger } from "../../config/logger.config";
 
 export const DEFAULT_ROLES = [
   {
-    name:         "Org Admin",
-    slug:         "ORG_ADMIN",
-    description:  "Full access to everything",
+    name: "Org Admin",
+    slug: "ORG_ADMIN",
+    description: "Full access to everything",
     isSystemRole: true,
     permissions: [
-      "employee.read",    "employee.create",    "employee.update",    "employee.delete",
-      "attendance.read",  "attendance.create",  "attendance.update",  "attendance.approve",
-      "leave.read",       "leave.create",       "leave.update",       "leave.approve",
-      "payroll.read",     "payroll.create",     "payroll.run",        "payroll.approve",
-      "branch.read",      "branch.create",      "branch.update",
-      "department.read",  "department.create",  "department.update",
+      "employee.read", "employee.create", "employee.update", "employee.delete",
+      "attendance.read", "attendance.create", "attendance.update", "attendance.approve",
+      "leave.read", "leave.create", "leave.update", "leave.approve",
+      "payroll.read", "payroll.create", "payroll.run", "payroll.approve",
+      "branch.read", "branch.create", "branch.update",
+      "department.read", "department.create", "department.update",
       "designation.read", "designation.create", "designation.update",
-      "role.read",        "role.create",        "role.update",
-      "report.read",      "settings.read",      "settings.update",
+      "role.read", "role.create", "role.update",
+      "report.read", "settings.read", "settings.update",
     ],
   },
   {
-    name:         "HR Admin",
-    slug:         "HR_ADMIN",
-    description:  "Full operational access — manages all HR functions across the organisation",
+    name: "HR Admin",
+    slug: "HR_ADMIN",
+    description: "Full operational access — manages all HR functions across the organisation",
     isSystemRole: true,
     permissions: [
-      "employee.read",    "employee.create",    "employee.update",    "employee.delete",
-      "attendance.read",  "attendance.create",  "attendance.update",  "attendance.approve",
-      "leave.read",       "leave.create",       "leave.update",       "leave.approve",
-      "payroll.read",     "payroll.create",     "payroll.run",        "payroll.approve",
+      "employee.read", "employee.create", "employee.update", "employee.delete",
+      "attendance.read", "attendance.create", "attendance.update", "attendance.approve",
+      "leave.read", "leave.create", "leave.update", "leave.approve",
+      "payroll.read", "payroll.create", "payroll.run", "payroll.approve",
       "branch.read",
-      "department.read",  "department.create",  "department.update",
+      "department.read", "department.create", "department.update",
       "designation.read", "designation.create", "designation.update",
-      "role.read",        "role.create",        "role.update",
-      "report.read",      "settings.read",      "settings.update",
+      "role.read", "role.create", "role.update",
+      "report.read", "settings.read", "settings.update",
     ],
   },
   {
-    name:         "Branch Admin",
-    slug:         "BRANCH_ADMIN",
-    description:  "Full operational access within assigned branch(es) — same as HR Admin but scoped to branches",
+    name: "Branch Admin",
+    slug: "BRANCH_ADMIN",
+    description: "Full operational access within assigned branch(es) — same as HR Admin but scoped to branches",
     isSystemRole: true,
     permissions: [
-      "employee.read",    "employee.create",    "employee.update",    "employee.delete",
-      "attendance.read",  "attendance.create",  "attendance.update",  "attendance.approve",
-      "leave.read",       "leave.create",       "leave.update",       "leave.approve",
-      "payroll.read",     "payroll.create",     "payroll.run",        "payroll.approve",
+      "employee.read", "employee.create", "employee.update", "employee.delete",
+      "attendance.read", "attendance.create", "attendance.update", "attendance.approve",
+      "leave.read", "leave.create", "leave.update", "leave.approve",
+      "payroll.read", "payroll.create", "payroll.run", "payroll.approve",
       "branch.read",
-      "department.read",  "department.create",  "department.update",
+      "department.read", "department.create", "department.update",
       "designation.read", "designation.create", "designation.update",
-      "role.read",        "role.create",        "role.update",
-      "report.read",      "settings.read",      "settings.update",
+      "role.read", "role.create", "role.update",
+      "report.read", "settings.read", "settings.update",
     ],
   },
   {
-    name:         "Leadership",
-    slug:         "LEADERSHIP",
-    description:  "Read-only access across all branches",
+    name: "Leadership",
+    slug: "LEADERSHIP",
+    description: "Read-only access across all branches",
     isSystemRole: true,
     permissions: [
-      "employee.read",    "attendance.read",
-      "leave.read",       "payroll.read",
-      "branch.read",      "department.read",
+      "employee.read", "attendance.read",
+      "leave.read", "payroll.read",
+      "branch.read", "department.read",
       "designation.read", "report.read",
     ],
   },
   {
-    name:         "Manager",
-    slug:         "MANAGER",
-    description:  "Manages team attendance and leave approvals",
+    name: "Manager",
+    slug: "MANAGER",
+    description: "Manages team attendance and leave approvals",
     isSystemRole: true,
     permissions: [
-      "employee.read",   "attendance.read",
-      "leave.read",      "leave.approve",
+      "employee.read", "attendance.read",
+      "leave.read", "leave.approve",
       "department.read", "designation.read",
       "report.read",
     ],
   },
   {
-    name:         "Team Leader",
-    slug:         "TEAM_LEADER",
-    description:  "Leads a team — can view team members, track attendance, and approve leave",
+    name: "Team Leader",
+    slug: "TEAM_LEADER",
+    description: "Leads a team — can view team members, track attendance, and approve leave",
     isSystemRole: true,
     permissions: [
       "employee.read",
       "attendance.read",
-      "leave.read",      "leave.approve",
+      "leave.read", "leave.approve",
       "report.read",
     ],
   },
   {
-    name:         "Product Manager",
-    slug:         "PRODUCT_MANAGER",
-    description:  "Manages product team attendance and leave",
+    name: "Product Manager",
+    slug: "PRODUCT_MANAGER",
+    description: "Manages product team attendance and leave",
     isSystemRole: true,
     permissions: [
-      "employee.read",   "attendance.read",
-      "leave.read",      "leave.approve",
+      "employee.read", "attendance.read",
+      "leave.read", "leave.approve",
       "department.read", "designation.read",
     ],
   },
   {
-    name:         "Employee",
-    slug:         "EMPLOYEE",
-    description:  "Access to own data only",
+    name: "Employee",
+    slug: "EMPLOYEE",
+    description: "Access to own data only",
     isSystemRole: true,
     permissions: [
-     "attendance.read",
-      "attendance.create","leave.read",
-      "leave.create",     "payroll.read",
+      "attendance.read",
+      "attendance.create", "leave.read",
+      "leave.create", "payroll.read",
     ],
   },
 ];
 
 export async function seedDefaultRoles(
-  tenantId:  string,
+  tenantId: string,
   createdBy: string
 ): Promise<Map<string, string>> {
-  const roleMap    = new Map<string, string>();
-  const tenantOId  = new mongoose.Types.ObjectId(tenantId);
-  const now        = new Date();
+  const roleMap = new Map<string, string>();
+  const tenantOId = new mongoose.Types.ObjectId(tenantId);
+  const now = new Date();
 
   console.log("\n============================");
   console.log("SEED ROLES CALLED — tenantId:", tenantId);
@@ -133,17 +133,17 @@ export async function seedDefaultRoles(
     for (const roleData of DEFAULT_ROLES) {
       try {
         const doc = {
-          tenantId:     tenantOId,
-          name:         roleData.name,
-          slug:         roleData.slug,
-          description:  roleData.description,
+          tenantId: tenantOId,
+          name: roleData.name,
+          slug: roleData.slug,
+          description: roleData.description,
           isSystemRole: roleData.isSystemRole,
-          permissions:  roleData.permissions,
-          isActive:     true,
-          isDeleted:    false,
-          version:      1,
-          createdAt:    now,
-          updatedAt:    now,
+          permissions: roleData.permissions,
+          isActive: true,
+          isDeleted: false,
+          version: 1,
+          createdAt: now,
+          updatedAt: now,
         };
 
         // insertOne — skip if duplicate (unique index on tenantId+slug)
@@ -174,9 +174,9 @@ export async function seedDefaultRoles(
     console.log("============================\n");
 
     logger.info({
-      message:  "Default roles seeded",
+      message: "Default roles seeded",
       tenantId,
-      count:    roleMap.size,
+      count: roleMap.size,
     });
 
   } catch (error: any) {

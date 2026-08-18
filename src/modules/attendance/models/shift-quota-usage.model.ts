@@ -10,45 +10,45 @@ import { createBaseSchema, BaseDocument } from "../../../shared/database/base.sc
 // One document per employee per calendar month.
 
 export interface ShiftQuotaUsageDocument extends BaseDocument {
-  employeeId:      mongoose.Types.ObjectId;
-  shiftId:         mongoose.Types.ObjectId;
-  year:            number;
-  month:           number;   // 1-12
-  lateCount:       number;   // times arrived LATE (after grace, before absentThreshold)
+  employeeId: mongoose.Types.ObjectId;
+  shiftId: mongoose.Types.ObjectId;
+  year: number;
+  month: number;   // 1-12
+  lateCount: number;   // times arrived LATE (after grace, before absentThreshold)
   earlyLeaveCount: number;   // times checked out within allowed early-leave window
 }
 
 const ShiftQuotaUsageSchema = createBaseSchema<ShiftQuotaUsageDocument>({
   employeeId: {
-    type:     mongoose.Schema.Types.ObjectId,
-    ref:      "Employee",
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Employee",
     required: true,
-    index:    true,
+    index: true,
   },
   shiftId: {
-    type:     mongoose.Schema.Types.ObjectId,
-    ref:      "Shift",
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Shift",
     required: true,
   },
   year: {
-    type:     Number,
+    type: Number,
     required: true,
   },
   month: {
-    type:     Number,
+    type: Number,
     required: true,
-    min:      1,
-    max:      12,
+    min: 1,
+    max: 12,
   },
   lateCount: {
-    type:    Number,
+    type: Number,
     default: 0,
-    min:     0,
+    min: 0,
   },
   earlyLeaveCount: {
-    type:    Number,
+    type: Number,
     default: 0,
-    min:     0,
+    min: 0,
   },
 }, { collection: "shift_quota_usage" });
 

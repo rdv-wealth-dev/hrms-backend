@@ -7,9 +7,9 @@ import mongoose from "mongoose";
 
 const CounterSchema = new mongoose.Schema(
   {
-    tenantId:     { type: mongoose.Schema.Types.ObjectId, required: true },
+    tenantId: { type: mongoose.Schema.Types.ObjectId, required: true },
     sequenceName: { type: String, required: true },
-    seq:          { type: Number, default: 0 },
+    seq: { type: Number, default: 0 },
   },
   { collection: "counters" }
 );
@@ -28,16 +28,16 @@ const CounterModel = mongoose.model("Counter", CounterSchema);
 
 export async function getNextEmployeeCode(
   tenantId: string,
-  prefix:   string = "EMP"
+  prefix: string = "EMP"
 ): Promise<string> {
   const counter = await CounterModel.findOneAndUpdate(
     {
-      tenantId:     new mongoose.Types.ObjectId(tenantId),
+      tenantId: new mongoose.Types.ObjectId(tenantId),
       sequenceName: "employeeCode",
     },
     { $inc: { seq: 1 } },
     {
-      new:    true,   // return updated document
+      new: true,   // return updated document
       upsert: true,   // create if doesn't exist yet
     }
   );

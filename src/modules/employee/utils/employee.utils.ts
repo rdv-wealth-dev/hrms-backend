@@ -15,36 +15,36 @@ import { getCountryModule } from "../../../domain/localization/country.registry"
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface BulkImportRow {
-  firstName:       string;
-  lastName:        string;
-  email:           string;
-  phone?:          string;
-  branchName:      string;
-  departmentName:  string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  branchName: string;
+  departmentName: string;
   designationName: string;
-  joiningDate:     string;
-  employeeType?:   string;
-  gender?:         string;
-  dateOfBirth?:    string;
-  pan?:            string;
-  aadhaar?:        string;
-  countryCode?:    string;
+  joiningDate: string;
+  employeeType?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  pan?: string;
+  aadhaar?: string;
+  countryCode?: string;
 }
 
 export interface ImportError {
   rowNumber: number;
-  email?:    string;
-  reason:    string;
-  severity:  "ERROR" | "WARNING";  // ERROR = row skipped, WARNING = row imported with note
+  email?: string;
+  reason: string;
+  severity: "ERROR" | "WARNING";  // ERROR = row skipped, WARNING = row imported with note
 }
 
 export interface ParsedImportData {
   validRecords: any[];
-  totalRows:    number;
-  errors:       ImportError[];
-  warnings:     ImportError[];
+  totalRows: number;
+  errors: ImportError[];
+  warnings: ImportError[];
   created: {
-    departments:  string[];  // names of departments auto-created
+    departments: string[];  // names of departments auto-created
     designations: string[];  // names of designations auto-created
   };
 }
@@ -84,8 +84,8 @@ function levenshtein(a: string, b: string): number {
 // Returns the best matching entry from a map, or null if no close match
 // Threshold: edit distance ≤ 2 for short strings, ≤ 3 for longer ones
 function fuzzyMatch(
-  input:    string,
-  nameMap:  Map<string, any>
+  input: string,
+  nameMap: Map<string, any>
 ): { id: any; matchedName: string; exact: boolean } | null {
   const normalizedInput = normalize(input);
 
@@ -156,11 +156,11 @@ function generateCode(name: string, existingCodes: Set<string>): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function findOrCreateDepartment(
-  tenantId:     mongoose.Types.ObjectId,
-  branchId:     mongoose.Types.ObjectId,
-  userId:       mongoose.Types.ObjectId,
-  name:         string,
-  nameMap:      Map<string, { id: any; name: string }>,
+  tenantId: mongoose.Types.ObjectId,
+  branchId: mongoose.Types.ObjectId,
+  userId: mongoose.Types.ObjectId,
+  name: string,
+  nameMap: Map<string, { id: any; name: string }>,
   existingCodes: Set<string>,
   createdNames: string[]
 ): Promise<{ id: any; name: string; wasCreated: boolean }> {
@@ -172,16 +172,16 @@ async function findOrCreateDepartment(
   }
 
   // Not found — auto-create
-  const code      = generateCode(name, existingCodes);
+  const code = generateCode(name, existingCodes);
   const cleanName = name.trim();
 
   const newDept = await DepartmentModel.create({
     tenantId,
     branchId,
-    name:      cleanName,
+    name: cleanName,
     code,
     description: `Auto-created during bulk employee import`,
-    isActive:  true,
+    isActive: true,
     createdBy: userId,
     updatedBy: userId,
   });
@@ -204,14 +204,14 @@ async function findOrCreateDepartment(
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function findOrCreateDesignation(
-  tenantId:      mongoose.Types.ObjectId,
-  branchId:      mongoose.Types.ObjectId,
-  userId:        mongoose.Types.ObjectId,
-  departmentId:  mongoose.Types.ObjectId,
-  name:          string,
-  nameMap:       Map<string, { id: any; name: string; departmentId: any }>,
+  tenantId: mongoose.Types.ObjectId,
+  branchId: mongoose.Types.ObjectId,
+  userId: mongoose.Types.ObjectId,
+  departmentId: mongoose.Types.ObjectId,
+  name: string,
+  nameMap: Map<string, { id: any; name: string; departmentId: any }>,
   existingCodes: Set<string>,
-  createdNames:  string[]
+  createdNames: string[]
 ): Promise<{ id: any; name: string; wasCreated: boolean; wrongDept: boolean }> {
 
   const normalizedInput = normalize(name);
@@ -221,8 +221,8 @@ async function findOrCreateDesignation(
   if (exactEntry) {
     const wrongDept = exactEntry.departmentId.toString() !== departmentId.toString();
     return {
-      id:         exactEntry.id,
-      name:       exactEntry.name,
+      id: exactEntry.id,
+      name: exactEntry.name,
       wasCreated: false,
       wrongDept,          // flag: designation exists but under different dept
     };
@@ -240,10 +240,10 @@ async function findOrCreateDesignation(
   const fuzzyEntry = fuzzyMatch(name, deptScopedMap as any);
   if (fuzzyEntry) {
     return {
-      id:         fuzzyEntry.id,
-      name:       fuzzyEntry.matchedName,
+      id: fuzzyEntry.id,
+      name: fuzzyEntry.matchedName,
       wasCreated: false,
-      wrongDept:  false,
+      wrongDept: false,
     };
   }
 
@@ -255,28 +255,28 @@ async function findOrCreateDesignation(
       ? entry.departmentId.toString() !== departmentId.toString()
       : false;
     return {
-      id:         globalFuzzy.id,
-      name:       globalFuzzy.matchedName,
+      id: globalFuzzy.id,
+      name: globalFuzzy.matchedName,
       wasCreated: false,
       wrongDept,
     };
   }
 
   // 4. Not found anywhere — auto-create under the resolved department
-  const code      = generateCode(name, existingCodes);
+  const code = generateCode(name, existingCodes);
   const cleanName = name.trim();
 
   const newDesig = await DesignationModel.create({
     tenantId,
     branchId,
     departmentId,
-    name:        cleanName,
+    name: cleanName,
     code,
     description: `Auto-created during bulk employee import`,
-    level:       1,
-    isActive:    true,
-    createdBy:   userId,
-    updatedBy:   userId,
+    level: 1,
+    isActive: true,
+    createdBy: userId,
+    updatedBy: userId,
   });
 
   // Invalidate master data cache
@@ -295,8 +295,8 @@ async function findOrCreateDesignation(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function parseImportFile(
-  context:  RequestContext,
-  buffer:   Buffer,
+  context: RequestContext,
+  buffer: Buffer,
   fileType: "csv" | "xlsx"
 ): Promise<ParsedImportData> {
 
@@ -307,15 +307,15 @@ export async function parseImportFile(
   if (!rawRows || rawRows.length === 0) {
     return {
       validRecords: [],
-      totalRows:    0,
-      errors:       [{ rowNumber: 0, reason: "File is empty or has no data rows", severity: "ERROR" }],
-      warnings:     [],
-      created:      { departments: [], designations: [] },
+      totalRows: 0,
+      errors: [{ rowNumber: 0, reason: "File is empty or has no data rows", severity: "ERROR" }],
+      warnings: [],
+      created: { departments: [], designations: [] },
     };
   }
 
   const tenantIdObj = new mongoose.Types.ObjectId(context.tenantId);
-  const userIdObj   = new mongoose.Types.ObjectId(context.userId);
+  const userIdObj = new mongoose.Types.ObjectId(context.userId);
 
   // ── Load all existing master data via cache ──
   const { getMasterDataMaps } = require("./master-data-cache");
@@ -325,25 +325,25 @@ export async function parseImportFile(
   const designations = cacheData.designations;
 
   // Build normalized lookup maps
-  const branchMap      = buildNameMap(branches);
-  const departmentMap  = buildNameMap(departments);
+  const branchMap = buildNameMap(branches);
+  const departmentMap = buildNameMap(departments);
 
   // Designation map includes departmentId for cross-dept validation
   const designationMap = new Map<string, { id: any; name: string; departmentId: any }>();
   for (const d of designations) {
     designationMap.set(normalize(d.name), {
-      id:           d._id,
-      name:         d.name,
+      id: d._id,
+      name: d.name,
       departmentId: d.departmentId,
     });
   }
 
   // Track existing codes to avoid collision during auto-create
-  const existingDeptCodes  = new Set<string>(departments.map((d: any) => d.code as string));
+  const existingDeptCodes = new Set<string>(departments.map((d: any) => d.code as string));
   const existingDesigCodes = new Set<string>(designations.map((d: any) => d.code as string));
 
   // Track auto-created names for response summary
-  const createdDepts:  string[] = [];
+  const createdDepts: string[] = [];
   const createdDesigs: string[] = [];
 
   // Track existing emails to catch duplicates within the import file itself
@@ -352,13 +352,13 @@ export async function parseImportFile(
     .select("email").lean();
   const existingEmails = new Set(existingEmployees.map(e => e.email.toLowerCase()));
 
-  const errors:   ImportError[] = [];
+  const errors: ImportError[] = [];
   const warnings: ImportError[] = [];
-  const validRecords: any[]     = [];
+  const validRecords: any[] = [];
 
   // ── Per-row processing ────────────────────────────────────────────────────
   for (let idx = 0; idx < rawRows.length; idx++) {
-    const row       = rawRows[idx];
+    const row = rawRows[idx];
     const rowNumber = idx + 2; // row 1 = header
     const emailClean = row.email?.trim().toLowerCase();
 
@@ -389,8 +389,8 @@ export async function parseImportFile(
     if (!branchEntry) {
       errors.push({
         rowNumber,
-        email:    emailClean,
-        reason:   `Branch "${row.branchName}" not found. Branches cannot be auto-created — please use an exact branch name.`,
+        email: emailClean,
+        reason: `Branch "${row.branchName}" not found. Branches cannot be auto-created — please use an exact branch name.`,
         severity: "ERROR",
       });
       continue;
@@ -402,8 +402,8 @@ export async function parseImportFile(
     if (isNaN(joiningDate.getTime())) {
       errors.push({
         rowNumber,
-        email:    emailClean,
-        reason:   `Invalid joining date "${row.joiningDate}". Use YYYY-MM-DD format.`,
+        email: emailClean,
+        reason: `Invalid joining date "${row.joiningDate}". Use YYYY-MM-DD format.`,
         severity: "ERROR",
       });
       continue;
@@ -423,15 +423,15 @@ export async function parseImportFile(
     if (deptResult.wasCreated) {
       warnings.push({
         rowNumber,
-        email:    emailClean,
-        reason:   `Department "${row.departmentName}" did not exist — auto-created as "${deptResult.name}".`,
+        email: emailClean,
+        reason: `Department "${row.departmentName}" did not exist — auto-created as "${deptResult.name}".`,
         severity: "WARNING",
       });
     } else if (normalize(deptResult.name) !== normalize(row.departmentName)) {
       warnings.push({
         rowNumber,
-        email:    emailClean,
-        reason:   `Department "${row.departmentName}" matched to existing "${deptResult.name}".`,
+        email: emailClean,
+        reason: `Department "${row.departmentName}" matched to existing "${deptResult.name}".`,
         severity: "WARNING",
       });
     }
@@ -451,22 +451,22 @@ export async function parseImportFile(
     if (desigResult.wrongDept) {
       warnings.push({
         rowNumber,
-        email:    emailClean,
-        reason:   `Designation "${desigResult.name}" exists but belongs to a different department. It has been assigned as-is.`,
+        email: emailClean,
+        reason: `Designation "${desigResult.name}" exists but belongs to a different department. It has been assigned as-is.`,
         severity: "WARNING",
       });
     } else if (desigResult.wasCreated) {
       warnings.push({
         rowNumber,
-        email:    emailClean,
-        reason:   `Designation "${row.designationName}" did not exist — auto-created as "${desigResult.name}" under "${deptResult.name}".`,
+        email: emailClean,
+        reason: `Designation "${row.designationName}" did not exist — auto-created as "${desigResult.name}" under "${deptResult.name}".`,
         severity: "WARNING",
       });
     } else if (normalize(desigResult.name) !== normalize(row.designationName)) {
       warnings.push({
         rowNumber,
-        email:    emailClean,
-        reason:   `Designation "${row.designationName}" matched to existing "${desigResult.name}".`,
+        email: emailClean,
+        reason: `Designation "${row.designationName}" matched to existing "${desigResult.name}".`,
         severity: "WARNING",
       });
     }
@@ -483,8 +483,8 @@ export async function parseImportFile(
         if (typeof checkResult === "string") {
           errors.push({
             rowNumber,
-            email:    emailClean,
-            reason:   `Invalid ${field.label} format: ${checkResult}`,
+            email: emailClean,
+            reason: `Invalid ${field.label} format: ${checkResult}`,
             severity: "ERROR",
           });
           statutoryValid = false;
@@ -492,8 +492,8 @@ export async function parseImportFile(
       } else if (field.required) {
         errors.push({
           rowNumber,
-          email:    emailClean,
-          reason:   `${field.label} is required for country ${countryCode}`,
+          email: emailClean,
+          reason: `${field.label} is required for country ${countryCode}`,
           severity: "ERROR",
         });
         statutoryValid = false;
@@ -503,39 +503,39 @@ export async function parseImportFile(
 
     // ── Build employee document ────────────────────────────────────────────
     const employeeCode = await getNextEmployeeCode(context.tenantId);
-    const newEmpId     = new mongoose.Types.ObjectId();
+    const newEmpId = new mongoose.Types.ObjectId();
 
     const employeeDoc = {
-      _id:          newEmpId,
-      tenantId:     tenantIdObj,
+      _id: newEmpId,
+      tenantId: tenantIdObj,
       branchId,
       departmentId: new mongoose.Types.ObjectId(deptResult.id),
       designationId: new mongoose.Types.ObjectId(desigResult.id),
       employeeCode,
-      firstName:    row.firstName.trim(),
-      lastName:     row.lastName.trim(),
-      email:        emailClean,
-      phone:        row.phone?.trim(),
+      firstName: row.firstName.trim(),
+      lastName: row.lastName.trim(),
+      email: emailClean,
+      phone: row.phone?.trim(),
       joiningDate,
       employeeType: Object.values(EmployeeType).includes(row.employeeType as any)
         ? row.employeeType
         : EmployeeType.FULL_TIME,
-      status:       EmployeeStatus.ACTIVE,
-      gender:       Object.values(Gender).includes(row.gender as any)
+      status: EmployeeStatus.ACTIVE,
+      gender: Object.values(Gender).includes(row.gender as any)
         ? row.gender
         : undefined,
-      dateOfBirth:  row.dateOfBirth && !isNaN(new Date(row.dateOfBirth).getTime())
+      dateOfBirth: row.dateOfBirth && !isNaN(new Date(row.dateOfBirth).getTime())
         ? new Date(row.dateOfBirth)
         : undefined,
-      pan:          row.pan?.trim().toUpperCase() || undefined,
-      aadhaar:      row.aadhaar?.trim() || undefined,
+      pan: row.pan?.trim().toUpperCase() || undefined,
+      aadhaar: row.aadhaar?.trim() || undefined,
       countryCode,
-      isActive:     true,
-      onboardingStep:    1,
+      isActive: true,
+      onboardingStep: 1,
       onboardingComplete: false,
-      isProfileComplete:  false,
-      createdBy:    userIdObj,
-      updatedBy:    userIdObj,
+      isProfileComplete: false,
+      createdBy: userIdObj,
+      updatedBy: userIdObj,
     };
 
     validRecords.push(employeeDoc);
@@ -548,7 +548,7 @@ export async function parseImportFile(
     errors,
     warnings,
     created: {
-      departments:  [...new Set(createdDepts)],
+      departments: [...new Set(createdDepts)],
       designations: [...new Set(createdDesigs)],
     },
   };
@@ -561,54 +561,54 @@ export async function parseImportFile(
 
 export async function buildExportBuffer(
   employees: any[],
-  format:    "csv" | "xlsx"
+  format: "csv" | "xlsx"
 ): Promise<Buffer> {
 
   // Column definitions — identical order for import/export symmetry
   const columns = [
-    { header: "Employee Code",  key: "employeeCode",  width: 15 },
-    { header: "First Name",     key: "firstName",     width: 20 },
-    { header: "Last Name",      key: "lastName",      width: 20 },
-    { header: "Email",          key: "email",         width: 30 },
-    { header: "Phone",          key: "phone",         width: 15 },
-    { header: "Branch",         key: "branch",        width: 20 },
-    { header: "Department",     key: "department",    width: 25 },
-    { header: "Designation",    key: "designation",   width: 25 },
-    { header: "Employee Type",  key: "employeeType",  width: 15 },
-    { header: "Status",         key: "status",        width: 15 },
-    { header: "Joining Date",   key: "joiningDate",   width: 15 },
-    { header: "Date of Birth",  key: "dateOfBirth",   width: 15 },
-    { header: "Gender",         key: "gender",        width: 12 },
-    { header: "PAN",            key: "pan",           width: 15 },
-    { header: "Aadhaar",        key: "aadhaar",       width: 15 },
+    { header: "Employee Code", key: "employeeCode", width: 15 },
+    { header: "First Name", key: "firstName", width: 20 },
+    { header: "Last Name", key: "lastName", width: 20 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "Phone", key: "phone", width: 15 },
+    { header: "Branch", key: "branch", width: 20 },
+    { header: "Department", key: "department", width: 25 },
+    { header: "Designation", key: "designation", width: 25 },
+    { header: "Employee Type", key: "employeeType", width: 15 },
+    { header: "Status", key: "status", width: 15 },
+    { header: "Joining Date", key: "joiningDate", width: 15 },
+    { header: "Date of Birth", key: "dateOfBirth", width: 15 },
+    { header: "Gender", key: "gender", width: 12 },
+    { header: "PAN", key: "pan", width: 15 },
+    { header: "Aadhaar", key: "aadhaar", width: 15 },
   ];
 
   // Build row data
   const rows = employees.map(emp => ({
     employeeCode: emp.employeeCode || "",
-    firstName:    emp.firstName   || "",
-    lastName:     emp.lastName    || "",
-    email:        emp.email       || "",
-    phone:        emp.phone       || "",
-    branch:       emp.branchId?.name      || "",
-    department:   emp.departmentId?.name  || "",
-    designation:  emp.designationId?.name || "",
+    firstName: emp.firstName || "",
+    lastName: emp.lastName || "",
+    email: emp.email || "",
+    phone: emp.phone || "",
+    branch: emp.branchId?.name || "",
+    department: emp.departmentId?.name || "",
+    designation: emp.designationId?.name || "",
     employeeType: emp.employeeType || "",
-    status:       emp.status       || "",
-    joiningDate:  emp.joiningDate
+    status: emp.status || "",
+    joiningDate: emp.joiningDate
       ? new Date(emp.joiningDate).toISOString().split("T")[0]
       : "",
-    dateOfBirth:  emp.dateOfBirth
+    dateOfBirth: emp.dateOfBirth
       ? new Date(emp.dateOfBirth).toISOString().split("T")[0]
       : "",
-    gender:  emp.gender  || "",
-    pan:     emp.pan     || "",
+    gender: emp.gender || "",
+    pan: emp.pan || "",
     aadhaar: emp.aadhaar || "",
   }));
 
   if (format === "csv") {
     const headerLine = columns.map(c => `"${c.header}"`).join(",");
-    const dataLines  = rows.map(row =>
+    const dataLines = rows.map(row =>
       columns
         .map(c => `"${String((row as any)[c.key] ?? "").replace(/"/g, '""')}"`)
         .join(",")
@@ -617,17 +617,17 @@ export async function buildExportBuffer(
   }
 
   // XLSX
-  const workbook  = new ExcelJS.Workbook();
+  const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Employees");
 
   worksheet.columns = columns;
 
   // Style header row
   const headerRow = worksheet.getRow(1);
-  headerRow.font      = { bold: true, color: { argb: "FFFFFFFF" } };
-  headerRow.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2886CE" } };
+  headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2886CE" } };
   headerRow.alignment = { vertical: "middle", horizontal: "center" };
-  headerRow.height    = 20;
+  headerRow.height = 20;
 
   for (const row of rows) {
     worksheet.addRow(row);
@@ -648,37 +648,37 @@ export async function buildExportBuffer(
 export async function buildImportTemplate(format: "csv" | "xlsx"): Promise<Buffer> {
   const sampleRows = [
     {
-      firstName:       "Rahul",
-      lastName:        "Sharma",
-      email:           "rahul.sharma@company.com",
-      phone:           "9876543210",
-      branch:          "Head Office",
-      department:      "Software Engineering",
-      designation:     "Software Engineer",
-      employeeType:    "FULL_TIME",
-      status:          "ACTIVE",
-      joiningDate:     "2024-01-15",
-      dateOfBirth:     "1995-06-20",
-      gender:          "MALE",
-      pan:             "ABCDE1234F",
-      aadhaar:         "123456789012",
+      firstName: "Rahul",
+      lastName: "Sharma",
+      email: "rahul.sharma@company.com",
+      phone: "9876543210",
+      branch: "Head Office",
+      department: "Software Engineering",
+      designation: "Software Engineer",
+      employeeType: "FULL_TIME",
+      status: "ACTIVE",
+      joiningDate: "2024-01-15",
+      dateOfBirth: "1995-06-20",
+      gender: "MALE",
+      pan: "ABCDE1234F",
+      aadhaar: "123456789012",
     },
   ];
 
   const columns = [
-    { header: "First Name",    key: "firstName",    width: 20 },
-    { header: "Last Name",     key: "lastName",     width: 20 },
-    { header: "Email",         key: "email",        width: 30 },
-    { header: "Phone",         key: "phone",        width: 15 },
-    { header: "Branch",        key: "branch",       width: 20 },
-    { header: "Department",    key: "department",   width: 25 },
-    { header: "Designation",   key: "designation",  width: 25 },
+    { header: "First Name", key: "firstName", width: 20 },
+    { header: "Last Name", key: "lastName", width: 20 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "Phone", key: "phone", width: 15 },
+    { header: "Branch", key: "branch", width: 20 },
+    { header: "Department", key: "department", width: 25 },
+    { header: "Designation", key: "designation", width: 25 },
     { header: "Employee Type", key: "employeeType", width: 15 },
-    { header: "Joining Date",  key: "joiningDate",  width: 15 },
-    { header: "Date of Birth", key: "dateOfBirth",  width: 15 },
-    { header: "Gender",        key: "gender",       width: 12 },
-    { header: "PAN",           key: "pan",          width: 15 },
-    { header: "Aadhaar",       key: "aadhaar",      width: 15 },
+    { header: "Joining Date", key: "joiningDate", width: 15 },
+    { header: "Date of Birth", key: "dateOfBirth", width: 15 },
+    { header: "Gender", key: "gender", width: 12 },
+    { header: "PAN", key: "pan", width: 15 },
+    { header: "Aadhaar", key: "aadhaar", width: 15 },
   ];
 
   if (format === "csv") {
@@ -689,15 +689,15 @@ export async function buildImportTemplate(format: "csv" | "xlsx"): Promise<Buffe
     return Buffer.from([header, sample].join("\n"), "utf-8");
   }
 
-  const workbook  = new ExcelJS.Workbook();
+  const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Import Template");
   worksheet.columns = columns;
 
   const headerRow = worksheet.getRow(1);
-  headerRow.font      = { bold: true, color: { argb: "FFFFFFFF" } };
-  headerRow.fill      = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2886CE" } };
+  headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2886CE" } };
   headerRow.alignment = { vertical: "middle", horizontal: "center" };
-  headerRow.height    = 20;
+  headerRow.height = 20;
 
   worksheet.addRow(sampleRows[0]);
 
@@ -736,23 +736,23 @@ async function parseCSV(buffer: Buffer): Promise<BulkImportRow[]> {
       .pipe(csvParser())
       .on("data", (data) => {
         results.push({
-          firstName:       data.firstName       || data.first_name    || data["First Name"],
-          lastName:        data.lastName        || data.last_name     || data["Last Name"],
-          email:           data.email           || data["Email"]       || data["Email Address"],
-          phone:           data.phone           || data["Phone"]       || data["Phone Number"],
-          branchName:      data.branchName      || data.branch        || data["Branch"],
-          departmentName:  data.departmentName  || data.department    || data["Department"],
-          designationName: data.designationName || data.designation   || data["Designation"],
-          joiningDate:     data.joiningDate     || data.joining_date  || data["Joining Date"],
-          employeeType:    data.employeeType    || data.employee_type || data["Employee Type"],
-          gender:          data.gender          || data["Gender"],
-          dateOfBirth:     data.dateOfBirth     || data.dob           || data["Date of Birth"],
-          pan:             data.pan             || data["PAN"],
-          aadhaar:         data.aadhaar         || data["Aadhaar"],
-          countryCode:     data.countryCode     || data.country        || data["Country"] || data["Country Code"],
+          firstName: data.firstName || data.first_name || data["First Name"],
+          lastName: data.lastName || data.last_name || data["Last Name"],
+          email: data.email || data["Email"] || data["Email Address"],
+          phone: data.phone || data["Phone"] || data["Phone Number"],
+          branchName: data.branchName || data.branch || data["Branch"],
+          departmentName: data.departmentName || data.department || data["Department"],
+          designationName: data.designationName || data.designation || data["Designation"],
+          joiningDate: data.joiningDate || data.joining_date || data["Joining Date"],
+          employeeType: data.employeeType || data.employee_type || data["Employee Type"],
+          gender: data.gender || data["Gender"],
+          dateOfBirth: data.dateOfBirth || data.dob || data["Date of Birth"],
+          pan: data.pan || data["PAN"],
+          aadhaar: data.aadhaar || data["Aadhaar"],
+          countryCode: data.countryCode || data.country || data["Country"] || data["Country Code"],
         });
       })
-      .on("end",   () => resolve(results))
+      .on("end", () => resolve(results))
       .on("error", (err) => reject(err));
   });
 }
@@ -762,7 +762,7 @@ async function parseCSV(buffer: Buffer): Promise<BulkImportRow[]> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function parseExcel(buffer: Buffer): Promise<BulkImportRow[]> {
-  const workbook  = new ExcelJS.Workbook();
+  const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as any);
   const worksheet = workbook.worksheets[0];
 
@@ -787,20 +787,20 @@ async function parseExcel(buffer: Buffer): Promise<BulkImportRow[]> {
     });
 
     results.push({
-      firstName:       rowObj["first name"]    || rowObj["firstname"]       || rowObj["first_name"],
-      lastName:        rowObj["last name"]     || rowObj["lastname"]        || rowObj["last_name"],
-      email:           rowObj["email"]         || rowObj["email address"],
-      phone:           rowObj["phone"]         || rowObj["phone number"],
-      branchName:      rowObj["branch"],
-      departmentName:  rowObj["department"],
+      firstName: rowObj["first name"] || rowObj["firstname"] || rowObj["first_name"],
+      lastName: rowObj["last name"] || rowObj["lastname"] || rowObj["last_name"],
+      email: rowObj["email"] || rowObj["email address"],
+      phone: rowObj["phone"] || rowObj["phone number"],
+      branchName: rowObj["branch"],
+      departmentName: rowObj["department"],
       designationName: rowObj["designation"],
-      joiningDate:     rowObj["joining date"]  || rowObj["joiningdate"]     || rowObj["joining_date"],
-      employeeType:    rowObj["employee type"] || rowObj["employeetype"]    || rowObj["employee_type"],
-      gender:          rowObj["gender"],
-      dateOfBirth:     rowObj["date of birth"] || rowObj["dateofbirth"]     || rowObj["dob"],
-      pan:             rowObj["pan"],
-      aadhaar:         rowObj["aadhaar"],
-      countryCode:     rowObj["country code"]  || rowObj["countrycode"]     || rowObj["country"] || rowObj["country_code"],
+      joiningDate: rowObj["joining date"] || rowObj["joiningdate"] || rowObj["joining_date"],
+      employeeType: rowObj["employee type"] || rowObj["employeetype"] || rowObj["employee_type"],
+      gender: rowObj["gender"],
+      dateOfBirth: rowObj["date of birth"] || rowObj["dateofbirth"] || rowObj["dob"],
+      pan: rowObj["pan"],
+      aadhaar: rowObj["aadhaar"],
+      countryCode: rowObj["country code"] || rowObj["countrycode"] || rowObj["country"] || rowObj["country_code"],
     });
   });
 

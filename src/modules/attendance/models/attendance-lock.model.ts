@@ -5,8 +5,8 @@ import { createBaseSchema, BaseDocument } from "../../../shared/database/base.sc
 
 export enum AttendanceLockStatus {
   UNLOCKED = "UNLOCKED",
-  LOCKED   = "LOCKED",
-  OPEN     = "OPEN",     // period open for correction — unlock in progress
+  LOCKED = "LOCKED",
+  OPEN = "OPEN",     // period open for correction — unlock in progress
 }
 
 // ATTENDANCE LOCK MODEL
@@ -15,12 +15,12 @@ export enum AttendanceLockStatus {
 
 export interface AttendanceLockDocument extends BaseDocument {
   branchId: mongoose.Types.ObjectId;
-  period:   string; // Format: "YYYY-MM" (e.g. "2026-07")
-  status:   AttendanceLockStatus;
-  lockedBy?:     mongoose.Types.ObjectId;
-  lockedAt?:     Date;
-  unlockedAt?:   Date;
-  unlockedBy?:   mongoose.Types.ObjectId;
+  period: string; // Format: "YYYY-MM" (e.g. "2026-07")
+  status: AttendanceLockStatus;
+  lockedBy?: mongoose.Types.ObjectId;
+  lockedAt?: Date;
+  unlockedAt?: Date;
+  unlockedBy?: mongoose.Types.ObjectId;
   unlockReason?: string;
   payrollRunId?: mongoose.Types.ObjectId;  // set after markPaid — blocks future unlock
 }
@@ -28,32 +28,32 @@ export interface AttendanceLockDocument extends BaseDocument {
 const AttendanceLockSchema = createBaseSchema<AttendanceLockDocument>(
   {
     branchId: {
-      type:     mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref:      "Branch",
-      index:    true,
+      ref: "Branch",
+      index: true,
     },
     period: {
-      type:     String,
+      type: String,
       required: true,
-      trim:     true,
-      index:    true,
+      trim: true,
+      index: true,
     },
     status: {
-      type:    String,
-      enum:    Object.values(AttendanceLockStatus),
+      type: String,
+      enum: Object.values(AttendanceLockStatus),
       default: AttendanceLockStatus.UNLOCKED,
-      index:   true,
+      index: true,
     },
     lockedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref:  "User",
+      ref: "User",
     },
     lockedAt: {
       type: Date,
     },
-    unlockedAt:   { type: Date },
-    unlockedBy:   { type: mongoose.Schema.Types.ObjectId },
+    unlockedAt: { type: Date },
+    unlockedBy: { type: mongoose.Schema.Types.ObjectId },
     unlockReason: { type: String, trim: true },
     payrollRunId: { type: mongoose.Schema.Types.ObjectId },
   },

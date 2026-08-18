@@ -15,8 +15,8 @@ export class RegularizationRepository extends BaseRepository<RegularizationDocum
   // assigned to.
   async findPendingForBranch(context: RequestContext) {
     return RegularizationModel.find({
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-      status:    "PENDING",
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      status: "PENDING",
       isDeleted: false,
     })
       .sort({ createdAt: 1 })

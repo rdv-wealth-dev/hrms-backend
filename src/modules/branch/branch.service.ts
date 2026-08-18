@@ -274,4 +274,4 @@ export class BranchService {
       departmentsSeeded: deptMap.size,
     };
   }
-}
+}

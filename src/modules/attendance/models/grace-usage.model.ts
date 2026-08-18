@@ -3,31 +3,31 @@ import { createBaseSchema, BaseDocument } from "../../../shared/database/base.sc
 
 export interface GraceUsageDocument extends BaseDocument {
   employeeId: mongoose.Types.ObjectId;    //per employee
-  year:       number;
-  month:      number;   // 1-12
-  used:       number;   // how many grace periods consumed this month by individual employee 
+  year: number;
+  month: number;   // 1-12
+  used: number;   // how many grace periods consumed this month by individual employee 
 }
 
 const GraceUsageSchema = createBaseSchema<GraceUsageDocument>({
   employeeId: {
-    type:     mongoose.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.ObjectId,
     required: true,
-    index:    true,
+    index: true,
   },
   year: {
-    type:     Number,
+    type: Number,
     required: true,
   },
   month: {
-    type:     Number,
+    type: Number,
     required: true,
-    min:      1,
-    max:      12,
+    min: 1,
+    max: 12,
   },
   used: {
-    type:    Number,
+    type: Number,
     default: 0,
-    min:     0,
+    min: 0,
   },
 }, { collection: "grace_usage" });
 

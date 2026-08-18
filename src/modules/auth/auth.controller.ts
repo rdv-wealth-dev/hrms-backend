@@ -12,8 +12,8 @@ export class AuthController {
 
   // POST /api/v1/auth/register
   async register(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -44,13 +44,13 @@ export class AuthController {
 
   //POST /api/v1/auth/login
   async login(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
-      const ip           = req.ip ?? (req.headers["x-forwarded-for"] as string) ?? "unknown";
-      const device       = (req.headers["user-agent"] as string) ?? "unknown";
+      const ip = req.ip ?? (req.headers["x-forwarded-for"] as string) ?? "unknown";
+      const device = (req.headers["user-agent"] as string) ?? "unknown";
       const rememberDevice = req.body.rememberDevice === true;
 
       const result = await authService.login(req.body, { ip, device, rememberDevice });
@@ -64,8 +64,8 @@ export class AuthController {
 
   // POST /api/v1/auth/verify-email
   async verifyEmail(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -80,8 +80,8 @@ export class AuthController {
 
   //POST /api/v1/auth/refresh
   async refresh(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -96,8 +96,8 @@ export class AuthController {
 
   //GET /api/v1/auth/me
   async getMe(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -117,8 +117,8 @@ export class AuthController {
 
   // POST /api/v1/auth/forgot-password
   async forgotPassword(
-    req: Request, 
-    res: Response, 
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -126,15 +126,15 @@ export class AuthController {
       res.status(200).json(
         buildSuccessResponse(result, result.message)
       );
-    } catch (error) { 
-      next(error); 
+    } catch (error) {
+      next(error);
     }
   }
 
   // POST /api/v1/auth/reset-password
   async resetPassword(
-    req: Request, 
-    res: Response, 
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -143,14 +143,14 @@ export class AuthController {
         buildSuccessResponse(result, "Password reset successful")
       );
     } catch (error) {
-       next(error); 
-      }
+      next(error);
+    }
   }
 
   // POST /api/v1/auth/logout
   async logout(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -175,8 +175,8 @@ export class AuthController {
 
   // POST /api/v1/auth/resend-verification
   async resendVerification(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -191,8 +191,8 @@ export class AuthController {
 
   // GET /api/v1/auth/check-slug?slug=acme
   async checkSlug(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -219,8 +219,8 @@ export class AuthController {
 
   // POST /api/v1/auth/complete-onboarding
   async completeOnboarding(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -244,8 +244,8 @@ export class AuthController {
   // POST /api/v1/auth/check-email — SSO detection + workspace branding
   // Called when user finishes typing email on login page (before password field appears)
   async checkEmail(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -260,8 +260,8 @@ export class AuthController {
 
   // POST /api/v1/auth/change-password
   async changePassword(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {

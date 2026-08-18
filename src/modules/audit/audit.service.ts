@@ -11,12 +11,12 @@ export class AuditService {
     try {
       await SessionLogModel.create({
         tenantId: params.tenantId ? new mongoose.Types.ObjectId(params.tenantId) : undefined,
-        userId:   params.userId ? new mongoose.Types.ObjectId(params.userId) : undefined,
+        userId: params.userId ? new mongoose.Types.ObjectId(params.userId) : undefined,
         email: params.email, eventType: params.eventType,
         ipAddress: params.ipAddress, userAgent: params.userAgent,
         jti: params.jti, failureReason: params.failureReason,
         sessionStart: params.eventType === SessionEventType.LOGIN ? new Date() : undefined,
-        sessionEnd:   params.eventType === SessionEventType.LOGOUT ? new Date() : undefined,
+        sessionEnd: params.eventType === SessionEventType.LOGOUT ? new Date() : undefined,
       });
     } catch { /* never let logging break the actual request */ }
   }
@@ -29,7 +29,7 @@ export class AuditService {
     try {
       await ActionLogModel.create({
         tenantId: new mongoose.Types.ObjectId(params.tenantId),
-        userId:   new mongoose.Types.ObjectId(params.userId),
+        userId: new mongoose.Types.ObjectId(params.userId),
         userEmail: params.userEmail, module: params.module, action: params.action,
         resourceType: params.resourceType,
         resourceId: params.resourceId ? new mongoose.Types.ObjectId(params.resourceId) : undefined,

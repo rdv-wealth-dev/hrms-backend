@@ -15,18 +15,18 @@ export const CreateDepartmentDto = z.object({
     (val) => (val === "" ? undefined : val),
     objectIdSchema.optional()
   ),
-  parentId:    objectIdSchema.optional(),
+  parentId: objectIdSchema.optional(),
 });
 
 export type CreateDepartmentInput = z.infer<typeof CreateDepartmentDto>;
 
 //Update Department
 export const UpdateDepartmentDto = z.object({
-  name:        safeStringSchema(2, 200).optional(),
-  code:        z.string().trim().toUpperCase().min(2).max(20).optional(),
+  name: safeStringSchema(2, 200).optional(),
+  code: z.string().trim().toUpperCase().min(2).max(20).optional(),
   description: safeStringSchema(0, 500).optional(),
-  isActive:    z.boolean().optional(),
-  parentId:    objectIdSchema.optional(),
+  isActive: z.boolean().optional(),
+  parentId: objectIdSchema.optional(),
 });
 
 export type UpdateDepartmentInput = z.infer<typeof UpdateDepartmentDto>;

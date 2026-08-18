@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { BranchService }                   from "./branch.service";
-import { buildSuccessResponse }            from "../../shared/database/base.schema";
+import { BranchService } from "./branch.service";
+import { buildSuccessResponse } from "../../shared/database/base.schema";
 
 const branchService = new BranchService();
 
@@ -8,8 +8,8 @@ export class BranchController {
 
   // POST /api/v1/branches
   async create(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -27,8 +27,8 @@ export class BranchController {
 
   // GET /api/v1/branches
   async list(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -45,8 +45,8 @@ export class BranchController {
 
   // GET /api/v1/branches/head-office
   async getHeadOffice(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -61,8 +61,8 @@ export class BranchController {
 
   // GET /api/v1/branches/:id
   async getById(
-    req:  Request<{ id: string }>,   // ← typed params
-    res:  Response,
+    req: Request<{ id: string }>,   // ← typed params
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -81,8 +81,8 @@ export class BranchController {
 
   // PATCH /api/v1/branches/:id
   async update(
-    req:  Request<{ id: string }>,   // ← typed params
-    res:  Response,
+    req: Request<{ id: string }>,   // ← typed params
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -102,8 +102,8 @@ export class BranchController {
 
   // DELETE /api/v1/branches/:id
   async delete(
-    req:  Request<{ id: string }>,  
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -122,8 +122,8 @@ export class BranchController {
 
   // POST /api/v1/branches/:id/seed
   async seedBranchData(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {

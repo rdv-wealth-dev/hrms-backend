@@ -14,11 +14,11 @@ export function calculatePF(
 
   const { pf } = ratesConfig;
   const pfBase = pfOnActuals ? wagesForStatutory : Math.min(wagesForStatutory, pf.wageCeiling);
-  
+
   const employee = Math.round(pfBase * pf.employeeRate);
   const employerEPS = Math.min(Math.round(pfBase * pf.employerEpsRate), pf.epsCap);
   const employerEPF = employee - employerEPS;
-  
+
   const adminCharge = Math.round(pfBase * pf.adminRate);
   const edliCharge = Math.round(Math.min(pfBase, pf.wageCeiling) * pf.edliRate);
   const totalEmployer = employerEPF + employerEPS + adminCharge + edliCharge;

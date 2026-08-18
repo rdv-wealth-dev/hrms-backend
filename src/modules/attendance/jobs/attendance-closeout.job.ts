@@ -22,27 +22,27 @@ const shiftRepo = new ShiftRepository();
 
 export async function closeOutAttendanceForDate(
   tenantId: string,
-  date:     Date
+  date: Date
 ): Promise<{ processed: number; markedAbsent: number; markedWeekOff: number; markedHoliday: number }> {
 
   const targetDate = normalizeToMidnight(date);
 
   // Fetch org config
   const org = await OrganizationModel.findById(tenantId);
-  const orgWeeklyOffDays      = org?.locale?.weeklyOffDays ?? ["Sunday"];
+  const orgWeeklyOffDays = org?.locale?.weeklyOffDays ?? ["Sunday"];
   const orgCustomWeekOffRules = (org?.locale as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined;
 
   //  Fetch all active employees 
   const employees = await EmployeeModel.find({
-    tenantId:  new mongoose.Types.ObjectId(tenantId),
-    isActive:  true,
+    tenantId: new mongoose.Types.ObjectId(tenantId),
+    isActive: true,
     isDeleted: false,
   }).select("_id branchId shiftId rotationPlanId rotationStartDate");
 
   // ── Fetch holidays for this date 
   const holidays = await HolidayModel.find({
-    tenantId:  new mongoose.Types.ObjectId(tenantId),
-    date:      targetDate,
+    tenantId: new mongoose.Types.ObjectId(tenantId),
+    date: targetDate,
     isDeleted: false,
   }).select("branchId name");
 
@@ -53,22 +53,22 @@ export async function closeOutAttendanceForDate(
 
     // Skip if attendance record already exists
     const existing = await AttendanceModel.findOne({
-      tenantId:       new mongoose.Types.ObjectId(tenantId),
-      employeeId:     emp._id,
+      tenantId: new mongoose.Types.ObjectId(tenantId),
+      employeeId: emp._id,
       attendanceDate: targetDate,
     });
     if (existing) continue;
 
     // Resolve branch config
     const branch = await BranchModel.findById(emp.branchId).select("workPolicy");
-    const branchWeeklyOffDays     = branch?.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
+    const branchWeeklyOffDays = branch?.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
     const branchCustomWeekOffRules = (branch?.workPolicy as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined
       ?? orgCustomWeekOffRules;
 
     // Resolve rotation plan 
     const rotationPlan = emp.rotationPlanId
       ? await ShiftRotationPlanModel.findById(emp.rotationPlanId)
-          .populate("slots.shiftId")
+        .populate("slots.shiftId")
       : null;
 
     // Resolve fixed shift 
@@ -78,20 +78,20 @@ export async function closeOutAttendanceForDate(
 
     const schedule = resolveEmployeeDaySchedule({
       targetDate,
-      rotationPlan:       rotationPlan as any,
-      rotationStartDate:  emp.rotationStartDate ?? null,
-      fixedShift:         fixedShift as any,
+      rotationPlan: rotationPlan as any,
+      rotationStartDate: emp.rotationStartDate ?? null,
+      fixedShift: fixedShift as any,
       fixedWeeklyOffDays: branchWeeklyOffDays,
       customWeekOffRules: branchCustomWeekOffRules,
-      holidays:           holidays as any,
-      employeeBranchId:   emp.branchId.toString(),
+      holidays: holidays as any,
+      employeeBranchId: emp.branchId.toString(),
     });
 
     let status: AttendanceStatus;
     switch (schedule.dayType) {
-      case "HOLIDAY":  status = AttendanceStatus.HOLIDAY;  markedHoliday++; break;
+      case "HOLIDAY": status = AttendanceStatus.HOLIDAY; markedHoliday++; break;
       case "WEEK_OFF": status = AttendanceStatus.WEEK_OFF; markedWeekOff++; break;
-      default:         status = AttendanceStatus.ABSENT;   markedAbsent++;
+      default: status = AttendanceStatus.ABSENT; markedAbsent++;
     }
 
     // Determine shiftId to store on the attendance record (rotation-aware)
@@ -121,15 +121,15 @@ export async function closeOutAttendanceForDate(
     }
 
     await AttendanceModel.create({
-      tenantId:       new mongoose.Types.ObjectId(tenantId),
-      branchId:       emp.branchId,
-      employeeId:     emp._id,
-      shiftId:        resolvedShiftId,
+      tenantId: new mongoose.Types.ObjectId(tenantId),
+      branchId: emp.branchId,
+      employeeId: emp._id,
+      shiftId: resolvedShiftId,
       attendanceDate: targetDate,
-      sessions:       [],
-      workedMinutes:  0,
+      sessions: [],
+      workedMinutes: 0,
       status,
-      isRegularized:  false,
+      isRegularized: false,
     });
   }
 

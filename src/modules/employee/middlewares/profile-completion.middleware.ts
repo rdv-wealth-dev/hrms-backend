@@ -6,7 +6,7 @@ import { AppError } from "../../../shared/errors/app.error";
 import { ErrorCode } from "../../../shared/errors/error-codes";
 import { OnboardingPhase } from "../../../shared/types/request-context.interface";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// Constants 
 
 /** Roles that are never subject to the employee onboarding gate. */
 const ADMIN_ROLES = new Set([
@@ -15,18 +15,18 @@ const ADMIN_ROLES = new Set([
 ]);
 
 /** Day boundaries for each phase (inclusive, relative to joiningDate). */
-const GRACE_DAYS      = 3;  // Days 1–3: fully open
-const NUDGE_DAYS      = 7;  // Days 4–7: open + persistent reminders
+const GRACE_DAYS = 3;  // Days 1–3: fully open
+const NUDGE_DAYS = 7;  // Days 4–7: open + persistent reminders
 // Day 8+: RESTRICTED — non-essential features blocked until profile complete
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers 
 
 /**
  * Returns the number of calendar days elapsed since joiningDate (Day 1 = 0).
  * Uses the start-of-day in UTC to avoid timezone drift on the boundary.
  */
 function daysSinceJoining(joiningDate: Date): number {
-  const joinStart  = new Date(joiningDate);
+  const joinStart = new Date(joiningDate);
   joinStart.setUTCHours(0, 0, 0, 0);
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
@@ -40,8 +40,8 @@ function daysSinceJoining(joiningDate: Date): number {
  */
 function resolvePhase(daysSince: number, isProfileComplete: boolean): OnboardingPhase {
   if (isProfileComplete) return "COMPLETE";
-  if (daysSince < GRACE_DAYS)  return "GRACE";
-  if (daysSince < NUDGE_DAYS)  return "NUDGE";
+  if (daysSince < GRACE_DAYS) return "GRACE";
+  if (daysSince < NUDGE_DAYS) return "NUDGE";
   return "RESTRICTED";
 }
 
@@ -50,11 +50,11 @@ function resolvePhase(daysSince: number, isProfileComplete: boolean): Onboarding
  * Weights: personalDetails 25 | address 20 | emergencyContact 20 | bankDetails 20 | mandatoryDocs 15
  */
 function computeCompletionPct(flags: {
-  personalDetails:  boolean;
-  address:          boolean;
+  personalDetails: boolean;
+  address: boolean;
   emergencyContact: boolean;
-  bankDetails:      boolean;
-  mandatoryDocs:    boolean;
+  bankDetails: boolean;
+  mandatoryDocs: boolean;
 }): number {
   const weights = { personalDetails: 25, address: 20, emergencyContact: 20, bankDetails: 20, mandatoryDocs: 15 };
   return Object.entries(weights).reduce(
@@ -63,7 +63,7 @@ function computeCompletionPct(flags: {
   );
 }
 
-// ─── Middleware 1: injectOnboardingStatus ─────────────────────────────────────
+// Middleware 1: injectOnboardingStatus 
 //
 // Runs on every authenticated route for EMPLOYEE-role users.
 // Stamps req.context with onboardingPhase, isProfileComplete, profileCompletionPct.
@@ -72,7 +72,7 @@ function computeCompletionPct(flags: {
 // Future optimisation: cache in Redis by userId with a 5-min TTL.
 
 export const injectOnboardingStatus = async (
-  req:  Request,
+  req: Request,
   _res: Response,
   next: NextFunction,
 ): Promise<void> => {
@@ -86,7 +86,7 @@ export const injectOnboardingStatus = async (
     }
 
     const user = await UserModel.findOne({
-      _id:      new mongoose.Types.ObjectId(userId),
+      _id: new mongoose.Types.ObjectId(userId),
       tenantId: new mongoose.Types.ObjectId(tenantId),
     }).select("employeeId");
 
@@ -105,17 +105,17 @@ export const injectOnboardingStatus = async (
       return;
     }
 
-    const days  = daysSinceJoining(employee.joiningDate);
+    const days = daysSinceJoining(employee.joiningDate);
     const phase = resolvePhase(days, employee.isProfileComplete);
-    const pct   = computeCompletionPct(employee.profileCompletion ?? {
+    const pct = computeCompletionPct(employee.profileCompletion ?? {
       personalDetails: false, address: false, emergencyContact: false,
       bankDetails: false, mandatoryDocs: false,
     });
 
     // Stamp context — downstream handlers and the restricted-feature guard read from here.
-    req.context.onboardingPhase      = phase;
-    req.context.isProfileComplete     = employee.isProfileComplete;
-    req.context.profileCompletionPct  = pct;
+    req.context.onboardingPhase = phase;
+    req.context.isProfileComplete = employee.isProfileComplete;
+    req.context.profileCompletionPct = pct;
 
     next();
   } catch (error) {
@@ -126,7 +126,7 @@ export const injectOnboardingStatus = async (
   }
 };
 
-// ─── Middleware 2: requireProfileForRestrictedFeature ─────────────────────────
+// Middleware 2: requireProfileForRestrictedFeature 
 //
 // Applied SURGICALLY to individual restricted routes (leave requests, payslips, etc.).
 // Blocks only when: phase === RESTRICTED && !isProfileComplete.
@@ -161,8 +161,7 @@ export const requireProfileForRestrictedFeature = (featureName: string) =>
     next();
   };
 
-// ─── Legacy alias ─────────────────────────────────────────────────────────────
-//
+// Legacy 
 // Kept so that any external import of requireCompleteProfile still compiles.
 // Points to the new surgical guard with a generic feature label.
 // Routes that previously used router.use(requireCompleteProfile) should be

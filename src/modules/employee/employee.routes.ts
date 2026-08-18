@@ -41,9 +41,9 @@ async function authorizeCompleteProfile(
 
     // Admin case — has employee.read permission
     const roleDoc = await RoleModel.findOne({
-      tenantId:  new mongoose.Types.ObjectId(tenantId),
-      slug:      role,
-      isActive:  true,
+      tenantId: new mongoose.Types.ObjectId(tenantId),
+      slug: role,
+      isActive: true,
       isDeleted: false,
     }).select("permissions");
 

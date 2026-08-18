@@ -9,8 +9,8 @@ export class DesignationController {
 
   // POST /api/v1/designations
   async create(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -25,11 +25,11 @@ export class DesignationController {
       next(error);
     }
   }
-  
+
   // GET /api/v1/designations
   async list(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -50,8 +50,8 @@ export class DesignationController {
 
   // GET /api/v1/designations/:id
   async getById(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -69,8 +69,8 @@ export class DesignationController {
 
   // PATCH /api/v1/designations/:id
   async update(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -89,8 +89,8 @@ export class DesignationController {
 
   // DELETE /api/v1/designations/:id
   async delete(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {

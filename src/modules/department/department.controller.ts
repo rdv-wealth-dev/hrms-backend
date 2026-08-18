@@ -9,8 +9,8 @@ export class DepartmentController {
 
   // POST /api/v1/departments
   async create(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -28,8 +28,8 @@ export class DepartmentController {
 
   // GET /api/v1/departments
   async list(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -49,8 +49,8 @@ export class DepartmentController {
 
   // GET /api/v1/departments/:id
   async getById(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -68,8 +68,8 @@ export class DepartmentController {
 
   // PATCH /api/v1/departments/:id
   async update(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -88,8 +88,8 @@ export class DepartmentController {
 
   // DELETE /api/v1/departments/:id
   async delete(
-    req:  Request<{ id: string }>,
-    res:  Response,
+    req: Request<{ id: string }>,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -107,8 +107,8 @@ export class DepartmentController {
 
   // POST /api/v1/departments/seed
   async seed(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -123,4 +123,4 @@ export class DepartmentController {
       next(error);
     }
   }
-}
+}

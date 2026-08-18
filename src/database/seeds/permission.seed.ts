@@ -7,55 +7,55 @@ import { logger } from "../../config/logger.config";
 
 export const ALL_PERMISSIONS = [
   // Employee
-  { module: "employee",    action: "read",     resource: "employee.read",     description: "View employees"              },
-  { module: "employee",    action: "create",   resource: "employee.create",   description: "Create employees"            },
-  { module: "employee",    action: "update",   resource: "employee.update",   description: "Update employee details"     },
-  { module: "employee",    action: "delete",   resource: "employee.delete",   description: "Delete employees"            },
+  { module: "employee", action: "read", resource: "employee.read", description: "View employees" },
+  { module: "employee", action: "create", resource: "employee.create", description: "Create employees" },
+  { module: "employee", action: "update", resource: "employee.update", description: "Update employee details" },
+  { module: "employee", action: "delete", resource: "employee.delete", description: "Delete employees" },
 
   // Attendance 
-  { module: "attendance",  action: "read",     resource: "attendance.read",   description: "View attendance records"     },
-  { module: "attendance",  action: "create",   resource: "attendance.create", description: "Mark attendance"             },
-  { module: "attendance",  action: "update",   resource: "attendance.update", description: "Edit attendance records"     },
-  { module: "attendance",  action: "approve",  resource: "attendance.approve",  description: "Approve or reject regularization requests" },
+  { module: "attendance", action: "read", resource: "attendance.read", description: "View attendance records" },
+  { module: "attendance", action: "create", resource: "attendance.create", description: "Mark attendance" },
+  { module: "attendance", action: "update", resource: "attendance.update", description: "Edit attendance records" },
+  { module: "attendance", action: "approve", resource: "attendance.approve", description: "Approve or reject regularization requests" },
 
   // Leave
-  { module: "leave",       action: "read",     resource: "leave.read",        description: "View leave requests"         },
-  { module: "leave",       action: "create",   resource: "leave.create",      description: "Apply for leave"             },
-  { module: "leave",       action: "update",   resource: "leave.update",      description: "Edit leave requests"         },
-  { module: "leave",       action: "approve",  resource: "leave.approve",     description: "Approve or reject leave"     },
+  { module: "leave", action: "read", resource: "leave.read", description: "View leave requests" },
+  { module: "leave", action: "create", resource: "leave.create", description: "Apply for leave" },
+  { module: "leave", action: "update", resource: "leave.update", description: "Edit leave requests" },
+  { module: "leave", action: "approve", resource: "leave.approve", description: "Approve or reject leave" },
 
   //Payroll
-  { module: "payroll",     action: "read",     resource: "payroll.read",      description: "View payroll records"        },
-  { module: "payroll",     action: "create",   resource: "payroll.create",    description: "Create salary structures"    },
-  { module: "payroll",     action: "run",      resource: "payroll.run",       description: "Run payroll for a period"    },
-  { module: "payroll",     action: "approve",  resource: "payroll.approve",   description: "Approve payroll runs"        },
+  { module: "payroll", action: "read", resource: "payroll.read", description: "View payroll records" },
+  { module: "payroll", action: "create", resource: "payroll.create", description: "Create salary structures" },
+  { module: "payroll", action: "run", resource: "payroll.run", description: "Run payroll for a period" },
+  { module: "payroll", action: "approve", resource: "payroll.approve", description: "Approve payroll runs" },
 
   // Branch 
-  { module: "branch",      action: "read",     resource: "branch.read",       description: "View branches"               },
-  { module: "branch",      action: "create",   resource: "branch.create",     description: "Create branches"             },
-  { module: "branch",      action: "update",   resource: "branch.update",     description: "Update branch details"       },
+  { module: "branch", action: "read", resource: "branch.read", description: "View branches" },
+  { module: "branch", action: "create", resource: "branch.create", description: "Create branches" },
+  { module: "branch", action: "update", resource: "branch.update", description: "Update branch details" },
 
   // Department
-  { module: "department",  action: "read",     resource: "department.read",   description: "View departments"            },
-  { module: "department",  action: "create",   resource: "department.create", description: "Create departments"          },
-  { module: "department",  action: "update",   resource: "department.update", description: "Update departments"          },
+  { module: "department", action: "read", resource: "department.read", description: "View departments" },
+  { module: "department", action: "create", resource: "department.create", description: "Create departments" },
+  { module: "department", action: "update", resource: "department.update", description: "Update departments" },
 
   // Role
-  { module: "role",        action: "read",     resource: "role.read",         description: "View roles"                  },
-  { module: "role",        action: "create",   resource: "role.create",       description: "Create roles"                },
-  { module: "role",        action: "update",   resource: "role.update",       description: "Update roles"                },
+  { module: "role", action: "read", resource: "role.read", description: "View roles" },
+  { module: "role", action: "create", resource: "role.create", description: "Create roles" },
+  { module: "role", action: "update", resource: "role.update", description: "Update roles" },
 
   // Reports
-  { module: "report",      action: "read",     resource: "report.read",       description: "View reports"                },
+  { module: "report", action: "read", resource: "report.read", description: "View reports" },
 
   // Settings
-  { module: "settings",    action: "read",     resource: "settings.read",     description: "View organization settings"  },
-  { module: "settings",    action: "update",   resource: "settings.update",   description: "Update organization settings"},
+  { module: "settings", action: "read", resource: "settings.read", description: "View organization settings" },
+  { module: "settings", action: "update", resource: "settings.update", description: "Update organization settings" },
 
   // Designation
-  { module: "designation", action: "read",     resource: "designation.read",  description: "View designations"           },
-  { module: "designation", action: "create",   resource: "designation.create",description: "Create designations"         },
-  { module: "designation", action: "update",   resource: "designation.update",description: "Update designations"         },
+  { module: "designation", action: "read", resource: "designation.read", description: "View designations" },
+  { module: "designation", action: "create", resource: "designation.create", description: "Create designations" },
+  { module: "designation", action: "update", resource: "designation.update", description: "Update designations" },
 ];
 
 // SEED FUNCTION
@@ -75,7 +75,7 @@ export async function seedPermissions(): Promise<void> {
     const result = await PermissionModel.bulkWrite(operations);
 
     logger.info({
-      message:  "Permissions seeded",
+      message: "Permissions seeded",
       inserted: result.upsertedCount,
       existing: ALL_PERMISSIONS.length - result.upsertedCount,
     });

@@ -36,13 +36,13 @@ export function assertValidDocumentFile(
 // Add Document
 export const AddDocumentDto = z.object({
   documentType: z.enum([
-    "PAN","AADHAAR","PASSPORT","DRIVING_LICENSE",
-    "OFFER_LETTER","RESUME","DEGREE","EXPERIENCE","OTHER"
+    "PAN", "AADHAAR", "PASSPORT", "DRIVING_LICENSE",
+    "OFFER_LETTER", "RESUME", "DEGREE", "EXPERIENCE", "OTHER"
   ]),
-  fileName:   safeStringSchema(1, 255),
-  s3Key:      safeStringSchema(1, 500),
-  mimeType:   safeStringSchema(1, 100),
-  sizeBytes:  z.number().min(1).max(MAX_DOCUMENT_SIZE_BYTES),
+  fileName: safeStringSchema(1, 255),
+  s3Key: safeStringSchema(1, 500),
+  mimeType: safeStringSchema(1, 100),
+  sizeBytes: z.number().min(1).max(MAX_DOCUMENT_SIZE_BYTES),
   expiryDate: dateSchema.optional(),
 });
 
@@ -53,8 +53,8 @@ export const RequestUploadUrlDto = z.object({
   fileName: z.string().trim().min(1).max(255),
   mimeType: z.string().trim().min(1).max(100),
   documentType: z.enum([
-    "PAN","AADHAAR","PASSPORT","DRIVING_LICENSE",
-    "OFFER_LETTER","RESUME","DEGREE","EXPERIENCE","OTHER"
+    "PAN", "AADHAAR", "PASSPORT", "DRIVING_LICENSE",
+    "OFFER_LETTER", "RESUME", "DEGREE", "EXPERIENCE", "OTHER"
   ]),
 }).refine(
   (v) => ALLOWED_DOCUMENT_MIME_TYPES.includes(v.mimeType.trim().toLowerCase() as any),
@@ -66,7 +66,7 @@ export type RequestUploadUrlInput = z.infer<typeof RequestUploadUrlDto>;
 // Verify Document
 export const VerifyDocumentDto = z.object({
   isVerified: z.boolean(),
-  remarks:    z.string().trim().max(500).optional(),
+  remarks: z.string().trim().max(500).optional(),
 });
 
 export type VerifyDocumentInput = z.infer<typeof VerifyDocumentDto>;
@@ -74,8 +74,8 @@ export type VerifyDocumentInput = z.infer<typeof VerifyDocumentDto>;
 // Upload Document (Direct multipart upload)
 export const UploadDocumentDto = z.object({
   documentType: z.enum([
-    "PAN","AADHAAR","PASSPORT","DRIVING_LICENSE",
-    "OFFER_LETTER","RESUME","DEGREE","EXPERIENCE","OTHER"
+    "PAN", "AADHAAR", "PASSPORT", "DRIVING_LICENSE",
+    "OFFER_LETTER", "RESUME", "DEGREE", "EXPERIENCE", "OTHER"
   ]),
 });
 

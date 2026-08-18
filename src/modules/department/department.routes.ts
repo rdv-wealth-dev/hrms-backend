@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { DepartmentController }  from "./department.controller";
+import { DepartmentController } from "./department.controller";
 import { authenticate } from "../../shared/middlewares/auth.middleware";
 import { checkPermission } from "../../shared/middlewares/rbac.middleware";
 import { validateBody } from "../../shared/validators/validate.middleware";

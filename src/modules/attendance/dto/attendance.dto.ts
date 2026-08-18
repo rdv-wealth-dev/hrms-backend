@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { objectIdSchema, safeStringSchema, dateSchema } from "../../../shared/validators/index";
 
-// ─── PUNCH ────────────────────────────────────────────────────────────────────
+// ─── PUNCH 
 
 export const PunchDto = z.object({
     type: z.enum(["CHECK_IN", "BREAK_OUT", "BREAK_IN", "CHECK_OUT"]),
@@ -10,7 +10,7 @@ export const PunchDto = z.object({
 });
 export type PunchInput = z.infer<typeof PunchDto>;
 
-// ─── MANUAL ATTENDANCE ────────────────────────────────────────────────────────
+// ─── MANUAL ATTENDANCE 
 
 export const ManualAttendanceDto = z.object({
     employeeId: objectIdSchema,
@@ -22,7 +22,7 @@ export const ManualAttendanceDto = z.object({
 })
 export type ManualAttendanceInput = z.infer<typeof ManualAttendanceDto>;
 
-// ─── REGULARIZATION ───────────────────────────────────────────────────────────
+// ─── REGULARIZATION 
 
 export const CreateRegularizationDto = z.object({
     attendanceId: objectIdSchema,
@@ -54,18 +54,18 @@ export const CreateShiftDto = z.object({
     fullDayMinutes: z.number().min(0).optional().default(480),
     breakDurationMinutes: z.number().min(0).optional().default(60),
     isDefault: z.boolean().optional().default(false),
-    // ─── Industry-standard cutoff & minimum thresholds ─────────────────────────────
+    // ─── Industry-standard cutoff & minimum thresholds 
     firstHalfCutoffMinutes: z.number().min(0).optional().default(240),
     secondHalfCutoffMinutes: z.number().min(0).optional().default(210),
     minimumWorkMinutesForHalfDay: z.number().min(0).optional().default(270),
-    // ─── Check-in window & Early-leave window ────────────────────────────────
+    // ─── Check-in window & Early-leave window 
     checkInWindowStart: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
     checkInWindowEnd: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
     allowedCheckInFromTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
     // Checkout after this time but before endTime = allowed early leave (quota-tracked, no penalty).
     // e.g. "18:00" means leaving 6 PM–7:30 PM is acceptable early leave.
     earlyLeaveStartTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Use HH:MM 24h format").optional(),
-    // ─── Monthly soft quotas (soft limit — HR flag only, no punch block) ─────────────
+    // ─── Monthly soft quotas (soft limit — HR flag only, no punch block) 
     lateArrivalQuotaPerMonth: z.number().min(0).optional().default(3),
     earlyLeaveQuotaPerMonth: z.number().min(0).optional().default(3),
     halfDayWeight: z.number().min(0).max(1).optional().default(0.5),

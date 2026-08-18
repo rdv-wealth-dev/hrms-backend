@@ -3,7 +3,7 @@ import { BaseRepository } from "../../../shared/database/base.repository";
 import { ShiftDocument, ShiftModel } from "../models/shift.model";
 import { RequestContext } from "../../../shared/types/request-context.interface";
 
-export class ShiftRepository extends BaseRepository<ShiftDocument>{
+export class ShiftRepository extends BaseRepository<ShiftDocument> {
     constructor() {
         super(ShiftModel);
     }
@@ -16,12 +16,12 @@ export class ShiftRepository extends BaseRepository<ShiftDocument>{
         });
     }
 
-    async findDefault(context: RequestContext): Promise<ShiftDocument | null>{
+    async findDefault(context: RequestContext): Promise<ShiftDocument | null> {
         return ShiftModel.findOne({
             tenantId: new mongoose.Types.ObjectId(context.tenantId),
-            isDefault : true,
-            isActive : true,
-            isDeleted : false
+            isDefault: true,
+            isActive: true,
+            isDeleted: false
         });
     }
 

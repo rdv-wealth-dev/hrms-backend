@@ -9,7 +9,7 @@ export class EventController {
     try {
       const pageNumber = req.query.pageNumber ? parseInt(req.query.pageNumber as string) : 1;
       const pageSize = req.query.pageSize ? parseInt(req.query.pageSize as string) : 100;
-      
+
       const result = await eventService.listEvents(req.context, { pageNumber, pageSize });
       res.status(200).json(result);
     } catch (error) {

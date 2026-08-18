@@ -6,7 +6,7 @@ const shiftService = new ShiftService();
 
 export class ShiftController {
 
-    async create(req: Request, res: Response, next : NextFunction) : Promise<void> {
+    async create(req: Request, res: Response, next: NextFunction): Promise<void> {
         try {
             const result = await shiftService.createShift(req.context, req.body);
             res.status(201).json(
@@ -21,68 +21,68 @@ export class ShiftController {
         try {
             const result = await shiftService.listShifts(req.context);
             res.status(200).json(result);
-        } catch (error) { 
-            next(error); 
+        } catch (error) {
+            next(error);
         }
-    } 
+    }
 
-  async getById(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
-    try {
-        const result = await shiftService.getShiftById(req.context, req.params.id);
-        res.status(200).json(
-            buildSuccessResponse(result, "Shift fetched successfully")
-        );
-        } catch (error) { 
-            next(error); 
+    async getById(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const result = await shiftService.getShiftById(req.context, req.params.id);
+            res.status(200).json(
+                buildSuccessResponse(result, "Shift fetched successfully")
+            );
+        } catch (error) {
+            next(error);
         }
-  }
-
-   async update(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const result = await shiftService.updateShift(req.context, req.params.id, req.body);
-      res.status(200).json(
-        buildSuccessResponse(result, "Shift updated successfully")
-    );
-    } catch (error) { 
-        next(error); 
     }
-  }
 
-
-  async delete(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const result = await shiftService.deleteShift(req.context, req.params.id);
-      res.status(200).json(
-        buildSuccessResponse(result, "Shift deleted successfully")
-    );
-    } catch (error) { 
-        next(error); 
+    async update(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const result = await shiftService.updateShift(req.context, req.params.id, req.body);
+            res.status(200).json(
+                buildSuccessResponse(result, "Shift updated successfully")
+            );
+        } catch (error) {
+            next(error);
+        }
     }
-  }
 
-//   shift assign to employee
 
-  async assignShift(req: Request, res : Response, next : NextFunction) : Promise<void>{
-    try {
-        const result = await shiftService.bulkAssignShift(req.context, req.body);
-        res.status(200).json(
-            buildSuccessResponse(result, result.message)
-        );
-    } catch (error) {
-        next(error);
+    async delete(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const result = await shiftService.deleteShift(req.context, req.params.id);
+            res.status(200).json(
+                buildSuccessResponse(result, "Shift deleted successfully")
+            );
+        } catch (error) {
+            next(error);
+        }
     }
-  }
 
-  async getAssignments(req : Request, res : Response, next : NextFunction) : Promise<void> {
-    try{
-        const result = await shiftService.getEmployeeShiftAssignments(req.context);
-        res.status(200).json(
-            buildSuccessResponse(result, "Shift assignments fetched")
-        );
-    } catch (error) {
-        next(error);
+    //   shift assign to employee
+
+    async assignShift(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const result = await shiftService.bulkAssignShift(req.context, req.body);
+            res.status(200).json(
+                buildSuccessResponse(result, result.message)
+            );
+        } catch (error) {
+            next(error);
+        }
     }
-  }
+
+    async getAssignments(req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const result = await shiftService.getEmployeeShiftAssignments(req.context);
+            res.status(200).json(
+                buildSuccessResponse(result, "Shift assignments fetched")
+            );
+        } catch (error) {
+            next(error);
+        }
+    }
 
 
 }

@@ -4,14 +4,14 @@ import { RequestContext } from "../../../shared/types/request-context.interface"
 
 export class GraceUsageRepository {
   async getOrCreate(
-    context:    RequestContext,
+    context: RequestContext,
     employeeId: string,
-    year:       number,
-    month:      number,
-    branchId:   string,
+    year: number,
+    month: number,
+    branchId: string,
   ): Promise<GraceUsageDocument> {
     const tenantId = new mongoose.Types.ObjectId(context.tenantId);
-    const empId    = new mongoose.Types.ObjectId(employeeId);
+    const empId = new mongoose.Types.ObjectId(employeeId);
 
     const doc = await GraceUsageModel.findOne({
       tenantId,
@@ -25,7 +25,7 @@ export class GraceUsageRepository {
 
     return new GraceUsageModel({
       tenantId,
-      branchId:   new mongoose.Types.ObjectId(branchId),
+      branchId: new mongoose.Types.ObjectId(branchId),
       employeeId: empId,
       year,
       month,
@@ -34,14 +34,14 @@ export class GraceUsageRepository {
   }
 
   async increment(
-    context:    RequestContext,
+    context: RequestContext,
     employeeId: string,
-    year:       number,
-    month:      number,
-    branchId:   string,
+    year: number,
+    month: number,
+    branchId: string,
   ): Promise<void> {
     const tenantId = new mongoose.Types.ObjectId(context.tenantId);
-    const empId    = new mongoose.Types.ObjectId(employeeId);
+    const empId = new mongoose.Types.ObjectId(employeeId);
     const branchOId = new mongoose.Types.ObjectId(branchId);
 
     await GraceUsageModel.updateOne(
@@ -56,7 +56,7 @@ export class GraceUsageRepository {
         $inc: { used: 1 },
         $setOnInsert: {
           tenantId,
-          branchId:   branchOId,
+          branchId: branchOId,
           employeeId: empId,
           year,
           month,

@@ -9,8 +9,8 @@ export class OrganizationController {
 
   // GET /api/v1/organizations/me
   async getMe(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -25,8 +25,8 @@ export class OrganizationController {
 
   // PATCH /api/v1/organizations/me
   async updateMe(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -44,8 +44,8 @@ export class OrganizationController {
 
   // PATCH /api/v1/organizations/me/modules
   async updateModules(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -63,8 +63,8 @@ export class OrganizationController {
 
   // PATCH /api/v1/organizations/me/statutory
   async updateStatutory(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {
@@ -82,8 +82,8 @@ export class OrganizationController {
 
   // PATCH /api/v1/organizations/me/mandatory-docs
   async updateMandatoryDocs(
-    req:  Request,
-    res:  Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ): Promise<void> {
     try {

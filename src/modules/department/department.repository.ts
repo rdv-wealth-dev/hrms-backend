@@ -12,25 +12,25 @@ export class DepartmentRepository
   //Find by code within tenant
   async findByCode(
     context: RequestContext,
-    code:    string
+    code: string
   ): Promise<DepartmentDocument | null> {
     return DepartmentModel.findOne({
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-      code:      code.toUpperCase(),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      code: code.toUpperCase(),
       isDeleted: false,
     });
   }
 
   //Find all by branch
   async findAllByBranch(
-    context:  RequestContext,
+    context: RequestContext,
     branchId: string
   ): Promise<DepartmentDocument[]> {
     return DepartmentModel.find({
-      tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-      branchId:  new mongoose.Types.ObjectId(branchId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      branchId: new mongoose.Types.ObjectId(branchId),
       isDeleted: false,
-      isActive:  true,
+      isActive: true,
     }).sort({ name: 1 });
   }
 }

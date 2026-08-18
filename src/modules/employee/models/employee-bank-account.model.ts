@@ -2,51 +2,51 @@ import mongoose from "mongoose";
 import { createBaseSchema, BaseDocument } from "../../../shared/database/base.schema"
 
 export interface EmployeeBankAccountDocument extends BaseDocument {
-  employeeId:    mongoose.Types.ObjectId;
-  bankName:      string;
+  employeeId: mongoose.Types.ObjectId;
+  bankName: string;
   accountNumber: string;   // stored masked — last 4 digits only visible
-  ifscCode:      string;
-  accountType:   string;
-  isPrimary:     boolean;
-  isActive:      boolean;
+  ifscCode: string;
+  accountType: string;
+  isPrimary: boolean;
+  isActive: boolean;
 }
 
 const BankAccountSchema = createBaseSchema<EmployeeBankAccountDocument>(
   {
     employeeId: {
-      type:     mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
-      index:    true,
+      index: true,
     },
     bankName: {
-      type:      String,
-      required:  true,
-      trim:      true,
+      type: String,
+      required: true,
+      trim: true,
       maxlength: 200,
     },
     accountNumber: {
       // Store full number but return masked — XXXXXX1234
-      type:     String,
+      type: String,
       required: true,
-      trim:     true,
+      trim: true,
     },
     ifscCode: {
-      type:      String,
-      required:  true,
-      trim:      true,
+      type: String,
+      required: true,
+      trim: true,
       uppercase: true,
     },
     accountType: {
-      type:    String,
-      enum:    ["SAVINGS", "CURRENT", "SALARY"],
+      type: String,
+      enum: ["SAVINGS", "CURRENT", "SALARY"],
       default: "SALARY",
     },
     isPrimary: {
-      type:    Boolean,
+      type: Boolean,
       default: false,
     },
     isActive: {
-      type:    Boolean,
+      type: Boolean,
       default: true,
     },
   },

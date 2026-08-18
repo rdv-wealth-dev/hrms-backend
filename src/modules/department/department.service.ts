@@ -3,7 +3,7 @@ import { DepartmentRepository } from "./department.repository";
 import { CreateDepartmentInput, UpdateDepartmentInput, } from "./department.dto";
 import { AppError } from "../../shared/errors/app.error";
 import { RequestContext } from "../../shared/types/request-context.interface";
-import { PaginationOptions,} from "../../shared/database/base.repository";
+import { PaginationOptions, } from "../../shared/database/base.repository";
 import { BranchRepository } from "../branch/branch.repository";
 import { seedDepartments } from "../../database/seeds/department.seed";
 import { seedDesignations } from "../../database/seeds/designation.seed";
@@ -15,7 +15,7 @@ export class DepartmentService {
   //Create
   async createDepartment(
     context: RequestContext,
-    input:   CreateDepartmentInput
+    input: CreateDepartmentInput
   ) {
     // Check code uniqueness within tenant
     const existing = await this.deptRepo.findByCode(context, input.code);
@@ -40,15 +40,15 @@ export class DepartmentService {
     }
 
     const department = await this.deptRepo.create(context, {
-      tenantId:    new mongoose.Types.ObjectId(context.tenantId) as any,
-      branchId:    new mongoose.Types.ObjectId(branchId)   as any,
-      name:        input.name,
-      code:        input.code,
+      tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
+      branchId: new mongoose.Types.ObjectId(branchId) as any,
+      name: input.name,
+      code: input.code,
       description: input.description ?? "",
-      parentId:    input.parentId
+      parentId: input.parentId
         ? new mongoose.Types.ObjectId(input.parentId) as any
         : undefined,
-      isActive:    true,
+      isActive: true,
     });
 
     return department;
@@ -56,9 +56,9 @@ export class DepartmentService {
 
   // List all
   async listDepartments(
-    context:    RequestContext,
+    context: RequestContext,
     pagination: PaginationOptions,
-    filter:     { branchId?: string } = {}
+    filter: { branchId?: string } = {}
   ) {
     const queryFilter: Record<string, any> = { isActive: true };
     if (filter.branchId && mongoose.Types.ObjectId.isValid(filter.branchId)) {
@@ -77,7 +77,7 @@ export class DepartmentService {
   //Get by ID
   async getDepartmentById(
     context: RequestContext,
-    id:      string
+    id: string
   ) {
     const dept = await this.deptRepo.findById(context, id);
     if (!dept) {
@@ -89,8 +89,8 @@ export class DepartmentService {
   //Update
   async updateDepartment(
     context: RequestContext,
-    id:      string,
-    input:   UpdateDepartmentInput
+    id: string,
+    input: UpdateDepartmentInput
   ) {
     const dept = await this.deptRepo.findById(context, id);
     if (!dept) {
@@ -115,7 +115,7 @@ export class DepartmentService {
   //Delete
   async deleteDepartment(
     context: RequestContext,
-    id:      string
+    id: string
   ) {
     const dept = await this.deptRepo.findById(context, id);
     if (!dept) {
@@ -153,4 +153,4 @@ export class DepartmentService {
       departmentsSeeded: deptMap.size,
     };
   }
-}
+}

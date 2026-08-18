@@ -80,7 +80,7 @@ export class EmployeeController {
   ): Promise<void> {
     try {
       const result = await empService.getCompleteEmployeeProfile(
-        req.context, 
+        req.context,
         req.params.id
       );
       res.status(200).json(

@@ -2,69 +2,69 @@ import mongoose from "mongoose";
 import { createBaseSchema, BaseDocument } from "../../shared/database/base.schema";
 
 export enum DocumentType {
-  PAN             = "PAN",
-  AADHAAR         = "AADHAAR",
-  PASSPORT        = "PASSPORT",
+  PAN = "PAN",
+  AADHAAR = "AADHAAR",
+  PASSPORT = "PASSPORT",
   DRIVING_LICENSE = "DRIVING_LICENSE",
-  OFFER_LETTER    = "OFFER_LETTER",
-  RESUME          = "RESUME",
-  DEGREE          = "DEGREE",
-  EXPERIENCE      = "EXPERIENCE",
-  OTHER           = "OTHER",
+  OFFER_LETTER = "OFFER_LETTER",
+  RESUME = "RESUME",
+  DEGREE = "DEGREE",
+  EXPERIENCE = "EXPERIENCE",
+  OTHER = "OTHER",
 }
 
 export interface EmployeeDocumentRecord extends BaseDocument {
-  employeeId:   mongoose.Types.ObjectId;
+  employeeId: mongoose.Types.ObjectId;
   documentType: DocumentType;
-  fileName:     string;
-  s3Key:        string;    // S3 object key — never a permanent URL
-  mimeType:     string;
-  sizeBytes:    number;
-  uploadedBy:   mongoose.Types.ObjectId;
-  expiryDate?:  Date;      // for passport, driving license etc.
-  isVerified:   boolean;
+  fileName: string;
+  s3Key: string;    // S3 object key — never a permanent URL
+  mimeType: string;
+  sizeBytes: number;
+  uploadedBy: mongoose.Types.ObjectId;
+  expiryDate?: Date;      // for passport, driving license etc.
+  isVerified: boolean;
 }
 
 const EmployeeDocumentSchema = createBaseSchema<EmployeeDocumentRecord>(
   {
     employeeId: {
-      type:     mongoose.Schema.Types.ObjectId,
-      ref:      "Employee",
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Employee",
       required: true,
-      index:    true,
+      index: true,
     },
     documentType: {
-      type:     String,
+      type: String,
       required: true,
-      enum:     Object.values(DocumentType),
+      enum: Object.values(DocumentType),
     },
     fileName: {
-      type:     String,
+      type: String,
       required: true,
-      trim:     true,
+      trim: true,
     },
     s3Key: {
       // Never store the full URL — generate pre-signed URL on demand
-      type:     String,
+      type: String,
       required: true,
-      trim:     true,
+      trim: true,
     },
     mimeType: {
-      type:     String,
+      type: String,
       required: true,
-      trim:     true,
+      trim: true,
     },
     sizeBytes: {
-      type:    Number,
+      type: Number,
       default: 0,
     },
     uploadedBy: {
-      type:     mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       required: true,
     },
     expiryDate: { type: Date },
     isVerified: {
-      type:    Boolean,
+      type: Boolean,
       default: false,
     },
   },

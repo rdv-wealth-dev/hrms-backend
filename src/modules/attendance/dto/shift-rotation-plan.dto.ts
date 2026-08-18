@@ -5,7 +5,7 @@ import { CycleDuration, DAY_NAMES } from "../models/shift-rotation-plan.model";
 // ─── ROTATION SLOT 
 
 const RotationSlotDto = z.object({
-  order:   z.number().int().min(1).max(12),
+  order: z.number().int().min(1).max(12),
   shiftId: objectIdSchema,
   offDays: z
     .array(z.enum([...DAY_NAMES] as [string, ...string[]]))
@@ -17,10 +17,10 @@ const RotationSlotDto = z.object({
 // ─── BASE OBJECT (no refine, so .partial() works for updates)
 
 const RotationPlanBase = z.object({
-  name:          safeStringSchema(2, 200),
-  description:   safeStringSchema(0, 500).optional(),
+  name: safeStringSchema(2, 200),
+  description: safeStringSchema(0, 500).optional(),
   cycleDuration: z.nativeEnum(CycleDuration).default(CycleDuration.WEEKLY),
-  slots:         z.array(RotationSlotDto).min(2, "Plan must have at least 2 slots").max(12),
+  slots: z.array(RotationSlotDto).min(2, "Plan must have at least 2 slots").max(12),
 });
 
 // ─── CREATE PLAN
@@ -43,9 +43,9 @@ export type UpdateShiftRotationPlanInput = z.infer<typeof UpdateShiftRotationPla
 // ─── ASSIGN PLAN TO EMPLOYEES 
 
 export const AssignRotationPlanDto = z.object({
-  rotationPlanId:    objectIdSchema.nullable(),          // null = remove plan
+  rotationPlanId: objectIdSchema.nullable(),          // null = remove plan
   rotationStartDate: z.string().datetime().optional(),   // when slot-1 began; defaults to today
-  employeeIds:       z.array(objectIdSchema).min(1, "At least one employee required"),
+  employeeIds: z.array(objectIdSchema).min(1, "At least one employee required"),
 });
 
 export type AssignRotationPlanInput = z.infer<typeof AssignRotationPlanDto>;

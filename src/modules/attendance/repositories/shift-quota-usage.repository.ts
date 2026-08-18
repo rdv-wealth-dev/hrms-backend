@@ -8,15 +8,15 @@ import { RequestContext } from "../../../shared/types/request-context.interface"
 export class ShiftQuotaUsageRepository {
 
   async getOrCreate(
-    context:    RequestContext,
+    context: RequestContext,
     employeeId: string,
-    shiftId:    string,
-    year:       number,
-    month:      number,
-    branchId:   string,
+    shiftId: string,
+    year: number,
+    month: number,
+    branchId: string,
   ): Promise<ShiftQuotaUsageDocument> {
     const tenantId = new mongoose.Types.ObjectId(context.tenantId);
-    const empId    = new mongoose.Types.ObjectId(employeeId);
+    const empId = new mongoose.Types.ObjectId(employeeId);
 
     const doc = await ShiftQuotaUsageModel.findOne({
       tenantId,
@@ -30,29 +30,29 @@ export class ShiftQuotaUsageRepository {
 
     return new ShiftQuotaUsageModel({
       tenantId,
-      branchId:   new mongoose.Types.ObjectId(branchId),
+      branchId: new mongoose.Types.ObjectId(branchId),
       employeeId: empId,
-      shiftId:    new mongoose.Types.ObjectId(shiftId),
+      shiftId: new mongoose.Types.ObjectId(shiftId),
       year,
       month,
-      lateCount:       0,
+      lateCount: 0,
       earlyLeaveCount: 0,
     }).save();
   }
 
   // Called when an employee's punch results in status = LATE
   async incrementLate(
-    context:    RequestContext,
+    context: RequestContext,
     employeeId: string,
-    shiftId:    string,
-    year:       number,
-    month:      number,
-    branchId:   string,
+    shiftId: string,
+    year: number,
+    month: number,
+    branchId: string,
   ): Promise<void> {
-    const tenantId  = new mongoose.Types.ObjectId(context.tenantId);
-    const empId     = new mongoose.Types.ObjectId(employeeId);
+    const tenantId = new mongoose.Types.ObjectId(context.tenantId);
+    const empId = new mongoose.Types.ObjectId(employeeId);
     const branchOId = new mongoose.Types.ObjectId(branchId);
-    const shiftOId  = new mongoose.Types.ObjectId(shiftId);
+    const shiftOId = new mongoose.Types.ObjectId(shiftId);
 
     await ShiftQuotaUsageModel.updateOne(
       { tenantId, employeeId: empId, year, month, isDeleted: false },
@@ -60,9 +60,9 @@ export class ShiftQuotaUsageRepository {
         $inc: { lateCount: 1 },
         $setOnInsert: {
           tenantId,
-          branchId:   branchOId,
+          branchId: branchOId,
           employeeId: empId,
-          shiftId:    shiftOId,
+          shiftId: shiftOId,
           year,
           month,
         },
@@ -73,17 +73,17 @@ export class ShiftQuotaUsageRepository {
 
   // Called when an employee checks out within the allowed early-leave window
   async incrementEarlyLeave(
-    context:    RequestContext,
+    context: RequestContext,
     employeeId: string,
-    shiftId:    string,
-    year:       number,
-    month:      number,
-    branchId:   string,
+    shiftId: string,
+    year: number,
+    month: number,
+    branchId: string,
   ): Promise<void> {
-    const tenantId  = new mongoose.Types.ObjectId(context.tenantId);
-    const empId     = new mongoose.Types.ObjectId(employeeId);
+    const tenantId = new mongoose.Types.ObjectId(context.tenantId);
+    const empId = new mongoose.Types.ObjectId(employeeId);
     const branchOId = new mongoose.Types.ObjectId(branchId);
-    const shiftOId  = new mongoose.Types.ObjectId(shiftId);
+    const shiftOId = new mongoose.Types.ObjectId(shiftId);
 
     await ShiftQuotaUsageModel.updateOne(
       { tenantId, employeeId: empId, year, month, isDeleted: false },
@@ -91,9 +91,9 @@ export class ShiftQuotaUsageRepository {
         $inc: { earlyLeaveCount: 1 },
         $setOnInsert: {
           tenantId,
-          branchId:   branchOId,
+          branchId: branchOId,
           employeeId: empId,
-          shiftId:    shiftOId,
+          shiftId: shiftOId,
           year,
           month,
         },
@@ -104,13 +104,13 @@ export class ShiftQuotaUsageRepository {
 
   // Returns current usage for reading quota flags in reports
   async getUsage(
-    context:    RequestContext,
+    context: RequestContext,
     employeeId: string,
-    year:       number,
-    month:      number,
+    year: number,
+    month: number,
   ): Promise<{ lateCount: number; earlyLeaveCount: number }> {
     const doc = await ShiftQuotaUsageModel.findOne({
-      tenantId:   new mongoose.Types.ObjectId(context.tenantId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
       employeeId: new mongoose.Types.ObjectId(employeeId),
       year,
       month,
@@ -118,7 +118,7 @@ export class ShiftQuotaUsageRepository {
     }).select("lateCount earlyLeaveCount").lean();
 
     return {
-      lateCount:       doc?.lateCount       ?? 0,
+      lateCount: doc?.lateCount ?? 0,
       earlyLeaveCount: doc?.earlyLeaveCount ?? 0,
     };
   }

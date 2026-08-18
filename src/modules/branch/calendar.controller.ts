@@ -34,33 +34,33 @@ const holidayService = new HolidayService();
 export async function getBranchCalendar(req: any, res: Response, next: NextFunction) {
   try {
     const branchId = req.params.branchId;
-    const year  = parseInt(req.query.year  as string) || new Date().getFullYear();
+    const year = parseInt(req.query.year as string) || new Date().getFullYear();
     const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
 
     if (month < 1 || month > 12) throw new AppError("month must be 1–12", 400);
-    if (year  < 2000 || year > 2100) throw new AppError("year out of range", 400);
+    if (year < 2000 || year > 2100) throw new AppError("year out of range", 400);
 
     // Verify branch belongs to this tenant; fall back to Head Office if not found
     let branch = await BranchModel.findOne({
-      _id:       new mongoose.Types.ObjectId(branchId),
-      tenantId:  new mongoose.Types.ObjectId(req.context.tenantId),
+      _id: new mongoose.Types.ObjectId(branchId),
+      tenantId: new mongoose.Types.ObjectId(req.context.tenantId),
       isDeleted: false,
     });
     if (!branch) {
       branch = await BranchModel.findOne({
-        tenantId:     new mongoose.Types.ObjectId(req.context.tenantId),
+        tenantId: new mongoose.Types.ObjectId(req.context.tenantId),
         isHeadOffice: true,
-        isDeleted:    false,
+        isDeleted: false,
       });
     }
     if (!branch) throw new AppError("Branch not found", 404);
 
     const org = await OrganizationModel.findById(req.context.tenantId);
-    const orgWeeklyOffDays      = org?.locale?.weeklyOffDays ?? ["Sunday"];
+    const orgWeeklyOffDays = org?.locale?.weeklyOffDays ?? ["Sunday"];
     const orgCustomWeekOffRules = (org?.locale as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined;
 
-    const branchWeeklyOffDays      = branch.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
-    const branchCustomWeekOffRules  = (branch.workPolicy as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined
+    const branchWeeklyOffDays = branch.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
+    const branchCustomWeekOffRules = (branch.workPolicy as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined
       ?? orgCustomWeekOffRules;
 
     // Holidays for the month resolved via engine
@@ -75,16 +75,16 @@ export async function getBranchCalendar(req: any, res: Response, next: NextFunct
       month,
       fixedWeeklyOffDays: branchWeeklyOffDays,
       customWeekOffRules: branchCustomWeekOffRules,
-      holidays:           holidays as any,
+      holidays: holidays as any,
       branchId,
     });
 
     // ── Employee events (birthdays & anniversaries) for this month ──
     const employees = await EmployeeModel.find({
-      tenantId:  new mongoose.Types.ObjectId(req.context.tenantId),
-      branchId:  new mongoose.Types.ObjectId(branchId),
+      tenantId: new mongoose.Types.ObjectId(req.context.tenantId),
+      branchId: new mongoose.Types.ObjectId(branchId),
       isDeleted: false,
-      status:    { $in: ["ACTIVE", "ON_LEAVE"] },
+      status: { $in: ["ACTIVE", "ON_LEAVE"] },
     }).select("firstName lastName employeeCode dateOfBirth joiningDate").lean();
 
     function isLeapYear(y: number): boolean {
@@ -140,11 +140,11 @@ export async function getBranchCalendar(req: any, res: Response, next: NextFunct
 
     res.status(200).json(buildSuccessResponse({
       branchId,
-      branchName:         branch.name,
+      branchName: branch.name,
       year,
       month,
       customWeekOffRules: branchCustomWeekOffRules ?? [],
-      days:               daysWithEvents,
+      days: daysWithEvents,
       summary,
     }, "Branch calendar fetched"));
   } catch (err) {
@@ -161,7 +161,7 @@ export async function getBranchCalendar(req: any, res: Response, next: NextFunct
  */
 export async function getMyBranchCalendar(req: any, res: Response, next: NextFunction) {
   try {
-    const year  = parseInt(req.query.year  as string) || new Date().getFullYear();
+    const year = parseInt(req.query.year as string) || new Date().getFullYear();
     const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
 
     const user = await UserModel.findOne({ _id: req.context.userId }).select("employeeId");
@@ -175,9 +175,9 @@ export async function getMyBranchCalendar(req: any, res: Response, next: NextFun
       branchId = employee.branchId.toString();
     } else {
       const headOffice = await BranchModel.findOne({
-        tenantId:     new mongoose.Types.ObjectId(req.context.tenantId),
+        tenantId: new mongoose.Types.ObjectId(req.context.tenantId),
         isHeadOffice: true,
-        isDeleted:    false,
+        isDeleted: false,
       });
       if (!headOffice) throw new AppError("No branch assigned and no Head Office found", 404);
       branchId = headOffice._id.toString();
@@ -200,11 +200,11 @@ export async function getMyBranchCalendar(req: any, res: Response, next: NextFun
  */
 export async function getMyPersonalSchedule(req: any, res: Response, next: NextFunction) {
   try {
-    const year  = parseInt(req.query.year  as string) || new Date().getFullYear();
+    const year = parseInt(req.query.year as string) || new Date().getFullYear();
     const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
 
     if (month < 1 || month > 12) throw new AppError("month must be 1–12", 400);
-    if (year  < 2000 || year > 2100) throw new AppError("year out of range", 400);
+    if (year < 2000 || year > 2100) throw new AppError("year out of range", 400);
 
     const user = await UserModel.findOne({ _id: req.context.userId }).select("employeeId");
     if (!user?.employeeId) throw new AppError("No employee linked to this account", 404);
@@ -215,11 +215,11 @@ export async function getMyPersonalSchedule(req: any, res: Response, next: NextF
     if (!employee.branchId) throw new AppError("No branch assigned to employee", 400);
 
     const branch = await BranchModel.findById(employee.branchId).select("workPolicy name");
-    const org    = await OrganizationModel.findById(req.context.tenantId);
+    const org = await OrganizationModel.findById(req.context.tenantId);
 
-    const orgWeeklyOffDays      = org?.locale?.weeklyOffDays ?? ["Sunday"];
-    const orgCustomWeekOffRules  = (org?.locale as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined;
-    const branchWeeklyOffDays   = branch?.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
+    const orgWeeklyOffDays = org?.locale?.weeklyOffDays ?? ["Sunday"];
+    const orgCustomWeekOffRules = (org?.locale as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined;
+    const branchWeeklyOffDays = branch?.workPolicy?.weeklyOffDays ?? orgWeeklyOffDays;
     const branchCustomWeekOffRules = (branch?.workPolicy as any)?.customWeekOffRules as CustomWeekOffRule[] | undefined
       ?? orgCustomWeekOffRules;
 
@@ -229,12 +229,12 @@ export async function getMyPersonalSchedule(req: any, res: Response, next: NextF
 
     const fixedShift = employee.shiftId
       ? await shiftRepo.findById(
-          { tenantId: req.context.tenantId, branchIds: [employee.branchId.toString()] } as any,
-          employee.shiftId.toString()
-        )
+        { tenantId: req.context.tenantId, branchIds: [employee.branchId.toString()] } as any,
+        employee.shiftId.toString()
+      )
       : await shiftRepo.findDefault(
-          { tenantId: req.context.tenantId, branchIds: [employee.branchId.toString()] } as any
-        );
+        { tenantId: req.context.tenantId, branchIds: [employee.branchId.toString()] } as any
+      );
 
     const yearlyHolidays = await holidayService.resolveHolidaysForBranch(
       req.context,
@@ -256,14 +256,14 @@ export async function getMyPersonalSchedule(req: any, res: Response, next: NextF
       const date = normalizeToMidnight(new Date(year, month - 1, dayNum));
 
       const schedule = resolveEmployeeDaySchedule({
-        targetDate:         date,
-        rotationPlan:       rotationPlan as any,
-        rotationStartDate:  employee.rotationStartDate ?? null,
-        fixedShift:         fixedShift as any,
+        targetDate: date,
+        rotationPlan: rotationPlan as any,
+        rotationStartDate: employee.rotationStartDate ?? null,
+        fixedShift: fixedShift as any,
         fixedWeeklyOffDays: branchWeeklyOffDays,
         customWeekOffRules: branchCustomWeekOffRules,
-        holidays:           holidays as any,
-        employeeBranchId:   employee.branchId.toString(),
+        holidays: holidays as any,
+        employeeBranchId: employee.branchId.toString(),
       });
 
       const holiday = holidays.find((h: any) => {
@@ -272,19 +272,19 @@ export async function getMyPersonalSchedule(req: any, res: Response, next: NextF
       });
 
       days.push({
-        date:        formatDate(date),
-        dayOfWeek:   ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][date.getDay()],
-        type:        schedule.dayType,
-        offReason:   schedule.offReason,
+        date: formatDate(date),
+        dayOfWeek: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][date.getDay()],
+        type: schedule.dayType,
+        offReason: schedule.offReason,
         holidayName: holiday?.name,
-        slotNumber:  schedule.slotNumber,
-        shift:       schedule.shift
+        slotNumber: schedule.slotNumber,
+        shift: schedule.shift
           ? {
-              name:      (schedule.shift as any).name,
-              code:      (schedule.shift as any).code,
-              startTime: (schedule.shift as any).startTime,
-              endTime:   (schedule.shift as any).endTime,
-            }
+            name: (schedule.shift as any).name,
+            code: (schedule.shift as any).code,
+            startTime: (schedule.shift as any).startTime,
+            endTime: (schedule.shift as any).endTime,
+          }
           : undefined,
       });
     }
@@ -292,11 +292,11 @@ export async function getMyPersonalSchedule(req: any, res: Response, next: NextF
     const summary = buildCalendarSummary(days);
 
     res.status(200).json(buildSuccessResponse({
-      employeeId:     employee._id,
-      branchName:     branch?.name,
+      employeeId: employee._id,
+      branchName: branch?.name,
       year,
       month,
-      rotationPlan:   rotationPlan
+      rotationPlan: rotationPlan
         ? { name: (rotationPlan as any).name, cycleDuration: (rotationPlan as any).cycleDuration }
         : null,
       customWeekOffRules: branchCustomWeekOffRules ?? [],
@@ -312,11 +312,11 @@ export async function getMyPersonalSchedule(req: any, res: Response, next: NextF
 
 function buildCalendarSummary(days: CalendarDay[]) {
   return {
-    totalDays:   days.length,
+    totalDays: days.length,
     workingDays: days.filter((d) => d.type === "WORKING").length,
-    weekOffs:    days.filter((d) => d.type === "WEEK_OFF").length,
-    holidays:    days.filter((d) => d.type === "HOLIDAY").length,
-    saturdays:   days.filter((d) => d.dayOfWeek === "Saturday").length,
+    weekOffs: days.filter((d) => d.type === "WEEK_OFF").length,
+    holidays: days.filter((d) => d.type === "HOLIDAY").length,
+    saturdays: days.filter((d) => d.dayOfWeek === "Saturday").length,
     saturdaysOff: days.filter((d) => d.dayOfWeek === "Saturday" && d.type !== "WORKING").length,
   };
 }

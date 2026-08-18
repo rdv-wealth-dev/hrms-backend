@@ -3,48 +3,48 @@ import { AttendanceDocument, AttendanceModel } from "../models/attendance.model"
 import { RequestContext } from "../../../shared/types/request-context.interface";
 
 export class AttendanceRepository {
-    // Find today's (or given date's) record for an employee
-    async findByEmployeeAndDate (
-        context : RequestContext,
-        employeeId : string,
-        attendanceDate : Date
-    ): Promise<AttendanceDocument | null>{
-        return AttendanceModel.findOne({
-            tenantId : new mongoose.Types.ObjectId(context.tenantId),
-            employeeId : new mongoose.Types.ObjectId(employeeId),
-            attendanceDate,
-            isDeleted : false,
-        });
-    }
-
-    async create(data: Partial<AttendanceDocument>): Promise<AttendanceDocument> {
-        return new AttendanceModel(data).save();
-    }
-
-    async save(doc : AttendanceDocument): Promise<AttendanceDocument> {
-        return doc.save()
-    }
-
-    async findById(context : RequestContext, id : string) : Promise<AttendanceDocument | null> {
-        return AttendanceModel.findOne({
-            _id:       new mongoose.Types.ObjectId(id),
-            tenantId:  new mongoose.Types.ObjectId(context.tenantId),
-            isDeleted: false,
-        });
-    }
-
-
-    async findHistoryForEmployee(
-    context:    RequestContext,
+  // Find today's (or given date's) record for an employee
+  async findByEmployeeAndDate(
+    context: RequestContext,
     employeeId: string,
-    fromDate:   Date,
-    toDate:     Date
+    attendanceDate: Date
+  ): Promise<AttendanceDocument | null> {
+    return AttendanceModel.findOne({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      employeeId: new mongoose.Types.ObjectId(employeeId),
+      attendanceDate,
+      isDeleted: false,
+    });
+  }
+
+  async create(data: Partial<AttendanceDocument>): Promise<AttendanceDocument> {
+    return new AttendanceModel(data).save();
+  }
+
+  async save(doc: AttendanceDocument): Promise<AttendanceDocument> {
+    return doc.save()
+  }
+
+  async findById(context: RequestContext, id: string): Promise<AttendanceDocument | null> {
+    return AttendanceModel.findOne({
+      _id: new mongoose.Types.ObjectId(id),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted: false,
+    });
+  }
+
+
+  async findHistoryForEmployee(
+    context: RequestContext,
+    employeeId: string,
+    fromDate: Date,
+    toDate: Date
   ): Promise<AttendanceDocument[]> {
     return AttendanceModel.find({
-      tenantId:       new mongoose.Types.ObjectId(context.tenantId),
-      employeeId:     new mongoose.Types.ObjectId(employeeId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      employeeId: new mongoose.Types.ObjectId(employeeId),
       attendanceDate: { $gte: fromDate, $lte: toDate },
-      isDeleted:      false,
+      isDeleted: false,
     })
       .sort({ attendanceDate: -1 })
       .populate("shiftId", "name code startTime endTime");
@@ -52,14 +52,14 @@ export class AttendanceRepository {
 
   //Admin report — filtered, paginated
   async findReport(
-    context:  RequestContext,
-    query:    any
+    context: RequestContext,
+    query: any
   ) {
     const tenantIdObj = new mongoose.Types.ObjectId(context.tenantId);
-    
+
     // 1. Initial Match Stage (Matches tenantId, date range, status, and direct employeeId)
     const matchStage: any = {
-      tenantId:  tenantIdObj,
+      tenantId: tenantIdObj,
       isDeleted: false,
       attendanceDate: {
         $gte: new Date(query.fromDate),
@@ -193,7 +193,7 @@ export class AttendanceRepository {
     const formattedData = data.map((record: any) => {
       const emp = record.employeeDetail;
       const dept = record.departmentDetail;
-      
+
       const fullName = `${emp.firstName ?? ""} ${emp.lastName ?? ""}`.trim();
       const populatedDept = dept ? { _id: dept._id, name: dept.name, code: dept.code } : null;
 
@@ -253,7 +253,7 @@ export class AttendanceRepository {
     const validIdSet = new Set(validEmployeeIds.map((emp: any) => emp._id.toString()));
 
     // Find orphaned records
-    const orphanedRecords = allAttendance.filter((att: any) => 
+    const orphanedRecords = allAttendance.filter((att: any) =>
       !att.employeeId || !validIdSet.has(att.employeeId.toString())
     );
 
@@ -268,10 +268,10 @@ export class AttendanceRepository {
   // Method to delete orphaned attendance records
   async deleteOrphanedAttendanceRecords(context: RequestContext) {
     const orphanedData = await this.findOrphanedAttendanceRecords(context);
-    
+
     if (orphanedData.orphanedRecords > 0) {
       const orphanedIds = orphanedData.orphanedData.map((record: any) => record._id);
-      
+
       const result = await AttendanceModel.updateMany(
         { _id: { $in: orphanedIds } },
         { isDeleted: true, deletedAt: new Date() }

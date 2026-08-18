@@ -14,16 +14,16 @@ export class BranchRepository {
   //Find head office
   async findHeadOffice(tenantId: string): Promise<BranchDocument | null> {
     return BranchModel.findOne({
-      tenantId:     new mongoose.Types.ObjectId(tenantId),
+      tenantId: new mongoose.Types.ObjectId(tenantId),
       isHeadOffice: true,
-      isDeleted:    false,
+      isDeleted: false,
     });
   }
 
   //Find by ID
   async findById(id: string): Promise<BranchDocument | null> {
     return BranchModel.findOne({
-      _id:       new mongoose.Types.ObjectId(id),
+      _id: new mongoose.Types.ObjectId(id),
       isDeleted: false,
     });
   }
@@ -31,15 +31,15 @@ export class BranchRepository {
   //Find all by tenant
   async findAllByTenant(tenantId: string): Promise<BranchDocument[]> {
     return BranchModel.find({
-      tenantId:  new mongoose.Types.ObjectId(tenantId),
+      tenantId: new mongoose.Types.ObjectId(tenantId),
       isDeleted: false,
-      isActive:  true,
+      isActive: true,
     }).sort({ isHeadOffice: -1, createdAt: 1 });
   }
 
   //Update by ID
   async updateById(
-    id:   string,
+    id: string,
     data: Partial<BranchDocument> | Record<string, unknown>
   ): Promise<BranchDocument | null> {
     return BranchModel.findOneAndUpdate(
@@ -60,12 +60,12 @@ export class BranchRepository {
   //Check code exists within tenant
   async codeExists(
     tenantId: string,
-    code:     string
+    code: string
   ): Promise<boolean> {
     const doc = await BranchModel
       .findOne({
-        tenantId:  new mongoose.Types.ObjectId(tenantId),
-        code:      code.toUpperCase(),
+        tenantId: new mongoose.Types.ObjectId(tenantId),
+        code: code.toUpperCase(),
         isDeleted: false,
       })
       .select("_id")

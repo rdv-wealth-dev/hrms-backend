@@ -139,43 +139,43 @@ export class AuthService {
 
     // 3. Create organization (using default locale/ranges until Step 2 onboarding wizard)
     const organization = await this.orgRepo.create({
-      companyName:         input.companyName,
+      companyName: input.companyName,
       slug,
-      workspaceSlug:       input.workspaceSlug,
-      employeeCountRange:  "1-10",
+      workspaceSlug: input.workspaceSlug,
+      employeeCountRange: "1-10",
       onboardingCompleted: false,
-      onboardingStatus:    "step1_completed",
-      industry:            "Technology",
+      onboardingStatus: "step1_completed",
+      industry: "Technology",
       locale: {
-        countryCode:        defaultCountry,
-        timezone:           defaultTimezone,
-        currencyCode:       getCurrencyFromCountry(defaultCountry),
-        dateFormat:         "DD/MM/YYYY",
-        timeFormat:         "12h",
-        fiscalYearStart:    getFiscalYearFromCountry(defaultCountry),
-        weeklyOffDays:      ["Sunday"],
+        countryCode: defaultCountry,
+        timezone: defaultTimezone,
+        currencyCode: getCurrencyFromCountry(defaultCountry),
+        dateFormat: "DD/MM/YYYY",
+        timeFormat: "12h",
+        fiscalYearStart: getFiscalYearFromCountry(defaultCountry),
+        weeklyOffDays: ["Sunday"],
         workingHoursPerDay: 8,
       },
       subscription: {
-        plan:         "free",
-        status:       "trial",
-        trialEndsAt:  new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        plan: "free",
+        status: "trial",
+        trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         maxEmployees: 10,
-        maxBranches:  2,
+        maxBranches: 2,
       },
       modules: {
-        attendance:  true,
-        leave:       true,
-        payroll:     false,
+        attendance: true,
+        leave: true,
+        payroll: false,
         performance: false,
         recruitment: false,
-        assets:      false,
+        assets: false,
       },
       statutory: {
-        pfEnabled:  false,
+        pfEnabled: false,
         esiEnabled: false,
         tdsEnabled: true,
-        ptEnabled:  false,
+        ptEnabled: false,
         lwfEnabled: false,
       },
     });
@@ -238,13 +238,13 @@ export class AuthService {
     return {
       message: "Registration successful! Please check your email to verify your account before logging in.",
       organization: {
-        id:                  organization._id,
-        companyName:         organization.companyName,
-        slug:                organization.slug,
-        workspaceSlug:       organization.workspaceSlug,
-        workspaceUrl:        `https://${organization.workspaceSlug}.yourhrms.com`,
+        id: organization._id,
+        companyName: organization.companyName,
+        slug: organization.slug,
+        workspaceSlug: organization.workspaceSlug,
+        workspaceUrl: `https://${organization.workspaceSlug}.yourhrms.com`,
         onboardingCompleted: organization.onboardingCompleted,
-        onboardingStatus:    organization.onboardingStatus,
+        onboardingStatus: organization.onboardingStatus,
       },
     };
   }
@@ -297,8 +297,8 @@ export class AuthService {
       );
       if (!isPasswordValid) {
         // Increment attempt counter — may trigger a 15-min lockout at 5 failures
-        const attempts  = await this.userRepo.incrementLoginAttempts(user._id.toString());
-        const MAX       = 5;
+        const attempts = await this.userRepo.incrementLoginAttempts(user._id.toString());
+        const MAX = 5;
         const remaining = Math.max(MAX - attempts, 0);
 
         if (remaining === 0) {
@@ -346,14 +346,14 @@ export class AuthService {
     //    Permissions are resolved fresh per-request in rbac.middleware.ts,
     //    so role changes take effect immediately without token re-issuance.
     const jwtPayload = {
-      tenantId:  user.tenantId.toString(),
-      userId:    user._id.toString(),
-      role:      user.role,
+      tenantId: user.tenantId.toString(),
+      userId: user._id.toString(),
+      role: user.role,
       branchIds: user.branchIds.map((b: any) => b.toString()),
     };
 
     // 8. Sign tokens
-    const accessToken  = signAccessToken(jwtPayload);
+    const accessToken = signAccessToken(jwtPayload);
     const refreshToken = signRefreshToken(
       user._id.toString(),
       user.tenantId.toString()
@@ -363,7 +363,7 @@ export class AuthService {
     let rememberDeviceToken: string | undefined;
     if (meta?.rememberDevice) {
       const rawToken = crypto.randomBytes(32).toString("hex");
-      const hash     = crypto.createHash("sha256").update(rawToken).digest("hex");
+      const hash = crypto.createHash("sha256").update(rawToken).digest("hex");
       await this.userRepo.addRememberDeviceToken(
         user._id.toString(),
         hash,
@@ -392,36 +392,36 @@ export class AuthService {
       requiresPasswordReset,
       // onboardingCompleted — frontend checks to redirect to wizard after first login
       onboardingCompleted: org?.onboardingCompleted ?? true,
-      onboardingStatus:    org?.onboardingStatus ?? "completed",
+      onboardingStatus: org?.onboardingStatus ?? "completed",
       rememberDeviceToken, // undefined unless requested; set as httpOnly cookie on client
       user: {
-        id:               user._id,
-        email:            user.email,
-        firstName:        user.firstName,
-        lastName:         user.lastName,
-        phone:            user.phone,           // 👈 FIX: needed by frontend useUserOrgData() to pre-fill profile
-        role:             user.role,
-        isOrgAdmin:       user.isOrgAdmin,
-        branchIds:        (user.branchIds || []).map((b: any) => b.toString()),
-        tenantId:         user.tenantId,
-        employeeId:       user.employeeId,
-        lastLoginAt:      user.lastLoginAt,    // previous session — show on dashboard
-        lastLoginIp:      user.lastLoginIp,    // previous session IP
-        lastLoginDevice:  user.lastLoginDevice,
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,           // 👈 FIX: needed by frontend useUserOrgData() to pre-fill profile
+        role: user.role,
+        isOrgAdmin: user.isOrgAdmin,
+        branchIds: (user.branchIds || []).map((b: any) => b.toString()),
+        tenantId: user.tenantId,
+        employeeId: user.employeeId,
+        lastLoginAt: user.lastLoginAt,    // previous session — show on dashboard
+        lastLoginIp: user.lastLoginIp,    // previous session IP
+        lastLoginDevice: user.lastLoginDevice,
       },
       organization: {
-        id:                  org!._id,
-        companyName:         org!.companyName,
-        slug:                org!.slug,
-        workspaceSlug:       org!.workspaceSlug,
-        employeeCountRange:  org!.employeeCountRange, // 👈 FIX: needed by frontend to pre-fill company size
-        locale:              org!.locale,              // 👈 FIX: needed by frontend to pre-fill timezone/locale
-        subscription:        org!.subscription,
-        modules:             org!.modules,
-        branding:            org!.branding,            // logo + primaryColor for workspace theming
+        id: org!._id,
+        companyName: org!.companyName,
+        slug: org!.slug,
+        workspaceSlug: org!.workspaceSlug,
+        employeeCountRange: org!.employeeCountRange, // 👈 FIX: needed by frontend to pre-fill company size
+        locale: org!.locale,              // 👈 FIX: needed by frontend to pre-fill timezone/locale
+        subscription: org!.subscription,
+        modules: org!.modules,
+        branding: org!.branding,            // logo + primaryColor for workspace theming
       },
       branch: headOffice ? {
-        id:   headOffice._id,
+        id: headOffice._id,
         name: headOffice.name,
         code: headOffice.code,
       } : null,
@@ -749,13 +749,13 @@ export class AuthService {
 
     // Update locale, industry, employee count from wizard
     await this.orgRepo.updateById(tenantId, {
-      industry:           input.industry,
+      industry: input.industry,
       employeeCountRange: input.employeeCountRange,
       locale: {
         ...org.locale,
-        countryCode:     input.countryCode,
-        timezone:        input.timezone,
-        currencyCode:    input.baseCurrency || getCurrencyFromCountry(input.countryCode),
+        countryCode: input.countryCode,
+        timezone: input.timezone,
+        currencyCode: input.baseCurrency || getCurrencyFromCountry(input.countryCode),
         fiscalYearStart: input.fiscalYearStart,
       },
     });
@@ -790,7 +790,7 @@ export class AuthService {
     await seedStatutoryNationalHolidays(tenantId, input.countryCode || "IN", "system");
 
     // Save phone and associate the created Head Office branch to the admin user
-    await UserModel.findByIdAndUpdate(userId, { 
+    await UserModel.findByIdAndUpdate(userId, {
       phone: input.phone,
       $addToSet: { branchIds: headOffice._id }
     });
@@ -799,9 +799,9 @@ export class AuthService {
     await this.orgRepo.markOnboardingComplete(tenantId);
 
     return {
-      message:             "Workspace configured successfully.",
+      message: "Workspace configured successfully.",
       onboardingCompleted: true,
-      onboardingStatus:    "completed",
+      onboardingStatus: "completed",
     };
   }
 
@@ -815,11 +815,11 @@ export class AuthService {
     // Unknown email — return empty shell; do NOT reveal account existence
     if (!user) {
       return {
-        exists:      false,
-        ssoEnabled:  false,
-        provider:    null,
+        exists: false,
+        ssoEnabled: false,
+        provider: null,
         companyName: null,
-        logoUrl:     null,
+        logoUrl: null,
       };
     }
 
@@ -828,11 +828,11 @@ export class AuthService {
     // SSO config will be expanded in Phase 2 when SAML / OAuth is built.
     // For now ssoEnabled is always false — structure is ready for org.ssoConfig.
     return {
-      exists:      true,
-      ssoEnabled:  false,          // org?.ssoConfig?.enabled ?? false
-      provider:    null,           // org?.ssoConfig?.provider ?? null
+      exists: true,
+      ssoEnabled: false,          // org?.ssoConfig?.enabled ?? false
+      provider: null,           // org?.ssoConfig?.provider ?? null
       companyName: org?.companyName ?? null,
-      logoUrl:     org?.branding?.logoUrl ?? null,
+      logoUrl: org?.branding?.logoUrl ?? null,
     };
   }
 
