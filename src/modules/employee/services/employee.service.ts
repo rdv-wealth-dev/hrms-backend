@@ -69,7 +69,19 @@ export class EmployeeService {
     const org = await OrganizationModel.findById(context.tenantId);
     if (!org) throw new AppError("Organization not found", 404);
 
-    const maxEmployees = org.subscription?.maxEmployees || 50;
+    const rangeMap: Record<string, number> = {
+      "1-10": 10,
+      "11-50": 50,
+      "51-200": 200,
+      "201-500": 500,
+      "500+": 1000,
+    };
+
+    const maxEmployees =
+      (org.employeeCountRange && rangeMap[org.employeeCountRange]) ||
+      org.subscription?.maxEmployees ||
+      10;
+
     const currentCount = await EmployeeModel.countDocuments({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
@@ -77,7 +89,7 @@ export class EmployeeService {
 
     if (currentCount >= maxEmployees) {
       throw new AppError(
-        `Employee limit reached for your workspace tier (Team size range: ${org.employeeCountRange || "N/A"}, Max allowed: ${maxEmployees}). You cannot add employee #${currentCount + 1}. Please upgrade your plan to increase team size.`,
+        `User limit reached for your workspace tier (Team size range: ${org.employeeCountRange || "1-10"}, Max allowed: ${maxEmployees} users). You cannot add user/employee #${currentCount + 1}. Please upgrade your workspace tier.`,
         403
       );
     }
@@ -1331,7 +1343,19 @@ export class EmployeeService {
     const org = await OrganizationModel.findById(context.tenantId);
     if (!org) throw new AppError("Organization not found", 404);
 
-    const maxEmployees = org.subscription?.maxEmployees || 50;
+    const rangeMap: Record<string, number> = {
+      "1-10": 10,
+      "11-50": 50,
+      "51-200": 200,
+      "201-500": 500,
+      "500+": 1000,
+    };
+
+    const maxEmployees =
+      (org.employeeCountRange && rangeMap[org.employeeCountRange]) ||
+      org.subscription?.maxEmployees ||
+      10;
+
     const currentCount = await EmployeeModel.countDocuments({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
@@ -1339,7 +1363,7 @@ export class EmployeeService {
 
     if (currentCount + validRecords.length > maxEmployees) {
       throw new AppError(
-        `Bulk import exceeds your workspace team size limit (Current: ${currentCount}, Trying to add: ${validRecords.length}, Max allowed: ${maxEmployees}). Please upgrade your workspace tier.`,
+        `Bulk import exceeds your workspace team size limit (Range: ${org.employeeCountRange || "1-10"}, Current: ${currentCount}, Trying to add: ${validRecords.length}, Max allowed: ${maxEmployees} users). Please upgrade your workspace tier.`,
         403
       );
     }
