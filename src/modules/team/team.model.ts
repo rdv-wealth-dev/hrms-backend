@@ -30,10 +30,10 @@ export interface TeamDocument extends OrgLevelDocument {
   description?: string;
   type: TeamType;
   branchId?: mongoose.Types.ObjectId;
-  departmentId?: mongoose.Types.ObjectId;
+  departmentId: mongoose.Types.ObjectId; // Parent top-level department
   isCrossFunctional: boolean;
   leadId?: mongoose.Types.ObjectId;        // Employee who leads this team
-  
+
   // Who does this entire team report to?
   reporting: {
     type: TeamReportingType;
@@ -100,7 +100,7 @@ const TeamSchema = createOrgLevelSchema<TeamDocument>(
     departmentId: {
       type: Schema.Types.ObjectId,
       ref: "Department",
-      default: null,
+      required: true,
       index: true,
     },
     isCrossFunctional: {

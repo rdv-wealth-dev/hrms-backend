@@ -4,6 +4,7 @@ import { CreateTeamInput, UpdateTeamInput, AddTeamMemberInput, UpdateTeamMemberI
 import { AppError } from "../../shared/errors/app.error";
 import { RequestContext } from "../../shared/types/request-context.interface";
 import { EmployeeModel } from "../employee/models/employee.model";
+import { DepartmentModel } from "../department/department.model";
 
 export class TeamService {
   private teamRepo = new TeamRepository();
@@ -12,6 +13,16 @@ export class TeamService {
     const existingTeam = await this.teamRepo.findTeamByCode(context.tenantId, input.code);
     if (existingTeam) {
       throw new AppError(`Team code "${input.code}" already exists`, 409);
+    }
+
+    // 1. Department is the top-level hierarchy — validate that parent Department exists
+    const department = await DepartmentModel.findOne({
+      _id: new mongoose.Types.ObjectId(input.departmentId),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted: false,
+    });
+    if (!department) {
+      throw new AppError("Department not found. A valid parent Department is mandatory to create a team.", 404);
     }
 
     if (input.leadId) {
@@ -32,7 +43,7 @@ export class TeamService {
       description: input.description || "",
       type: input.type,
       branchId: input.branchId ? new mongoose.Types.ObjectId(input.branchId) : undefined,
-      departmentId: input.departmentId ? new mongoose.Types.ObjectId(input.departmentId) : undefined,
+      departmentId: new mongoose.Types.ObjectId(input.departmentId),
       isCrossFunctional: input.isCrossFunctional || false,
       leadId: input.leadId ? new mongoose.Types.ObjectId(input.leadId) : undefined,
       reporting: {

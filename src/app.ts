@@ -24,6 +24,7 @@ import employeeDocumentRoutes from "./modules/employee-document/employee-documen
 import deviceRoutes from "./modules/device/device.routes";
 import orgTreeRoutes from "./modules/org-tree/org-tree.routes";
 import teamRoutes from "./modules/team";
+import roleRoutes from "./modules/role";
 
 
 const app: Application = express();
@@ -51,6 +52,7 @@ app.use("/api/v1/employees", authenticate, tenantLimiter, employeeRoutes);
 app.use("/api/v1/onboarding", authenticate, tenantLimiter, onboardingWizardRoutes);
 app.use("/api/v1/attendance", authenticate, tenantLimiter, attendanceRoutes);
 app.use("/api/v1/users", authenticate, tenantLimiter, userRoutes);
+app.use("/api/v1/roles", authenticate, tenantLimiter, roleRoutes);
 app.use("/api/v1/leave", authenticate, tenantLimiter, leaveRoutes);
 app.use("/api/v1/profile", authenticate, tenantLimiter, profileRoutes);
 app.use("/api/v1/payroll", authenticate, tenantLimiter, payrollRoutes);

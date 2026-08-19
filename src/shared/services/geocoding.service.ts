@@ -6,11 +6,11 @@
 interface AddressInput {
   addressLine1?: string;
   addressLine2?: string;
-  landmark?:     string;
-  city?:         string;
-  state?:        string;
-  countryCode?:  string;
-  zip?:          string;
+  landmark?: string;
+  city?: string;
+  state?: string;
+  countryCode?: string;
+  zip?: string;
 }
 
 interface GeoCoords {
@@ -32,8 +32,8 @@ export class GeocodingService {
 
     // 2. Build structured parameters instead of a generic 'q' string
     const params: Record<string, string> = {
-      format:         "jsonv2", // jsonv2 is newer and more precise than json
-      limit:          "1",
+      format: "jsonv2", // jsonv2 is newer and more precise than json
+      limit: "1",
       addressdetails: "0",
     };
 
@@ -54,7 +54,7 @@ export class GeocodingService {
       const response = await fetch(url, {
         headers: {
           "User-Agent": "HRMS-App/1.0 (hrms@redvisiontech.com)",
-          "Accept":     "application/json",
+          "Accept": "application/json",
         },
         signal: AbortSignal.timeout(5000), // 5s timeout — don't hang the request
       });
@@ -92,8 +92,8 @@ export class GeocodingService {
   private async fallbackGeocode(address: AddressInput): Promise<GeoCoords | null> {
     try {
       const broadParams: Record<string, string> = {
-        format:         "jsonv2",
-        limit:          "1",
+        format: "jsonv2",
+        limit: "1",
         addressdetails: "0",
       };
 
@@ -107,7 +107,7 @@ export class GeocodingService {
       const response = await fetch(url, {
         headers: {
           "User-Agent": "HRMS-App/1.0 (hrms@redvisiontech.com)",
-          "Accept":     "application/json",
+          "Accept": "application/json",
         },
         signal: AbortSignal.timeout(4000),
       });

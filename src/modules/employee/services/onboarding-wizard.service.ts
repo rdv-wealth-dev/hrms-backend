@@ -54,18 +54,28 @@ export class OnboardingWizardService {
     await recalculateProfileCompletion(context.tenantId, employee._id.toString());
     const refreshed = await EmployeeModel.findById(employee._id);
 
-    // ── 1. Step 1 Data (Personal Details) ──
+    // ── 1. Step 1 Data (Personal Details & HR Pre-Filled Info) ──
     const step1Data = {
+      firstName: refreshed?.firstName,
+      lastName: refreshed?.lastName,
+      email: refreshed?.email,
+      employeeCode: refreshed?.employeeCode,
+      joiningDate: refreshed?.joiningDate,
+      phone: refreshed?.phone,
       dateOfBirth: refreshed?.dateOfBirth,
       gender: refreshed?.gender,
       bloodGroup: refreshed?.bloodGroup,
       maritalStatus: refreshed?.maritalStatus,
-      phone: refreshed?.phone,
+      nationality: refreshed?.nationality,
       currentAddress: refreshed?.currentAddress,
+      permanentAddress: refreshed?.permanentAddress,
       emergencyContact: refreshed?.emergencyContacts,
       pan: refreshed?.pan,
       aadhaar: refreshed?.aadhaar,
       passportNo: refreshed?.passportNo,
+      departmentId: refreshed?.departmentId,
+      designationId: refreshed?.designationId,
+      branchId: refreshed?.branchId,
     };
 
     // ── 2. Step 2 Data (Family Details) ──
@@ -271,18 +281,14 @@ export class OnboardingWizardService {
       required.forEach((t: string) => {
         const label = documentLabels[t] || t;
         if (t === "PAN") {
-          const hasIt = isIndia
-            ? (!!refreshed!.pan || uploadedTypes.includes("PAN"))
-            : uploadedTypes.includes("PAN");
+          const hasIt = uploadedTypes.includes("PAN") && (isIndia ? !!refreshed!.pan : true);
           if (!hasIt) {
-            missing.push(isIndia ? `${label} Number or Document` : `${label} Document`);
+            missing.push(isIndia ? `${label} Upload & Valid PAN Number` : `${label} Document`);
           }
         } else if (t === "AADHAAR") {
-          const hasIt = isIndia
-            ? (!!refreshed!.aadhaar || uploadedTypes.includes("AADHAAR"))
-            : uploadedTypes.includes("AADHAAR");
+          const hasIt = uploadedTypes.includes("AADHAAR") && (isIndia ? !!refreshed!.aadhaar : true);
           if (!hasIt) {
-            missing.push(isIndia ? `${label} Number or Document` : `${label} Document`);
+            missing.push(isIndia ? `${label} Upload & Aadhaar Number` : `${label} Document`);
           }
         } else if (t === "PASSPORT") {
           const hasIt = !!refreshed!.passportNo || uploadedTypes.includes("PASSPORT");

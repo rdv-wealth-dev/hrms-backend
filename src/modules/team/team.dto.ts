@@ -9,7 +9,7 @@ export const CreateTeamDto = z.object({
   description: z.string().trim().optional(),
   type: z.nativeEnum(TeamType).default(TeamType.PERMANENT),
   branchId: objectIdSchema.optional(),
-  departmentId: objectIdSchema.optional(),
+  departmentId: objectIdSchema, // Department is the mandatory top-level hierarchy
   isCrossFunctional: z.boolean().default(false),
   leadId: objectIdSchema.optional(),
   reporting: z.object({

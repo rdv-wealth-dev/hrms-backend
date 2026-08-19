@@ -65,7 +65,24 @@ export class EmployeeService {
     context: RequestContext,
     input: CreateEmployeeInput
   ) {
-    // Check email uniqueness within tenant
+    // 1. Check organization employee limit / team size range cap
+    const org = await OrganizationModel.findById(context.tenantId);
+    if (!org) throw new AppError("Organization not found", 404);
+
+    const maxEmployees = org.subscription?.maxEmployees || 50;
+    const currentCount = await EmployeeModel.countDocuments({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted: false,
+    });
+
+    if (currentCount >= maxEmployees) {
+      throw new AppError(
+        `Employee limit reached for your workspace tier (Team size range: ${org.employeeCountRange || "N/A"}, Max allowed: ${maxEmployees}). You cannot add employee #${currentCount + 1}. Please upgrade your plan to increase team size.`,
+        403
+      );
+    }
+
+    // 2. Check email uniqueness within tenant
     const existing = await this.empRepo.findByEmail(context, input.email);
     if (existing) {
       throw new AppError(
@@ -1309,6 +1326,22 @@ export class EmployeeService {
 
     if (!validRecords.length) {
       throw new AppError("No valid employee records to commit", 400);
+    }
+
+    const org = await OrganizationModel.findById(context.tenantId);
+    if (!org) throw new AppError("Organization not found", 404);
+
+    const maxEmployees = org.subscription?.maxEmployees || 50;
+    const currentCount = await EmployeeModel.countDocuments({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted: false,
+    });
+
+    if (currentCount + validRecords.length > maxEmployees) {
+      throw new AppError(
+        `Bulk import exceeds your workspace team size limit (Current: ${currentCount}, Trying to add: ${validRecords.length}, Max allowed: ${maxEmployees}). Please upgrade your workspace tier.`,
+        403
+      );
     }
 
     const dbResult = await this.empRepo.bulkCreate(context, validRecords);

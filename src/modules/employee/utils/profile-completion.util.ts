@@ -39,18 +39,16 @@ export async function recalculateProfileCompletion(
       isDeleted: false,
     }) as unknown as string[];
 
-    // Check if document numbers are filled for mandatory types (PAN, AADHAAR, PASSPORT)
-    // or if the document file itself has been uploaded.
+    // Check if document numbers and physical document files are uploaded
     const isIndia = (employee.countryCode || "IN").toUpperCase() === "IN";
     mandatoryDocs = required.every((t: string) => {
       if (t === "PAN") {
-        return isIndia
-          ? (!!employee.pan || uploadedTypes.includes("PAN"))
-          : uploadedTypes.includes("PAN");
+        // PAN Card upload is strictly required for payroll readiness
+        return uploadedTypes.includes("PAN") && (isIndia ? !!employee.pan : true);
       }
       if (t === "AADHAAR") {
         return isIndia
-          ? (!!employee.aadhaar || uploadedTypes.includes("AADHAAR"))
+          ? (!!employee.aadhaar && uploadedTypes.includes("AADHAAR"))
           : uploadedTypes.includes("AADHAAR");
       }
       if (t === "PASSPORT") {
