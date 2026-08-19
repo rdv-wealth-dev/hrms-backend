@@ -23,6 +23,7 @@ import auditRoutes from "./modules/audit";
 import employeeDocumentRoutes from "./modules/employee-document/employee-document.routes";
 import deviceRoutes from "./modules/device/device.routes";
 import orgTreeRoutes from "./modules/org-tree/org-tree.routes";
+import teamRoutes from "./modules/team";
 
 
 const app: Application = express();
@@ -57,6 +58,7 @@ app.use("/api/v1/events", authenticate, tenantLimiter, eventRoutes);
 app.use("/api/v1/audit", authenticate, tenantLimiter, auditRoutes);
 app.use("/api/v1/employee-documents", authenticate, tenantLimiter, employeeDocumentRoutes);
 app.use("/api/v1/org-tree", authenticate, tenantLimiter, orgTreeRoutes);
+app.use("/api/v1/teams", authenticate, tenantLimiter, teamRoutes);
 
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({

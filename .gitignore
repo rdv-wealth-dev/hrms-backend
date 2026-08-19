@@ -4,6 +4,8 @@ dist/
 aesKeys.json
 *.html
 *.md
+HRMS_FLOW.md
+ALL_APIS_DOCUMENTATION.md
 # OSX
 #
 .DS_Store

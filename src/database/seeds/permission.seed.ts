@@ -56,6 +56,12 @@ export const ALL_PERMISSIONS = [
   { module: "designation", action: "read", resource: "designation.read", description: "View designations" },
   { module: "designation", action: "create", resource: "designation.create", description: "Create designations" },
   { module: "designation", action: "update", resource: "designation.update", description: "Update designations" },
+
+  // Team
+  { module: "team", action: "read", resource: "team.read", description: "View teams" },
+  { module: "team", action: "create", resource: "team.create", description: "Create teams" },
+  { module: "team", action: "update", resource: "team.update", description: "Update teams" },
+  { module: "team", action: "delete", resource: "team.delete", description: "Delete teams" },
 ];
 
 // SEED FUNCTION
