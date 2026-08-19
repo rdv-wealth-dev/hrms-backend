@@ -39,6 +39,14 @@ export class UserService {
         // Validate Role Hierarchy
         const ROLE_HIERARCHY: Record<string, number> = {
             "ORG_ADMIN": 100,
+            "CEO": 95,
+            "COO": 90,
+            "CFO": 90,
+            "CTO": 90,
+            "CIO": 90,
+            "CHRO": 90,
+            "CPO": 90,
+            "CMO": 90,
             "HR_ADMIN": 80,
             "BRANCH_ADMIN": 60,
             "LEADERSHIP": 50,

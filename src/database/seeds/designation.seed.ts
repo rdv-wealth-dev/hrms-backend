@@ -60,6 +60,7 @@ const DEFAULT_DESIGNATIONS: DesignationSeed[] = [
   { name: "Product Manager", code: "PM", departmentCode: "PM", level: 3, description: "Product manager owning the roadmap and feature delivery." },
   { name: "Senior Product Manager", code: "SPM", departmentCode: "PM", level: 4, description: "Senior PM handling complex product lines." },
   { name: "Director of Product", code: "DOP", departmentCode: "PM", level: 6, description: "Executive overseeing the product organization." },
+  { name: "Chief Product Officer", code: "CPO", departmentCode: "PM", level: 8, description: "C-level executive leading product vision and strategy." },
   { name: "Scrum Master", code: "SM", departmentCode: "PM", level: 2, description: "Agile coach facilitating sprints and ceremonies." },
   { name: "Project Manager", code: "PJM", departmentCode: "PM", level: 3, description: "Managing project timelines, resources, and delivery." },
   { name: "Program Manager", code: "PGM", departmentCode: "PM", level: 4, description: "Managing cross-functional programs and initiatives." },
@@ -68,6 +69,7 @@ const DEFAULT_DESIGNATIONS: DesignationSeed[] = [
   { name: "IT Support Engineer", code: "ITSE", departmentCode: "ITSUP", level: 2, description: "Tier 2 support handling complex issues." },
   { name: "Senior IT Support Engineer", code: "SIT", departmentCode: "ITSUP", level: 3, description: "Tier 3 support and IT infrastructure management." },
   { name: "IT Infrastructure Manager", code: "ITIM", departmentCode: "ITSUP", level: 4, description: "Manager overseeing IT operations and infrastructure." },
+  { name: "Chief Information Officer", code: "CIO", departmentCode: "ITSUP", level: 8, description: "C-level executive responsible for IT infrastructure and systems." },
 
   // ─── Design ────────────────────────────────────────────────────────
   { name: "Junior UI/UX Designer", code: "JUX", departmentCode: "UIX", level: 1, description: "Entry-level designer." },
@@ -82,6 +84,7 @@ const DEFAULT_DESIGNATIONS: DesignationSeed[] = [
   { name: "Senior HR Generalist", code: "SHR", departmentCode: "HR", level: 3, description: "Senior HR business partner." },
   { name: "HR Manager", code: "HRM", departmentCode: "HR", level: 4, description: "Manager leading the HR function." },
   { name: "HR Director", code: "HRD", departmentCode: "HR", level: 6, description: "Executive leading HR strategy." },
+  { name: "Chief Human Resources Officer", code: "CHRO", departmentCode: "HR", level: 8, description: "C-level executive heading people, culture, and human resources." },
   { name: "Talent Acquisition Specialist", code: "TA", departmentCode: "HR", level: 2, description: "Recruiter focused on sourcing and hiring." },
 
   // ─── Finance & Accounts ────────────────────────────────────────────
@@ -95,6 +98,8 @@ const DEFAULT_DESIGNATIONS: DesignationSeed[] = [
   { name: "Administrative Executive", code: "ADME", departmentCode: "ADMIN", level: 1, description: "Entry-level administrator." },
   { name: "Office Manager", code: "OM", departmentCode: "ADMIN", level: 3, description: "Manager overseeing office operations and facilities." },
   { name: "Administration Manager", code: "ADMM", departmentCode: "ADMIN", level: 4, description: "Manager handling administration and vendor coordination." },
+  { name: "Chief Executive Officer", code: "CEO", departmentCode: "ADMIN", level: 8, description: "Chief Executive Officer — executive leadership of the entire enterprise." },
+  { name: "Chief Operating Officer", code: "COO", departmentCode: "ADMIN", level: 8, description: "Chief Operating Officer — executive management of company operations." },
 ];
 
 export async function seedDesignations(

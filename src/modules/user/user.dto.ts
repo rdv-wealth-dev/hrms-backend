@@ -3,6 +3,14 @@ import { objectIdSchema } from "../../shared/validators/common.validator";
 
 export const AssignRoleDto = z.object({
     role : z.enum([
+        "CEO",
+        "COO",
+        "CFO",
+        "CTO",
+        "CIO",
+        "CHRO",
+        "CPO",
+        "CMO",
         "HR_ADMIN",
         "BRANCH_ADMIN",
         "LEADERSHIP",
