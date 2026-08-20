@@ -237,6 +237,47 @@ export class PayrollController {
     }
   }
 
+  // ── Admin Payslips (Branch, Year, Month, Employee filters) ──
+  async listPayslips(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const page = parseInt(req.query.pageNumber as string) || 1;
+      const pageSize = parseInt(req.query.pageSize as string) || 20;
+      const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+      const month = req.query.month ? parseInt(req.query.month as string) : undefined;
+      const employeeId = req.query.employeeId as string;
+      const branchId = req.query.branchId as string;
+
+      const result = await payslipService.listPayslips(
+        req.context!,
+        { year, month, employeeId, branchId },
+        page,
+        pageSize
+      );
+      res.status(200).json(buildSuccessResponse(result, "Payslips fetched successfully"));
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  async getAdminPayslipById(
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await payslipService.getAdminPayslipById(req.context!, req.params.id);
+      res.status(200).json(
+        buildSuccessResponse(result, "Payslip details fetched successfully")
+      );
+    } catch (e) {
+      next(e);
+    }
+  }
+
   // ── Self-service payslips ──
   async getMyPayslips(
     req: Request,

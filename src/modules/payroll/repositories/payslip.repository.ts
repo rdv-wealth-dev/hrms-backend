@@ -16,6 +16,44 @@ export class PayslipRepository {
     }).populate("employeeId", "employeeCode firstName lastName");
   }
 
+  async findAll(
+    context: RequestContext,
+    filter: { year?: number; month?: number; employeeId?: string; branchId?: string },
+    page: number,
+    pageSize: number
+  ) {
+    const query: any = {
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted: false,
+    };
+
+    if (filter.year) query.year = filter.year;
+    if (filter.month) query.month = filter.month;
+    if (filter.employeeId) query.employeeId = new mongoose.Types.ObjectId(filter.employeeId);
+
+    const skip = (page - 1) * pageSize;
+    const safe = Math.min(pageSize, 100);
+
+    const [data, totalRecords] = await Promise.all([
+      PayslipModel.find(query)
+        .sort({ year: -1, month: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(safe)
+        .populate("employeeId", "employeeCode firstName lastName email branchId departmentId designationId")
+        .lean(),
+      PayslipModel.countDocuments(query),
+    ]);
+
+    let filteredData = data;
+    if (filter.branchId) {
+      filteredData = data.filter(
+        (p: any) => p.employeeId && (p.employeeId as any).branchId?.toString() === filter.branchId
+      );
+    }
+
+    return { data: filteredData, totalRecords, pageNumber: page, pageSize: safe };
+  }
+
   async findForEmployee(context: RequestContext, employeeId: string, page: number, pageSize: number) {
     const query = {
       tenantId: new mongoose.Types.ObjectId(context.tenantId),

@@ -16,6 +16,21 @@ export class PayslipService {
     return user.employeeId.toString();
   }
 
+  async listPayslips(
+    context: RequestContext,
+    filter: { year?: number; month?: number; employeeId?: string; branchId?: string },
+    page: number,
+    pageSize: number
+  ) {
+    return this.payslipRepo.findAll(context, filter, page, pageSize);
+  }
+
+  async getAdminPayslipById(context: RequestContext, id: string) {
+    const payslip = await this.payslipRepo.findById(context, id);
+    if (!payslip) throw new AppError("Payslip not found", 404);
+    return payslip;
+  }
+
   async getMyPayslips(context: RequestContext, page: number, pageSize: number) {
     const employeeId = await this.resolveOwnEmployeeId(context);
     return this.payslipRepo.findForEmployee(context, employeeId, page, pageSize);

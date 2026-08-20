@@ -45,6 +45,19 @@ router.get(
   ctrl.getMyPayslipById.bind(ctrl)
 );
 
+// Admin: Filterable Payslip Directory (Branch, Year, Month, Employee)
+router.get(
+  "/payslips",
+  checkPermission("payroll.read"),
+  ctrl.listPayslips.bind(ctrl)
+);
+
+router.get(
+  "/payslips/:id",
+  checkPermission("payroll.read"),
+  ctrl.getAdminPayslipById.bind(ctrl)
+);
+
 // Salary components (HR config)
 router.get(
   "/components",
