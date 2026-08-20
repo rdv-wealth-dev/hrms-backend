@@ -13,6 +13,7 @@ export class LeaveRequestRepository {
   }
 
   async findById(context: RequestContext, id: string): Promise<LeaveRequestDocument | null> {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     return LeaveRequestModel.findOne({
       _id: new mongoose.Types.ObjectId(id),
       tenantId: new mongoose.Types.ObjectId(context.tenantId),

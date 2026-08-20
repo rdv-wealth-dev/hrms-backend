@@ -188,7 +188,14 @@ export class LeaveRequestService {
     const request = await this.reqRepo.findById(context, id);
     if (!request) throw new AppError("Leave request not found", 404);
 
-    if (request.employeeId.toString() !== employeeId) {
+    const reqEmpId = (request.employeeId as any)?._id
+      ? (request.employeeId as any)._id.toString()
+      : request.employeeId.toString();
+    const reqLeaveTypeId = (request.leaveTypeId as any)?._id
+      ? (request.leaveTypeId as any)._id.toString()
+      : request.leaveTypeId.toString();
+
+    if (reqEmpId !== employeeId) {
       throw new AppError("You can only cancel your own leave requests", 403);
     }
     if (request.status === LeaveRequestStatus.CANCELLED) {
@@ -209,14 +216,14 @@ export class LeaveRequestService {
     if (wasApproved) {
       // Was already deducted from "used" — need to give it back
       const balance = await this.balanceService.getOrCreateBalance(
-        context, employeeId, request.leaveTypeId.toString(), year
+        context, employeeId, reqLeaveTypeId, year
       );
       balance.used = Math.max(0, balance.used - request.totalDays);
       balance.available = balance.allocated + balance.carriedForward - balance.used - balance.pending;
       await (balance as any).save();
     } else {
       await this.balanceService.releaseReservation(
-        context, employeeId, request.leaveTypeId.toString(), year, request.totalDays
+        context, employeeId, reqLeaveTypeId, year, request.totalDays
       );
     }
 
@@ -253,19 +260,26 @@ export class LeaveRequestService {
     currentStep.comments = input.reviewComments;
     currentStep.actedAt = new Date();
 
+    const reqEmpId = (request.employeeId as any)?._id
+      ? (request.employeeId as any)._id.toString()
+      : request.employeeId.toString();
+    const reqLeaveTypeId = (request.leaveTypeId as any)?._id
+      ? (request.leaveTypeId as any)._id.toString()
+      : request.leaveTypeId.toString();
+
     const year = request.fromDate.getFullYear();
 
     if (input.status === "REJECTED") {
       request.status = LeaveRequestStatus.REJECTED;
       await this.balanceService.releaseReservation(
-        context, request.employeeId.toString(), request.leaveTypeId.toString(), year, request.totalDays
+        context, reqEmpId, reqLeaveTypeId, year, request.totalDays
       );
     } else {
       const isLastLevel = request.currentApprovalLevel >= request.approvals.length;
       if (isLastLevel) {
         request.status = LeaveRequestStatus.APPROVED;
         await this.balanceService.confirmUsage(
-          context, request.employeeId.toString(), request.leaveTypeId.toString(), year, request.totalDays
+          context, reqEmpId, reqLeaveTypeId, year, request.totalDays
         );
         await this.syncToAttendance(context, request);
       } else {
@@ -292,6 +306,12 @@ export class LeaveRequestService {
 
   //Approved leave → mark attendance ON_LEAVE for the date range
   private async syncToAttendance(context: RequestContext, request: any) {
+    const empObjectId = (request.employeeId as any)?._id
+      ? (request.employeeId as any)._id
+      : request.employeeId;
+    const branchObjectId = (request.branchId as any)?._id
+      ? (request.branchId as any)._id
+      : request.branchId;
 
     const current = new Date(request.fromDate);
     const end = new Date(request.toDate);
@@ -302,14 +322,14 @@ export class LeaveRequestService {
       await AttendanceModel.findOneAndUpdate(
         {
           tenantId: request.tenantId,
-          employeeId: request.employeeId,
+          employeeId: empObjectId,
           attendanceDate: date,
         },
         {
           $setOnInsert: {
             tenantId: request.tenantId,
-            branchId: request.branchId,
-            employeeId: request.employeeId,
+            branchId: branchObjectId,
+            employeeId: empObjectId,
             shiftId: request.shiftId ?? null,
             attendanceDate: date,
             sessions: [],
