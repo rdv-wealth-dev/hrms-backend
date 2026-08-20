@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { LRUCache } from "lru-cache";
 import { logger } from "../../config/logger.config";
+import { env } from "../../config/env.config";
 
 // SHARED LRU CACHE ENGINE
 //
@@ -167,11 +168,11 @@ export async function loginRateLimiter(
 interface TenantLimiterOptions {
   // Per-user standard window
   userWindowMs?: number;  // default: 60,000 (1 min)
-  userMaxHits?:  number;  // default: 60
+  userMaxHits?:  number;  // default: 1200 (20 req/sec)
 
   // Per-branch window
   branchWindowMs?: number; // default: 60,000 (1 min)
-  branchMaxHits?:  number; // default: 600
+  branchMaxHits?:  number; // default: 6000
 
   // Org soft-limit window (always 1 min, limit is tier-derived)
   orgWindowMs?: number;    // default: 60,000
@@ -179,9 +180,9 @@ interface TenantLimiterOptions {
 
 export function createTenantRateLimiter(options: TenantLimiterOptions = {}) {
   const userWindowMs   = options.userWindowMs   ?? 60_000;
-  const userMaxHits    = options.userMaxHits     ?? 60;
+  const defaultUserMax = options.userMaxHits     ?? 1_200;
   const branchWindowMs = options.branchWindowMs  ?? 60_000;
-  const branchMaxHits  = options.branchMaxHits   ?? 600;
+  const branchMaxHits  = options.branchMaxHits   ?? 6_000;
   const orgWindowMs    = options.orgWindowMs     ?? 60_000;
 
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -196,6 +197,11 @@ export function createTenantRateLimiter(options: TenantLimiterOptions = {}) {
       });
       return;
     }
+
+    // High headroom for admin roles and local development environments
+    const isMasterAdmin = ["ORG_ADMIN", "HR_ADMIN", "CEO", "CTO"].includes(ctx.role);
+    const isDev = env.nodeEnv === "development" || env.nodeEnv === "test";
+    const userMaxHits = (isMasterAdmin || isDev) ? 5_000 : defaultUserMax;
 
     // ── Tier 1: Per-User (HARD)
     const userKey   = `rl:usr:${ctx.tenantId}:${ctx.userId}`;
@@ -219,7 +225,8 @@ export function createTenantRateLimiter(options: TenantLimiterOptions = {}) {
     // If a user belongs to multiple branches, the first is the "home" branch.
     const branchId  = ctx.branchIds?.[0] ?? "none";
     const branchKey = `rl:br:${ctx.tenantId}:${branchId}`;
-    const branchCheck = evaluateLimit(branchKey, branchWindowMs, branchMaxHits);
+    const effectiveBranchMax = isDev ? 20_000 : branchMaxHits;
+    const branchCheck = evaluateLimit(branchKey, branchWindowMs, effectiveBranchMax);
 
     if (!branchCheck.allowed) {
       res.set("Retry-After", String(branchCheck.resetSecs));
