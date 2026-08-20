@@ -18,6 +18,15 @@ export class LeaveRequestRepository {
       _id: new mongoose.Types.ObjectId(id),
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
+    });
+  }
+
+  async findPopulatedById(context: RequestContext, id: string): Promise<LeaveRequestDocument | null> {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    return LeaveRequestModel.findOne({
+      _id: new mongoose.Types.ObjectId(id),
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted: false,
     })
       .populate("employeeId", "employeeCode firstName lastName avatarUrl profilePicture")
       .populate("leaveTypeId", "name code isPaid");

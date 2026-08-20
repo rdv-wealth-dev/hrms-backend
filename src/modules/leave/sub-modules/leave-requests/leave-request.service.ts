@@ -229,7 +229,7 @@ export class LeaveRequestService {
       );
     }
 
-    return this.reqRepo.findById(context, id);
+    return this.reqRepo.findPopulatedById(context, id);
   }
 
   // Admin/Manager — pending queue for their role
@@ -306,7 +306,7 @@ export class LeaveRequestService {
       newValue: { status: input.status },
     });
 
-    return this.reqRepo.findById(context, id);
+    return this.reqRepo.findPopulatedById(context, id);
   }
 
   // Approved leave → mark attendance ON_LEAVE for the date range
