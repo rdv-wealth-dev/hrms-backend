@@ -182,12 +182,13 @@ export class LeaveRequestService {
     return this.reqRepo.findForEmployee(context, employeeId, page, pageSize);
   }
 
-  //Self-service — cancel
+  // Self-service — cancel
   async cancelRequest(context: RequestContext, id: string, input: CancelLeaveRequestInput) {
     const employeeId = await this.resolveOwnEmployeeId(context);
     const request = await this.reqRepo.findById(context, id);
     if (!request) throw new AppError("Leave request not found", 404);
 
+    // Safely extract string IDs: handles both populated documents and raw ObjectId references
     const reqEmpId = (request.employeeId as any)?._id
       ? (request.employeeId as any)._id.toString()
       : request.employeeId.toString();
@@ -214,7 +215,7 @@ export class LeaveRequestService {
 
     const year = request.fromDate.getFullYear();
     if (wasApproved) {
-      // Was already deducted from "used" — need to give it back
+      // Was already deducted from "used" — restore leave balance
       const balance = await this.balanceService.getOrCreateBalance(
         context, employeeId, reqLeaveTypeId, year
       );
@@ -222,6 +223,7 @@ export class LeaveRequestService {
       balance.available = balance.allocated + balance.carriedForward - balance.used - balance.pending;
       await (balance as any).save();
     } else {
+      // Release pending reserved days
       await this.balanceService.releaseReservation(
         context, employeeId, reqLeaveTypeId, year, request.totalDays
       );
@@ -230,12 +232,12 @@ export class LeaveRequestService {
     return this.reqRepo.findById(context, id);
   }
 
-  //Admin/Manager — pending queue for their role
+  // Admin/Manager — pending queue for their role
   async getPendingForRole(context: RequestContext, approverRole: string, page: number, pageSize: number) {
     return this.reqRepo.findPendingForApproverRole(context, approverRole, page, pageSize);
   }
 
-  //Admin/Manager — review a level
+  // Admin/Manager — review a level
   async review(context: RequestContext, id: string, input: ReviewLeaveRequestInput) {
     const request = await this.reqRepo.findById(context, id);
     if (!request) throw new AppError("Leave request not found", 404);
@@ -260,6 +262,7 @@ export class LeaveRequestService {
     currentStep.comments = input.reviewComments;
     currentStep.actedAt = new Date();
 
+    // Extract valid hex ObjectId strings to prevent [object Object] BSON conversion errors on populated refs
     const reqEmpId = (request.employeeId as any)?._id
       ? (request.employeeId as any)._id.toString()
       : request.employeeId.toString();
@@ -271,6 +274,7 @@ export class LeaveRequestService {
 
     if (input.status === "REJECTED") {
       request.status = LeaveRequestStatus.REJECTED;
+      // Release pending leave quota back to available pool
       await this.balanceService.releaseReservation(
         context, reqEmpId, reqLeaveTypeId, year, request.totalDays
       );
@@ -278,6 +282,7 @@ export class LeaveRequestService {
       const isLastLevel = request.currentApprovalLevel >= request.approvals.length;
       if (isLastLevel) {
         request.status = LeaveRequestStatus.APPROVED;
+        // Final approval: convert reserved pending balance to used and synchronize attendance status
         await this.balanceService.confirmUsage(
           context, reqEmpId, reqLeaveTypeId, year, request.totalDays
         );
@@ -304,8 +309,9 @@ export class LeaveRequestService {
     return this.reqRepo.findById(context, id);
   }
 
-  //Approved leave → mark attendance ON_LEAVE for the date range
+  // Approved leave → mark attendance ON_LEAVE for the date range
   private async syncToAttendance(context: RequestContext, request: any) {
+    // Ensure raw ObjectId instances are passed to AttendanceModel filter and insert
     const empObjectId = (request.employeeId as any)?._id
       ? (request.employeeId as any)._id
       : request.employeeId;
