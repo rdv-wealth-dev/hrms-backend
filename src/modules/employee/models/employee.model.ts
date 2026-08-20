@@ -87,7 +87,7 @@ export interface EmployeeDocument extends BaseDocument {
   // Organisation
   departmentId: mongoose.Types.ObjectId;
   designationId: mongoose.Types.ObjectId;
-  managerId?: mongoose.Types.ObjectId;   // reports to
+  managerId?: mongoose.Types.ObjectId;   // reports to (Reporting Manager / Approver)
   employeeType: EmployeeType;
   status: EmployeeStatus;
   joiningDate: Date;

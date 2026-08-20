@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { AppError, ForbiddenPermissionError } from "../errors/app.error";
 import { RequestContext } from "../types/request-context.interface";
 import { RoleModel } from "../../modules/role/role.model";
+import { EmployeeModel } from "../../modules/employee/models/employee.model";
 
 declare global {
   namespace Express {
@@ -12,35 +13,48 @@ declare global {
   }
 }
 
-// Check permission
-// Usage: router.get("/", authenticate, checkPermission("employee.read"), controller)
+// Master Org Admin roles that bypass granular permission checks
+const MASTER_ADMIN_ROLES = ["ORG_ADMIN", "SUPER_ADMIN"];
+
+/**
+ * Validates that the requesting user has the required permission.
+ * Usage: router.get("/", authenticate, checkPermission("employee.read"), controller.getEmployees)
+ */
 export const checkPermission = (requiredPermission: string) => {
   return async (
-    req:  Request,
+    req: Request,
     _res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
       const { role, tenantId } = req.context;
 
-      if (role === "ORG_ADMIN") {
+      // Master admins have unrestricted access
+      if (MASTER_ADMIN_ROLES.includes(role)) {
         next();
         return;
       }
 
       const roleDoc = await RoleModel.findOne({
-        tenantId:  new mongoose.Types.ObjectId(tenantId),
-        slug:      role,
-        isActive:  true,
+        tenantId: new mongoose.Types.ObjectId(tenantId),
+        slug: role,
+        isActive: true,
         isDeleted: false,
       }).select("permissions");
 
-      const permissions = roleDoc?.permissions ?? [];
+      if (!roleDoc) {
+        next(ForbiddenPermissionError(`Role '${role}' not found or inactive`));
+        return;
+      }
+
+      const permissions = roleDoc.permissions ?? [];
 
       if (!permissions.includes(requiredPermission)) {
-        next(ForbiddenPermissionError(
-          `Access denied. Required permission: ${requiredPermission}`
-        ));
+        next(
+          ForbiddenPermissionError(
+            `Access denied. Required permission: ${requiredPermission}`
+          )
+        );
         return;
       }
 
@@ -51,48 +65,51 @@ export const checkPermission = (requiredPermission: string) => {
   };
 };
 
-// Check role
-// Usage: router.post("/", authenticate, checkRole("HR_ADMIN"), controller)
+/**
+ * Validates that the requesting user's role is in the allowed list.
+ * Usage: router.post("/run", authenticate, checkRole("ORG_ADMIN", "HR_ADMIN", "CFO"), controller.runPayroll)
+ */
 export const checkRole = (...allowedRoles: string[]) => {
   return (
-    req:  Request,
+    req: Request,
     _res: Response,
     next: NextFunction
   ): void => {
     const { role } = req.context;
 
-    if (!allowedRoles.includes(role)) {
-      next(
-        new AppError(
-          `Access denied. Allowed roles: ${allowedRoles.join(", ")}`,
-          403
-        )
-      );
+    if (MASTER_ADMIN_ROLES.includes(role) || allowedRoles.includes(role)) {
+      next();
       return;
     }
 
-    next();
+    next(
+      new AppError(
+        `Access denied. Allowed roles: ${allowedRoles.join(", ")}`,
+        403
+      )
+    );
   };
 };
 
-// Check branch access
-// Verifies user has access to the branchId in req.params or req.body
+/**
+ * Checks branch access scoping.
+ * Ensures BRANCH_ADMIN or location managers can only operate within their assigned branchIds.
+ */
 export const checkBranchAccess = (
-  req:  Request,
+  req: Request,
   _res: Response,
   next: NextFunction
 ): void => {
   const { branchIds, role } = req.context;
 
-  // Org admin has access to all branches
-  if (role === "ORG_ADMIN" || !branchIds || branchIds.length === 0) {
+  // Org admins and roles with access to all branches bypass this check
+  if (MASTER_ADMIN_ROLES.includes(role) || role === "HR_ADMIN" || role === "CEO" || !branchIds || branchIds.length === 0) {
     next();
     return;
   }
 
-  // Get branchId from params or body
   const requestedBranchId = String(
-    req.params.branchId ?? req.body.branchId ?? ""
+    req.params.branchId ?? req.body.branchId ?? req.query.branchId ?? ""
   );
 
   if (!requestedBranchId) {
@@ -101,9 +118,63 @@ export const checkBranchAccess = (
   }
 
   if (!branchIds.includes(requestedBranchId)) {
-    next(new AppError("Access denied to this branch", 403));
+    next(new AppError("Access denied: You do not have access to this branch location", 403));
     return;
   }
 
   next();
+};
+
+/**
+ * Checks if the requesting user is the target employee themselves, their direct manager, or an HR/Org admin.
+ * Useful for leave approvals, attendance regularizations, and profile views.
+ */
+export const checkManagerOrSelf = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { role, userId, tenantId, employeeId } = req.context;
+
+    // Admins have full access
+    if (MASTER_ADMIN_ROLES.includes(role) || ["HR_ADMIN", "CEO", "COO"].includes(role)) {
+      next();
+      return;
+    }
+
+    const targetEmployeeId = String(
+      req.params.employeeId ?? req.params.id ?? req.body.employeeId ?? ""
+    );
+
+    if (!targetEmployeeId || !mongoose.Types.ObjectId.isValid(targetEmployeeId)) {
+      next();
+      return;
+    }
+
+    const currentEmpId = employeeId || userId;
+
+    // Self access
+    if (targetEmployeeId === currentEmpId) {
+      next();
+      return;
+    }
+
+    // Direct manager check
+    const targetEmp = await EmployeeModel.findOne({
+      _id: new mongoose.Types.ObjectId(targetEmployeeId),
+      tenantId: new mongoose.Types.ObjectId(tenantId),
+      isActive: true,
+      isDeleted: false,
+    }).select("managerId branchId");
+
+    if (targetEmp && targetEmp.managerId && targetEmp.managerId.toString() === currentEmpId) {
+      next();
+      return;
+    }
+
+    next(new AppError("Access denied: You can only access your own or direct report data", 403));
+  } catch (error) {
+    next(error);
+  }
 };

@@ -678,6 +678,7 @@ export class EmployeeService {
       if (mgr.managerId && mgr.managerId.toString() === id) {
         throw new AppError("Circular manager assignment detected: Manager currently reports to this employee", 400);
       }
+      updateData.managerId = new mongoose.Types.ObjectId(input.managerId);
     }
 
     const updated = await this.empRepo.updateById(context, id, updateData);

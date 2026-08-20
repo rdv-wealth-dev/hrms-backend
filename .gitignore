@@ -6,6 +6,8 @@ aesKeys.json
 *.md
 HRMS_FLOW.md
 ALL_APIS_DOCUMENTATION.md
+curl.md
+und.md
 # OSX
 #
 .DS_Store

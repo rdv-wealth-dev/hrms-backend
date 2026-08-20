@@ -22,7 +22,6 @@ const RoleSchema = createOrgLevelSchema<RoleDocument>({
     required: true,
     trim: true,
     uppercase: true,
-    // NO index:true here — defined below in compound index
   },
   description: {
     type: String,
