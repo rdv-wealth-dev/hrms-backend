@@ -28,6 +28,7 @@ import { SalaryStructureService } from "../../payroll/services/salary-structure.
 import { emailService } from "../../../shared/services/email.service";
 import { env } from "../../../config/env.config";
 import { BranchRepository } from "../../branch/branch.repository";
+import { BranchModel } from "../../branch/branch.model";
 import { s3Service } from "../../../shared/services/storage.service";
 import { recalculateProfileCompletion } from "../utils/profile-completion.util";
 import { ShiftRepository } from "../../attendance/repositories/shift.repository";
@@ -94,7 +95,28 @@ export class EmployeeService {
       );
     }
 
-    // 2. Check email uniqueness within tenant
+    // 2. Strict Branch Exclusivity Check:
+    // Ensure an ACTIVE employee with this email/identity does NOT already belong to any branch in this organization
+    const activeExisting = await EmployeeModel.findOne({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      $or: [
+        { email: input.email.toLowerCase() },
+        ...(input.pan ? [{ pan: input.pan.trim().toUpperCase() }] : []),
+        ...(input.aadhaar ? [{ aadhaar: input.aadhaar.replace(/[\s-]/g, "").trim() }] : []),
+      ],
+      isActive: true,
+      isDeleted: false,
+    }).populate("branchId", "name code");
+
+    if (activeExisting) {
+      const existingBranchName = (activeExisting.branchId as any)?.name || "another branch";
+      throw new AppError(
+        `Strict Branch Exclusivity Rule: This employee is already actively assigned to branch "${existingBranchName}". An employee cannot belong to multiple branches simultaneously until they are marked INACTIVE, TERMINATED, or TRANSFERRED.`,
+        409
+      );
+    }
+
+    // 3. Check email uniqueness within tenant
     const existing = await this.empRepo.findByEmail(context, input.email);
     if (existing) {
       throw new AppError(
@@ -102,7 +124,7 @@ export class EmployeeService {
         409
       );
     }
-    //Check if a user account already exists with this email in this tenant
+    // Check if a user account already exists with this email in this tenant
     const existingUser = await UserModel.findOne({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       email: input.email.toLowerCase(),
@@ -139,7 +161,17 @@ export class EmployeeService {
     }
 
     let branchId = input.branchId;
-    if (!branchId) {
+    if (branchId) {
+      const branchDoc = await BranchModel.findOne({
+        _id: new mongoose.Types.ObjectId(branchId),
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        isActive: true,
+        isDeleted: false,
+      });
+      if (!branchDoc) {
+        throw new AppError("Specified branch does not exist or is inactive in this organization.", 400);
+      }
+    } else {
       const branchRepo = new BranchRepository();
       const headOffice = await branchRepo.findHeadOffice(context.tenantId);
       if (!headOffice) {
@@ -661,6 +693,18 @@ export class EmployeeService {
     if (input.probationEndDate) updateData.probationEndDate = new Date(input.probationEndDate);
     if (input.departmentId) updateData.departmentId = new mongoose.Types.ObjectId(input.departmentId);
     if (input.designationId) updateData.designationId = new mongoose.Types.ObjectId(input.designationId);
+    if (input.branchId) {
+      const targetBranch = await BranchModel.findOne({
+        _id: new mongoose.Types.ObjectId(input.branchId),
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        isActive: true,
+        isDeleted: false,
+      });
+      if (!targetBranch) {
+        throw new AppError("Selected target branch does not exist or is inactive", 400);
+      }
+      updateData.branchId = targetBranch._id;
+    }
     if (input.managerId) {
       if (input.managerId === id) {
         throw new AppError("An employee cannot be assigned as their own reporting manager", 400);

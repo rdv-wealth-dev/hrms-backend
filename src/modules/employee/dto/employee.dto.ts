@@ -136,6 +136,7 @@ export const UpdateEmployeeDto = withPhoneValidation(z.object({
   voterId: voterIdSchema.optional(),
   departmentId: objectIdSchema.optional(),
   designationId: objectIdSchema.optional(),
+  branchId: objectIdSchema.optional(),
   managerId: objectIdSchema.optional(),
   employeeType: z.enum(["FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"]).optional(),
   confirmationDate: dateSchema.optional(),
