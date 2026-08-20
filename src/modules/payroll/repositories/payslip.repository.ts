@@ -45,8 +45,13 @@ export class PayslipRepository {
     ]);
 
     let filteredData = data;
-    if (filter.branchId) {
-      filteredData = data.filter(
+    if (context.role === "BRANCH_ADMIN" && context.branchIds?.length) {
+      const allowedBranchStrs = context.branchIds.map(b => b.toString());
+      filteredData = filteredData.filter(
+        (p: any) => p.employeeId && allowedBranchStrs.includes((p.employeeId as any).branchId?.toString())
+      );
+    } else if (filter.branchId) {
+      filteredData = filteredData.filter(
         (p: any) => p.employeeId && (p.employeeId as any).branchId?.toString() === filter.branchId
       );
     }
