@@ -12,6 +12,14 @@ import { PayrollAuditService } from "../services/payroll-audit.service";
 import { PayrollDisbursementService } from "../services/payroll-disbursement.service";
 import { PayrollComplianceService } from "../services/payroll-compliance.service";
 import { PayrollGLService } from "../services/payroll-gl.service";
+import { SalaryStructureTemplateService } from "../services/salary-structure-template.service";
+import { PayslipTemplateService } from "../services/payslip-template.service";
+import { BankPayoutFormatService } from "../services/bank-payout-format.service";
+import { EpfoEsicComplianceService } from "../services/epfo-esic-compliance.service";
+import { BankPayoutConfigModel } from "../models/bank-payout-config.model";
+import { PfEsiConfigModel } from "../models/statutory-config.model";
+import { PayslipModel } from "../models/payslip.model";
+import { PayrollRunModel } from "../models/payroll-run.model";
 
 const componentService = new SalaryComponentService();
 const structureService = new SalaryStructureService();
@@ -28,6 +36,8 @@ const auditService = new PayrollAuditService();
 const disbursementService = new PayrollDisbursementService();
 const complianceService = new PayrollComplianceService();
 const glService = new PayrollGLService();
+const structureTemplateService = new SalaryStructureTemplateService();
+const payslipTemplateService = new PayslipTemplateService();
 
 export class PayrollController {
 
@@ -785,4 +795,265 @@ export class PayrollController {
       res.status(200).json(buildSuccessResponse(result, "GL journal generated"));
     } catch (e) { next(e); }
   }
-}
+
+  // ── Multi-Structure Blueprint Templates ───────────────────────────────────
+
+  async listStructureTemplates(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await structureTemplateService.listTemplates(req.context!.tenantId);
+      res.status(200).json(buildSuccessResponse(result, "Salary structure templates fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async createStructureTemplate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await structureTemplateService.createTemplate(req.context!.tenantId, req.body);
+      res.status(201).json(buildSuccessResponse(result, "Salary structure template created"));
+    } catch (e) { next(e); }
+  }
+
+  async assignStructureBulk(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { templateId, employeeIds, annualCtc, effectiveFrom } = req.body;
+      const result = await structureTemplateService.assignBulk(
+        req.context!.tenantId,
+        templateId,
+        employeeIds,
+        annualCtc,
+        new Date(effectiveFrom)
+      );
+      res.status(200).json(buildSuccessResponse(result, "Structure assigned in bulk successfully"));
+    } catch (e) { next(e); }
+  }
+
+  // ── 6-Step Controlled Payroll Run Pipeline ────────────────────────────────
+
+  async getAttendanceSyncStep(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const run = await runService.getById(req.context!, req.params.id);
+      res.status(200).json(buildSuccessResponse({
+        runId: run._id,
+        wizardStep: (run as any).wizardStep || "ATTENDANCE",
+        month: run.month,
+        year: run.year,
+        totalEmployees: run.totalEmployees,
+      }, "Attendance synchronization step state"));
+    } catch (e) { next(e); }
+  }
+
+  async saveWageInputsStep(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { wageInputs } = req.body;
+      const run = await PayrollRunModel.findOneAndUpdate(
+        { _id: req.params.id, tenantId: req.context!.tenantId },
+        {
+          $set: {
+            wageBasedInputs: wageInputs,
+            wizardStep: "WAGES",
+          },
+        },
+        { new: true }
+      );
+      res.status(200).json(buildSuccessResponse(run, "Wage and overtime inputs saved successfully"));
+    } catch (e) { next(e); }
+  }
+
+  async saveSalaryHoldStep(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { holdList } = req.body;
+      const run = await PayrollRunModel.findOneAndUpdate(
+        { _id: req.params.id, tenantId: req.context!.tenantId },
+        {
+          $set: {
+            salaryOnHoldEmployees: holdList,
+            wizardStep: "ON_HOLD",
+          },
+        },
+        { new: true }
+      );
+      res.status(200).json(buildSuccessResponse(run, "Salary on-hold list updated successfully"));
+    } catch (e) { next(e); }
+  }
+
+  async saveTaxOverrideStep(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { overrides } = req.body;
+      const run = await PayrollRunModel.findOneAndUpdate(
+        { _id: req.params.id, tenantId: req.context!.tenantId },
+        {
+          $set: {
+            manualTaxOverrides: overrides,
+            wizardStep: "TAX_OVERRIDE",
+          },
+        },
+        { new: true }
+      );
+      res.status(200).json(buildSuccessResponse(run, "Manual tax overrides saved successfully"));
+    } catch (e) { next(e); }
+  }
+
+  async generateBatchPayslips(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await runService.generatePayslips(req.context!, req.params.id);
+      res.status(200).json(buildSuccessResponse(result, "Batch payslip generation complete"));
+    } catch (e) { next(e); }
+  }
+
+  // ── Universal Bank Payout Exports ─────────────────────────────────────────
+
+  async listBankFormats(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const presets = BankPayoutFormatService.getAvailableFormats();
+      const customConfigs = await BankPayoutConfigModel.find({
+        tenantId: req.context!.tenantId,
+        isActive: true,
+      });
+      res.status(200).json(buildSuccessResponse({ presets, customConfigs }, "Bank formats retrieved"));
+    } catch (e) { next(e); }
+  }
+
+  async createBankFormat(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const config = await BankPayoutConfigModel.create({
+        ...req.body,
+        tenantId: req.context!.tenantId,
+      });
+      res.status(201).json(buildSuccessResponse(config, "Custom bank format saved successfully"));
+    } catch (e) { next(e); }
+  }
+
+  async exportBankPayoutFile(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const bankCode = (req.query.bankCode as string) || "STANDARD_CSV";
+      const configId = req.query.configId as string;
+
+      const run = await PayrollRunModel.findOne({
+        _id: req.params.id,
+        tenantId: req.context!.tenantId,
+      });
+      if (!run) {
+        res.status(404).json({ success: false, message: "Payroll run not found" });
+        return;
+      }
+
+      const payslips = await PayslipModel.find({
+        payrollRunId: run._id,
+        tenantId: req.context!.tenantId,
+      }).populate("employeeId");
+
+      const records = BankPayoutFormatService.buildDisbursementRecords(run, payslips);
+
+      let customConfig = null;
+      if (configId) {
+        customConfig = await BankPayoutConfigModel.findOne({
+          _id: configId,
+          tenantId: req.context!.tenantId,
+          isActive: true,
+        });
+      } else {
+        customConfig = await BankPayoutConfigModel.findOne({
+          tenantId: req.context!.tenantId,
+          bankCode: bankCode.toUpperCase(),
+          isActive: true,
+        });
+      }
+
+      const formatTarget = customConfig ? (customConfig.toObject() as any) : bankCode;
+      const fileData = BankPayoutFormatService.formatBankExport(records, formatTarget);
+
+      res.setHeader("Content-Type", fileData.mimeType);
+      res.setHeader("Content-Disposition", `attachment; filename="${fileData.filename}"`);
+      res.send(fileData.fileContent);
+    } catch (e) { next(e); }
+  }
+
+  // ── Statutory Compliance Returns ──────────────────────────────────────────
+
+  async downloadEpfoEcrText(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const run = await PayrollRunModel.findOne({
+        _id: req.params.id,
+        tenantId: req.context!.tenantId,
+      });
+      if (!run) {
+        res.status(404).json({ success: false, message: "Payroll run not found" });
+        return;
+      }
+
+      const payslips = await PayslipModel.find({
+        payrollRunId: run._id,
+        tenantId: req.context!.tenantId,
+      }).populate("employeeId");
+
+      const pfConfig = await PfEsiConfigModel.findOne({
+        tenantId: req.context!.tenantId,
+        isActive: true,
+      });
+
+      const fileContent = EpfoEsicComplianceService.generateEpfoEcrText(
+        run,
+        payslips,
+        pfConfig ? (pfConfig.toObject() as any) : undefined
+      );
+      res.setHeader("Content-Type", "text/plain");
+      res.setHeader("Content-Disposition", `attachment; filename="EPFO_ECR_${run.month}_${run.year}.txt"`);
+      res.send(fileContent);
+    } catch (e) { next(e); }
+  }
+
+  async downloadEsicReturnCsv(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const run = await PayrollRunModel.findOne({
+        _id: req.params.id,
+        tenantId: req.context!.tenantId,
+      });
+      if (!run) {
+        res.status(404).json({ success: false, message: "Payroll run not found" });
+        return;
+      }
+
+      const payslips = await PayslipModel.find({
+        payrollRunId: run._id,
+        tenantId: req.context!.tenantId,
+      }).populate("employeeId");
+
+      const esiConfig = await PfEsiConfigModel.findOne({
+        tenantId: req.context!.tenantId,
+        isActive: true,
+      });
+
+      const fileContent = EpfoEsicComplianceService.generateEsicReturnCsv(
+        run,
+        payslips,
+        esiConfig ? (esiConfig.toObject() as any) : undefined
+      );
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename="ESIC_Monthly_Return_${run.month}_${run.year}.csv"`);
+      res.send(fileContent);
+    } catch (e) { next(e); }
+  }
+
+  // ── Payslip Layout Customizer ─────────────────────────────────────────────
+
+  async listPayslipTemplates(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await payslipTemplateService.listTemplates(req.context!.tenantId);
+      res.status(200).json(buildSuccessResponse(result, "Payslip templates fetched"));
+    } catch (e) { next(e); }
+  }
+
+  async createPayslipTemplate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await payslipTemplateService.createCustomTemplate(req.context!.tenantId, req.body);
+      res.status(201).json(buildSuccessResponse(result, "Payslip template created successfully"));
+    } catch (e) { next(e); }
+  }
+
+  async setDefaultPayslipTemplate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { templateCode } = req.body;
+      const result = await payslipTemplateService.setDefaultFormat(req.context!.tenantId, templateCode);
+      res.status(200).json(buildSuccessResponse(result, `Default payslip layout set to ${templateCode}`));
+    } catch (e) { next(e); }
+  }
+}

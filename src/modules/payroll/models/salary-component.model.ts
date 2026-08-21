@@ -1,33 +1,54 @@
 import mongoose from "mongoose";
 import { createOrgLevelSchema, OrgLevelDocument } from "../../../shared/database/base.schema";
-import { create } from "domain";
-
-// A salary component is a reusable building block — Basic, HRA, Conveyance,
-// PF Deduction, etc. Tenant-defined, not hardcoded — matches the same
-// "policy engine" principle we applied to LeaveType: no fixed component
-// list baked into code, HR defines whatever their CTC structure needs.
 
 export enum ComponentType {
-    EARNING = "EARNING",    // adds to gross
-    DEDUCTION = "DEDUCTION",    // subtracts from gross
+    EARNING = "EARNING",       // adds to gross
+    DEDUCTION = "DEDUCTION",   // subtracts from gross
+    CONTRIBUTION = "CONTRIBUTION" // employer contribution (PF, ESI, Gratuity)
+}
+
+export enum ComponentCategory {
+    BASE = "BASE",             // Basic, HRA, Special Allowance
+    RECURRING = "RECURRING",   // Vehicle, Travel, AK Allowance
+    VARIABLE = "VARIABLE",     // Monthly Incentive, Bonuses (Festival, Xmas, Annual)
+    ADHOC = "ADHOC"            // Advances, Loans, Arrears, One-off adjustments
 }
 
 export enum ComponentCalculationType {
-    FLAT = "FLAT",                      // fixed amount every cycle
-    PERCENTAGE_OF = "PERCENTAGE_OF",    // % of another component (e.g. HRA = 40% of Basic)
-    FORMULA = "FORMULA"                 // reserved for future — custom expression
+    FLAT = "FLAT",                         // fixed amount every cycle
+    PERCENTAGE_OF = "PERCENTAGE_OF",       // % of another component (e.g. HRA = 40% of Basic)
+    PERCENTAGE_OF_BASIC = "PERCENTAGE_OF_BASIC",
+    PERCENTAGE_OF_CTC = "PERCENTAGE_OF_CTC",
+    FORMULA = "FORMULA",                   // Custom expression: e.g. "12000 * 12", "Basic * 0.0481"
+    SLAB_WISE = "SLAB_WISE",               // Tiered bracket formula
+    BALANCING_AMOUNT = "BALANCING_AMOUNT"  // Balances out the remaining CTC
+}
+
+export enum PayoutFrequency {
+    MONTHLY = "MONTHLY",
+    QUARTERLY = "QUARTERLY",
+    ANNUALLY = "ANNUALLY"
 }
 
 export interface SalaryComponentDocument extends OrgLevelDocument {
-    name: string;   // "Basic", "HRA", "Provident Fund"
-    code: string;   // "BASIC", "HRA", "PF"
+    name: string;                   // "Basic", "HRA", "Festival Bonus"
+    code: string;                   // "BASIC", "HRA", "FESTIVAL_BONUS"
     type: ComponentType;
+    category: ComponentCategory;
     calculationType: ComponentCalculationType;
-    percentageOf?: string;   // component code this is a % of, if PERCENTAGE_OF
-    percentageValue?: number;   // e.g. 40 for 40%
+    formulaExpression?: string;     // e.g. "CTC * 0.40", "12000 * 12", "Basic * 0.0481"
+    percentageOf?: string;          // component code this is a % of, if PERCENTAGE_OF
+    percentageValue?: number;       // e.g. 40 for 40%
+    payoutFrequency: PayoutFrequency;
+    dueMonth?: number;              // 1 to 12 (e.g. 10 for October annual bonus)
     isTaxable: boolean;
-    isPartOfWages: boolean;  // counts toward the 50% "wages" floor under the 2026 Labour Codes
-    isStatutory: boolean;  // system-managed (PF, ESI, PT, TDS) vs HR-defined
+    proofRequired: boolean;         // Needs tax exemption proof document upload
+    isLopDependent: boolean;        // Proportionately deducted on unpaid leave / LOP
+    isEsiApplicable: boolean;       // Included in ESI gross threshold calculation
+    isIncludedInCtc: boolean;       // Formally factored inside employee's Annual CTC
+    allowIndividualOverride: boolean;// Can HR manually customize this amount per employee
+    isPartOfWages: boolean;         // 50% "wages" floor under 2026 Labour Codes
+    isStatutory: boolean;           // system-managed vs HR-defined
     isActive: boolean;
 }
 
@@ -44,17 +65,26 @@ const SalaryComponentSchema = createOrgLevelSchema<SalaryComponentDocument>(
             required: true,
             trim: true,
             uppercase: true,
-            maxLength: 20,
+            maxLength: 50,
         },
         type: {
             type: String,
             enum: Object.values(ComponentType),
             required: true,
         },
+        category: {
+            type: String,
+            enum: Object.values(ComponentCategory),
+            default: ComponentCategory.BASE,
+        },
         calculationType: {
             type: String,
             enum: Object.values(ComponentCalculationType),
             default: ComponentCalculationType.FLAT,
+        },
+        formulaExpression: {
+            type: String,
+            trim: true,
         },
         percentageOf: {
             type: String,
@@ -64,17 +94,42 @@ const SalaryComponentSchema = createOrgLevelSchema<SalaryComponentDocument>(
         percentageValue: {
             type: Number,
             min: 0,
-            max: 100,
+        },
+        payoutFrequency: {
+            type: String,
+            enum: Object.values(PayoutFrequency),
+            default: PayoutFrequency.MONTHLY,
+        },
+        dueMonth: {
+            type: Number,
+            min: 1,
+            max: 12,
         },
         isTaxable: {
             type: Boolean,
             default: true,
         },
+        proofRequired: {
+            type: Boolean,
+            default: false,
+        },
+        isLopDependent: {
+            type: Boolean,
+            default: true,
+        },
+        isEsiApplicable: {
+            type: Boolean,
+            default: true,
+        },
+        isIncludedInCtc: {
+            type: Boolean,
+            default: true,
+        },
+        allowIndividualOverride: {
+            type: Boolean,
+            default: false,
+        },
         isPartOfWages: {
-            // See statutory_compliance_labour_codes_2026.md §2 — under the 2026
-            // Labour Codes, allowances excluded from "wages" cannot exceed 50%
-            // of total remuneration. Components marked false here are the
-            // "excludable" ones (HRA, conveyance, special allowance etc.)
             type: Boolean,
             default: true,
         },
@@ -92,9 +147,10 @@ const SalaryComponentSchema = createOrgLevelSchema<SalaryComponentDocument>(
 
 SalaryComponentSchema.index({ tenantId: 1, code: 1 }, { unique: true });
 SalaryComponentSchema.index({ tenantId: 1, type: 1 });
+SalaryComponentSchema.index({ tenantId: 1, category: 1 });
 SalaryComponentSchema.index({ tenantId: 1, isActive: 1 });
 
 export const SalaryComponentModel = mongoose.model<SalaryComponentDocument>(
     "SalaryComponent",
     SalaryComponentSchema
-);
+);

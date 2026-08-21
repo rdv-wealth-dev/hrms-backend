@@ -271,3 +271,144 @@ export const UpsertPayrollGLConfigDto = z.object({
 });
 export type UpsertPayrollGLConfigInput = z.infer<typeof UpsertPayrollGLConfigDto>;
 
+// ── Structure Template DTOs ──
+export const StructureTemplateRuleDto = z.object({
+  componentCode: z.string().min(1).toUpperCase(),
+  calculationType: z.string().min(1),
+  formulaExpression: z.string().min(1),
+  roundMode: z.enum(["ROUND", "FLOOR", "CEIL"]).optional().default("ROUND"),
+});
+
+export const CreateSalaryStructureTemplateDto = z.object({
+  name: z.string().min(2).max(100),
+  description: z.string().optional(),
+  structureType: z.enum(["REGULAR", "CONTRACTOR", "JOB_BASED_WAGE", "HOURLY_WAGE"]).optional().default("REGULAR"),
+  isCompanyDefault: z.boolean().optional().default(false),
+  earningsRules: z.array(StructureTemplateRuleDto),
+  deductionsRules: z.array(StructureTemplateRuleDto).optional().default([]),
+});
+export type CreateSalaryStructureTemplateInput = z.infer<typeof CreateSalaryStructureTemplateDto>;
+
+export const AssignStructureBulkDto = z.object({
+  templateId: z.string().min(24),
+  employeeIds: z.array(z.string().min(24)).min(1),
+  annualCtc: z.number().positive(),
+  effectiveFrom: z.string().datetime(),
+});
+export type AssignStructureBulkInput = z.infer<typeof AssignStructureBulkDto>;
+
+// ── 6-Step Wizard DTOs ──
+export const SaveWageInputsDto = z.object({
+  wageInputs: z.array(
+    z.object({
+      employeeId: z.string().min(24),
+      type: z.enum(["HOURLY", "DAILY", "JOB_BASED"]),
+      rate: z.number().min(0),
+      unitsWorked: z.number().min(0),
+      overtimeHours: z.number().min(0).optional(),
+      overtimeAmount: z.number().min(0).optional(),
+    })
+  ),
+});
+export type SaveWageInputsInput = z.infer<typeof SaveWageInputsDto>;
+
+export const SaveSalaryHoldDto = z.object({
+  holdList: z.array(
+    z.object({
+      employeeId: z.string().min(24),
+      reason: z.string().optional(),
+    })
+  ),
+});
+export type SaveSalaryHoldInput = z.infer<typeof SaveSalaryHoldDto>;
+
+export const SaveTaxOverrideDto = z.object({
+  overrides: z.array(
+    z.object({
+      employeeId: z.string().min(24),
+      incomeTaxOverride: z.number().min(0).optional(),
+      ptOverride: z.number().min(0).optional(),
+      remarks: z.string().optional(),
+    })
+  ),
+});
+export type SaveTaxOverrideInput = z.infer<typeof SaveTaxOverrideDto>;
+
+export const BatchGeneratePayslipsDto = z.object({
+  employeeIds: z.array(z.string().min(24)).optional(),
+  sendEmailNotification: z.boolean().optional().default(false),
+  sendSmsNotification: z.boolean().optional().default(false),
+});
+export type BatchGeneratePayslipsInput = z.infer<typeof BatchGeneratePayslipsDto>;
+
+export const CreatePayslipTemplateDto = z.object({
+  name: z.string().min(2).max(100),
+  templateCode: z.string().min(1).max(50).toUpperCase(),
+  layoutType: z.enum(["STANDARD", "COMPACT", "MODERN_GRID", "EXECUTIVE", "CUSTOM_HTML"]).optional().default("STANDARD"),
+  isCompanyDefault: z.boolean().optional().default(false),
+  sections: z.object({
+    showCompanyLogo: z.boolean().optional().default(true),
+    showCompanyCin: z.boolean().optional().default(true),
+    showEmployeePhoto: z.boolean().optional().default(false),
+    showDepartmentDesignation: z.boolean().optional().default(true),
+    showPanUan: z.boolean().optional().default(true),
+    showBankDetails: z.boolean().optional().default(true),
+    showAttendanceSummary: z.boolean().optional().default(true),
+    showLeaveBalances: z.boolean().optional().default(true),
+    showYtdTaxSummary: z.boolean().optional().default(true),
+    showEmployerContributions: z.boolean().optional().default(true),
+    showNetPayInWords: z.boolean().optional().default(true),
+    showDigitalSignatureBox: z.boolean().optional().default(true),
+  }).optional(),
+  customDisclaimerText: z.string().optional(),
+  headerColorHex: z.string().optional(),
+  accentColorHex: z.string().optional(),
+  customCss: z.string().optional(),
+  htmlTemplate: z.string().optional(),
+});
+export type CreatePayslipTemplateInput = z.infer<typeof CreatePayslipTemplateDto>;
+
+export const SetPayslipTemplateDto = z.object({
+  templateCode: z.string().min(1).toUpperCase(),
+});
+export type SetPayslipTemplateInput = z.infer<typeof SetPayslipTemplateDto>;
+
+export const CreateBankPayoutConfigDto = z.object({
+  name: z.string().min(2).max(100),
+  bankCode: z.string().min(2).max(50).toUpperCase(),
+  bankName: z.string().min(2).max(100),
+  branchId: z.string().min(24).optional().nullable(),
+  delimiter: z.string().min(1).default(","),
+  fileExtension: z.enum(["csv", "txt", "tsv"]).default("csv"),
+  mimeType: z.enum(["text/csv", "text/plain", "text/tab-separated-values"]).default("text/csv"),
+  includeHeader: z.boolean().default(true),
+  quoteStrings: z.boolean().default(true),
+  isDefault: z.boolean().default(false),
+  columns: z.array(
+    z.object({
+      headerName: z.string().min(1),
+      fieldSource: z.enum([
+        "ACCOUNT_NUMBER",
+        "NET_AMOUNT",
+        "BENEFICIARY_NAME",
+        "IFSC_CODE",
+        "REMARKS",
+        "EMAIL",
+        "EMPLOYEE_CODE",
+        "BANK_NAME",
+        "BRANCH_NAME",
+        "PAYMENT_DATE",
+        "STATIC_VALUE",
+      ]),
+      staticValue: z.string().optional(),
+      format: z.enum(["2_DECIMALS", "NO_DECIMALS", "YYYYMMDD", "DD/MM/YYYY", "RAW"]).optional(),
+      fixedWidth: z.number().optional(),
+      defaultValue: z.string().optional(),
+    })
+  ).min(1),
+});
+export type CreateBankPayoutConfigInput = z.infer<typeof CreateBankPayoutConfigDto>;
+
+
+
+

@@ -221,3 +221,55 @@ export const OvertimeConfigModel = mongoose.model<OvertimeConfigDocument>(
   "OvertimeConfig",
   OvertimeConfigSchema
 );
+
+// =============================================================================
+// PF & ESI STATUTORY COMPLIANCE CONFIG
+// =============================================================================
+
+export interface PfEsiConfigDocument extends BaseDocument {
+  isPfEnabled: boolean;
+  pfWageCeiling: number;
+  restrictPfToWageCeiling: boolean;
+  employeePfRate: number;
+  employerPfRate: number;
+  isEpsEnabled: boolean;
+  epsRate: number;
+  epsCeilingAmount: number;
+  edliRate: number;
+  adminChargesRate: number;
+  isEsiEnabled: boolean;
+  esiGrossCeiling: number;
+  employeeEsiRate: number;
+  employerEsiRate: number;
+  isActive: boolean;
+}
+
+const PfEsiConfigSchema = createBaseSchema<PfEsiConfigDocument>(
+  {
+    isPfEnabled: { type: Boolean, default: true },
+    pfWageCeiling: { type: Number, default: 15000 },
+    restrictPfToWageCeiling: { type: Boolean, default: true },
+    employeePfRate: { type: Number, default: 0.12 },
+    employerPfRate: { type: Number, default: 0.12 },
+    isEpsEnabled: { type: Boolean, default: true },
+    epsRate: { type: Number, default: 0.0833 },
+    epsCeilingAmount: { type: Number, default: 1250 },
+    edliRate: { type: Number, default: 0.005 },
+    adminChargesRate: { type: Number, default: 0.005 },
+
+    isEsiEnabled: { type: Boolean, default: true },
+    esiGrossCeiling: { type: Number, default: 21000 },
+    employeeEsiRate: { type: Number, default: 0.0075 },
+    employerEsiRate: { type: Number, default: 0.0325 },
+    isActive: { type: Boolean, default: true },
+  },
+  { collection: "payroll_pf_esi_configs" }
+);
+
+PfEsiConfigSchema.index({ tenantId: 1 }, { unique: true });
+
+export const PfEsiConfigModel = mongoose.model<PfEsiConfigDocument>(
+  "PfEsiConfig",
+  PfEsiConfigSchema
+);
+

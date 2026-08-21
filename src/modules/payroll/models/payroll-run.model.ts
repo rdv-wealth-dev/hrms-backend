@@ -41,6 +41,28 @@ export interface PayrollRunDocument extends BaseDocument {
   skippedEmployees?: string[];
   erroredEmployees?: string[];
 
+  // 10-Step Full Wizard Pipeline State
+  wizardStep?: "OVERVIEW" | "ATTENDANCE" | "WAGES" | "REVISIONS" | "VARIABLE_ADHOC" | "ON_HOLD" | "TAX_OVERRIDE" | "PAY_REGISTER" | "BANK_FILE" | "POST_AND_RECONCILE";
+  isPeriodLocked?: boolean;
+  salaryOnHoldEmployees?: Array<{
+    employeeId: mongoose.Types.ObjectId;
+    reason?: string;
+    heldAt?: Date;
+  }>;
+  manualTaxOverrides?: Array<{
+    employeeId: mongoose.Types.ObjectId;
+    incomeTaxOverride?: number;
+    ptOverride?: number;
+    remarks?: string;
+  }>;
+  wageBasedInputs?: Array<{
+    employeeId: mongoose.Types.ObjectId;
+    type: "HOURLY" | "DAILY" | "JOB_BASED";
+    rate: number;
+    unitsWorked: number;
+    overtimeHours?: number;
+    overtimeAmount?: number;
+  }>;
 }
 
 const PayrollRunSchema = createBaseSchema<PayrollRunDocument>(
@@ -54,6 +76,8 @@ const PayrollRunSchema = createBaseSchema<PayrollRunDocument>(
     year: {
       type: Number,
       required: true,
+      min: 2000,
+      max: 2100,
     },
     runLabel: {
       type: String,
@@ -90,6 +114,59 @@ const PayrollRunSchema = createBaseSchema<PayrollRunDocument>(
     validationErrors: { type: [String], default: [] },
     skippedEmployees: { type: [String], default: [] },
     erroredEmployees: { type: [String], default: [] },
+
+    // 10-Step Wizard Pipeline
+    wizardStep: {
+      type: String,
+      enum: [
+        "OVERVIEW",
+        "ATTENDANCE",
+        "WAGES",
+        "REVISIONS",
+        "VARIABLE_ADHOC",
+        "ON_HOLD",
+        "TAX_OVERRIDE",
+        "PAY_REGISTER",
+        "BANK_FILE",
+        "POST_AND_RECONCILE",
+      ],
+      default: "OVERVIEW",
+    },
+    isPeriodLocked: { type: Boolean, default: false },
+    salaryOnHoldEmployees: {
+      type: [
+        {
+          employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
+          reason: { type: String },
+          heldAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
+    manualTaxOverrides: {
+      type: [
+        {
+          employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
+          incomeTaxOverride: { type: Number },
+          ptOverride: { type: Number },
+          remarks: { type: String },
+        },
+      ],
+      default: [],
+    },
+    wageBasedInputs: {
+      type: [
+        {
+          employeeId: { type: mongoose.Schema.Types.ObjectId, ref: "Employee" },
+          type: { type: String, enum: ["HOURLY", "DAILY", "JOB_BASED"] },
+          rate: { type: Number, required: true },
+          unitsWorked: { type: Number, required: true },
+          overtimeHours: { type: Number, default: 0 },
+          overtimeAmount: { type: Number, default: 0 },
+        },
+      ],
+      default: [],
+    },
   },
   { collection: "payroll_runs" }
 );

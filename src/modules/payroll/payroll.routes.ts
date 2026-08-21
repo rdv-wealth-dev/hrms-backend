@@ -13,6 +13,9 @@ import {
   TaxDeclarationDto,
   CreatePayrollAdjustmentDto, BulkCreatePayrollAdjustmentDto, RejectAdjustmentDto,
   UpsertPayrollGLConfigDto,
+  CreateSalaryStructureTemplateDto, AssignStructureBulkDto,
+  SaveWageInputsDto, SaveSalaryHoldDto, SaveTaxOverrideDto, BatchGeneratePayslipsDto,
+  CreatePayslipTemplateDto, SetPayslipTemplateDto, CreateBankPayoutConfigDto,
 } from "./dto/payroll.dto";
 import { PayrollCalendarPolicyController } from "./controllers/payroll-calendar-policy.controller";
 import { UpsertPayrollCalendarPolicyDto } from "./dto/payroll-calendar-policy.dto";
@@ -431,6 +434,116 @@ router.get(
   "/calendar-policy/preview",
   checkPermission("payroll.read"),
   calendarPolicyCtrl.previewCycle.bind(calendarPolicyCtrl)
+);
+
+// ── Multi-Structure Blueprint Templates ──
+router.get(
+  "/structures/templates",
+  checkPermission("payroll.read"),
+  ctrl.listStructureTemplates.bind(ctrl)
+);
+
+router.post(
+  "/structures/templates",
+  checkPermission("payroll.create"),
+  validateBody(CreateSalaryStructureTemplateDto),
+  ctrl.createStructureTemplate.bind(ctrl)
+);
+
+router.post(
+  "/structures/assign-bulk",
+  checkPermission("payroll.create"),
+  validateBody(AssignStructureBulkDto),
+  ctrl.assignStructureBulk.bind(ctrl)
+);
+
+// ── 6-Step Controlled Payroll Run Pipeline ──
+router.get(
+  "/runs/:id/steps/attendance-sync",
+  checkPermission("payroll.read"),
+  ctrl.getAttendanceSyncStep.bind(ctrl)
+);
+
+router.post(
+  "/runs/:id/steps/wage-inputs",
+  checkPermission("payroll.create"),
+  validateBody(SaveWageInputsDto),
+  ctrl.saveWageInputsStep.bind(ctrl)
+);
+
+router.post(
+  "/runs/:id/steps/hold-salary",
+  checkPermission("payroll.create"),
+  validateBody(SaveSalaryHoldDto),
+  ctrl.saveSalaryHoldStep.bind(ctrl)
+);
+
+router.post(
+  "/runs/:id/steps/tax-override",
+  checkPermission("payroll.create"),
+  validateBody(SaveTaxOverrideDto),
+  ctrl.saveTaxOverrideStep.bind(ctrl)
+);
+
+router.post(
+  "/runs/:id/generate-batch",
+  checkPermission("payroll.run"),
+  validateBody(BatchGeneratePayslipsDto),
+  ctrl.generateBatchPayslips.bind(ctrl)
+);
+
+// ── Universal Bank Payout Exports ──
+router.get(
+  "/bank-formats",
+  checkPermission("payroll.read"),
+  ctrl.listBankFormats.bind(ctrl)
+);
+
+router.post(
+  "/bank-formats",
+  checkPermission("payroll.create"),
+  validateBody(CreateBankPayoutConfigDto),
+  ctrl.createBankFormat.bind(ctrl)
+);
+
+router.get(
+  "/runs/:id/payout/export",
+  checkPermission("payroll.run"),
+  ctrl.exportBankPayoutFile.bind(ctrl)
+);
+
+// ── Statutory Compliance Returns ──
+router.get(
+  "/runs/:id/statutory/epfo-ecr-txt",
+  checkPermission("payroll.run"),
+  ctrl.downloadEpfoEcrText.bind(ctrl)
+);
+
+router.get(
+  "/runs/:id/statutory/esic-csv",
+  checkPermission("payroll.run"),
+  ctrl.downloadEsicReturnCsv.bind(ctrl)
+);
+
+// ── Payslip Layout Customizer Templates ──
+router.get(
+  "/payslip-templates",
+  checkPermission("payroll.read"),
+  ctrl.listPayslipTemplates.bind(ctrl)
+);
+
+router.post(
+  "/payslip-templates",
+  checkPermission("payroll.create"),
+  validateBody(CreatePayslipTemplateDto),
+  ctrl.createPayslipTemplate.bind(ctrl)
+);
+
+router.post(
+  "/payslip-templates/default",
+  checkPermission("payroll.create"),
+  validateBody(SetPayslipTemplateDto),
+  ctrl.setDefaultPayslipTemplate.bind(ctrl)
 );
 
 export default router;
