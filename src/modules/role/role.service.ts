@@ -49,12 +49,32 @@ export class RoleService {
     return role;
   }
 
+  private static readonly C_SUITE_ROLES = [
+    "ORG_ADMIN",
+    "SUPER_ADMIN",
+    "CEO",
+    "CTO",
+    "CFO",
+    "COO",
+    "CHRO",
+    "LEADERSHIP",
+  ];
+
   // List all roles for tenant (System roles + Custom roles)
   async listRoles(context: RequestContext) {
-    const roles = await RoleModel.find({
+    const isMasterAdmin = ["ORG_ADMIN", "SUPER_ADMIN"].includes(context.role);
+
+    const query: Record<string, any> = {
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
-    }).sort({ isSystemRole: -1, name: 1 });
+    };
+
+    // If not ORG_ADMIN / SUPER_ADMIN (e.g. HR_ADMIN), filter out C-Suite roles
+    if (!isMasterAdmin) {
+      query.slug = { $nin: RoleService.C_SUITE_ROLES };
+    }
+
+    const roles = await RoleModel.find(query).sort({ isSystemRole: -1, name: 1 });
 
     return roles;
   }

@@ -51,6 +51,7 @@ export const CreateEmployeeDto = withPhoneValidation(
       (val) => (val === "" || val === null ? undefined : val),
       z.array(objectIdSchema).optional()
     ),
+    role: z.preprocess((val) => (val === "" || val === null ? undefined : String(val).trim().toUpperCase()), z.string().optional()),
     employeeType: z.enum([
       "FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"
     ]).optional().default("FULL_TIME"),
@@ -148,6 +149,7 @@ export const UpdateEmployeeDto = withPhoneValidation(z.object({
     (val) => (val === "" || val === null ? [] : val),
     z.array(objectIdSchema).optional()
   ),
+  role: z.preprocess((val) => (val === "" || val === null ? undefined : String(val).trim().toUpperCase()), z.string().optional()),
   employeeType: z.enum(["FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"]).optional(),
   confirmationDate: dateSchema.optional(),
   probationEndDate: dateSchema.optional(),

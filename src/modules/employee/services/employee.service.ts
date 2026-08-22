@@ -265,16 +265,22 @@ export class EmployeeService {
       .update(rawToken)
       .digest("hex");
 
-    // Create user account for this employee
-    // Account will be inactive until employee activates it via email link
+    // Create user account for this employee with selected role (default: EMPLOYEE)
+    const assignedRole = input.role ? input.role.toUpperCase() : "EMPLOYEE";
+    const C_SUITE_ROLES = ["ORG_ADMIN", "SUPER_ADMIN", "CEO", "CTO", "CFO", "COO", "CHRO", "LEADERSHIP"];
+    const isMasterAdmin = ["ORG_ADMIN", "SUPER_ADMIN"].includes(context.role);
+    if (!isMasterAdmin && C_SUITE_ROLES.includes(assignedRole)) {
+      throw new AppError("Access denied: Only Org Admin can assign C-Suite or Executive roles", 403);
+    }
+
     const userAccount = new UserModel({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       email: input.email.toLowerCase(),
       passwordHash: null,
       firstName: input.firstName,
       lastName: input.lastName,
-      role: "EMPLOYEE",
-      isOrgAdmin: false,
+      role: assignedRole,
+      isOrgAdmin: assignedRole === "ORG_ADMIN" || assignedRole === "SUPER_ADMIN",
       isActive: false,
       isEmailVerified: false,
       branchIds: [new mongoose.Types.ObjectId(input.branchId)],
@@ -522,7 +528,19 @@ export class EmployeeService {
       throw new AppError("Employee not found", 404);
     }
 
-    return employee;
+    const userDoc = await UserModel.findOne({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      $or: [
+        { employeeId: employee._id },
+        { email: employee.email?.toLowerCase() },
+      ],
+    }).select("role isOrgAdmin");
+
+    const empObj = employee.toObject ? employee.toObject() : employee;
+    empObj.role = userDoc?.role || "EMPLOYEE";
+    empObj.isOrgAdmin = userDoc?.isOrgAdmin || false;
+
+    return empObj;
   }
 
 
@@ -625,7 +643,10 @@ export class EmployeeService {
         passportNo: employee.passportNo,
         departmentId: employee.departmentId,
         designationId: employee.designationId,
+        teamId: employee.teamId,
         managerId: employee.managerId,
+        secondaryManagerIds: employee.secondaryManagerIds,
+        role: (await UserModel.findOne({ tenantId: new mongoose.Types.ObjectId(context.tenantId), $or: [{ employeeId: employee._id }, { email: employee.email?.toLowerCase() }] }).select("role"))?.role || "EMPLOYEE",
         branchId: employee.branchId,
         shiftId: employee.shiftId,
         employeeType: employee.employeeType,
@@ -819,6 +840,28 @@ export class EmployeeService {
           { isActive: false, isDeleted: true }
         );
       }
+    }
+
+    if (input.role) {
+      const newRole = input.role.toUpperCase();
+      const C_SUITE_ROLES = ["ORG_ADMIN", "SUPER_ADMIN", "CEO", "CTO", "CFO", "COO", "CHRO", "LEADERSHIP"];
+      const isMasterAdmin = ["ORG_ADMIN", "SUPER_ADMIN"].includes(context.role);
+      if (!isMasterAdmin && C_SUITE_ROLES.includes(newRole)) {
+        throw new AppError("Access denied: Only Org Admin can assign C-Suite or Executive roles", 403);
+      }
+      await UserModel.updateOne(
+        {
+          tenantId: new mongoose.Types.ObjectId(context.tenantId),
+          $or: [
+            { employeeId: new mongoose.Types.ObjectId(id) },
+            { email: (employee as any).email.toLowerCase() },
+          ],
+        },
+        {
+          role: newRole,
+          isOrgAdmin: newRole === "ORG_ADMIN" || newRole === "SUPER_ADMIN",
+        }
+      );
     }
 
     const updated = await this.empRepo.updateById(context, id, updateData);
