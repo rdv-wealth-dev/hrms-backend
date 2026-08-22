@@ -87,7 +87,9 @@ export interface EmployeeDocument extends BaseDocument {
   // Organisation
   departmentId: mongoose.Types.ObjectId;
   designationId: mongoose.Types.ObjectId;
-  managerId?: mongoose.Types.ObjectId;   // reports to (Reporting Manager / Approver)
+  teamId?: mongoose.Types.ObjectId;      // assigned operational / functional team
+  managerId?: mongoose.Types.ObjectId;   // reports to (Primary Reporting Manager / Approver)
+  secondaryManagerIds?: mongoose.Types.ObjectId[]; // additional / matrix / project reporting managers
   employeeType: EmployeeType;
   status: EmployeeStatus;
   joiningDate: Date;
@@ -218,11 +220,21 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
       required: true,
       index: true,
     },
+    teamId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Team",
+      default: null,
+      index: true,
+    },
     managerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Employee",
       default: null,
     },
+    secondaryManagerIds: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Employee",
+    }],
     shiftId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Shift",

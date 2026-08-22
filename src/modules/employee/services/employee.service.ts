@@ -17,6 +17,7 @@ import { DepartmentModel } from "../../department/department.model";
 import { DesignationModel } from "../../designation/designation.model";
 
 import { EmployeeModel } from "../models/employee.model";
+import { TeamModel, TeamMemberModel } from "../../team/team.model";
 import { EmployeeDocumentModel } from "../../employee-document/employee-document.model";
 import { AppError, ValidationFailedError } from "../../../shared/errors/app.error";
 import { RequestContext } from "../../../shared/types/request-context.interface";
@@ -183,15 +184,33 @@ export class EmployeeService {
       branchId = headOffice._id.toString();
     }
 
+    let resolvedTeamId: mongoose.Types.ObjectId | undefined;
+    if (input.teamId) {
+      const teamDoc = await TeamModel.findOne({
+        _id: new mongoose.Types.ObjectId(input.teamId),
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        isActive: true,
+        isDeleted: false,
+      });
+      if (!teamDoc) {
+        throw new AppError("Selected team does not exist or is inactive", 400);
+      }
+      resolvedTeamId = teamDoc._id;
+    }
+
     const employee = await this.empRepo.create(context, {
       tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
       branchId: new mongoose.Types.ObjectId(branchId) as any,
       departmentId: new mongoose.Types.ObjectId(input.departmentId) as any,
       designationId: new mongoose.Types.ObjectId(input.designationId) as any,
+      teamId: resolvedTeamId as any,
       shiftId: resolvedShiftId ? new mongoose.Types.ObjectId(resolvedShiftId) as any : undefined,
       managerId: input.managerId
         ? new mongoose.Types.ObjectId(input.managerId) as any
         : undefined,
+      secondaryManagerIds: input.secondaryManagerIds && input.secondaryManagerIds.length > 0
+        ? input.secondaryManagerIds.map((mId) => new mongoose.Types.ObjectId(mId)) as any
+        : [],
       employeeCode,
       firstName: input.firstName,
       lastName: input.lastName,
@@ -219,6 +238,21 @@ export class EmployeeService {
       pfOnActuals: input.pfOnActuals,
       isActive: true,
     });
+
+    // If a team was assigned during onboarding, automatically register in TeamMemberModel
+    if (resolvedTeamId) {
+      await TeamMemberModel.create({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        teamId: resolvedTeamId,
+        employeeId: employee._id,
+        roleInTeam: "MEMBER",
+        isPrimary: true,
+        allocationPercentage: 100,
+        joinedAt: new Date(),
+        isActive: true,
+        isDeleted: false,
+      });
+    }
 
     // Recalculate profile completion after employee creation
     // so isProfileComplete is accurate if all required fields were provided
@@ -472,7 +506,7 @@ export class EmployeeService {
 
     if (mongoose.Types.ObjectId.isValid(id)) {
       employee = await this.empRepo.findById(context, id, {
-        populate: ["departmentId", "designationId"],
+        populate: ["departmentId", "designationId", "teamId", "managerId", "secondaryManagerIds", "branchId", "shiftId"],
       });
     }
 
@@ -481,7 +515,7 @@ export class EmployeeService {
         tenantId: new mongoose.Types.ObjectId(context.tenantId),
         employeeCode: id.trim(),
         isDeleted: false,
-      }).populate(["departmentId", "designationId"]);
+      }).populate(["departmentId", "designationId", "teamId", "managerId", "secondaryManagerIds", "branchId", "shiftId"]);
     }
 
     if (!employee) {
@@ -499,7 +533,7 @@ export class EmployeeService {
   ) {
     // Get basic employee data with populated references
     const employee = await this.empRepo.findById(context, id, {
-      populate: ["departmentId", "designationId", "managerId", "branchId", "shiftId"],
+      populate: ["departmentId", "designationId", "teamId", "managerId", "secondaryManagerIds", "branchId", "shiftId"],
     });
 
     if (!employee) {
@@ -723,6 +757,68 @@ export class EmployeeService {
         throw new AppError("Circular manager assignment detected: Manager currently reports to this employee", 400);
       }
       updateData.managerId = new mongoose.Types.ObjectId(input.managerId);
+    }
+
+    if (input.secondaryManagerIds !== undefined) {
+      if (Array.isArray(input.secondaryManagerIds) && input.secondaryManagerIds.length > 0) {
+        if (input.secondaryManagerIds.includes(id)) {
+          throw new AppError("An employee cannot be assigned as their own secondary reporting manager", 400);
+        }
+        const validSecondaryManagers = await EmployeeModel.find({
+          _id: { $in: input.secondaryManagerIds.map((mId) => new mongoose.Types.ObjectId(mId)) },
+          tenantId: new mongoose.Types.ObjectId(context.tenantId),
+          isActive: true,
+          isDeleted: false,
+        }).select("_id");
+
+        if (validSecondaryManagers.length !== input.secondaryManagerIds.length) {
+          throw new AppError("One or more selected secondary managers do not exist or are inactive", 400);
+        }
+        updateData.secondaryManagerIds = input.secondaryManagerIds.map((mId) => new mongoose.Types.ObjectId(mId));
+      } else {
+        updateData.secondaryManagerIds = [];
+      }
+    }
+
+    if (input.teamId !== undefined) {
+      if (input.teamId) {
+        const teamDoc = await TeamModel.findOne({
+          _id: new mongoose.Types.ObjectId(input.teamId),
+          tenantId: new mongoose.Types.ObjectId(context.tenantId),
+          isActive: true,
+          isDeleted: false,
+        });
+        if (!teamDoc) {
+          throw new AppError("Selected team does not exist or is inactive", 400);
+        }
+        updateData.teamId = teamDoc._id;
+
+        // Upsert team membership
+        await TeamMemberModel.findOneAndUpdate(
+          {
+            tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            employeeId: new mongoose.Types.ObjectId(id),
+          },
+          {
+            teamId: teamDoc._id,
+            roleInTeam: "MEMBER",
+            isPrimary: true,
+            allocationPercentage: 100,
+            isActive: true,
+            isDeleted: false,
+          },
+          { upsert: true, new: true }
+        );
+      } else {
+        updateData.teamId = null;
+        await TeamMemberModel.updateMany(
+          {
+            tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            employeeId: new mongoose.Types.ObjectId(id),
+          },
+          { isActive: false, isDeleted: true }
+        );
+      }
     }
 
     const updated = await this.empRepo.updateById(context, id, updateData);

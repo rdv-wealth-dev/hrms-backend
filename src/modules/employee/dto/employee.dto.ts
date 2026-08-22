@@ -45,7 +45,12 @@ export const CreateEmployeeDto = withPhoneValidation(
     ),
     departmentId: objectIdSchema,
     designationId: objectIdSchema,
-    managerId: objectIdSchema.optional(),
+    teamId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),
+    managerId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),
+    secondaryManagerIds: z.preprocess(
+      (val) => (val === "" || val === null ? undefined : val),
+      z.array(objectIdSchema).optional()
+    ),
     employeeType: z.enum([
       "FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"
     ]).optional().default("FULL_TIME"),
@@ -134,10 +139,15 @@ export const UpdateEmployeeDto = withPhoneValidation(z.object({
   passportNo: passportSchema.optional(),
   drivingLicense: drivingLicenseSchema.optional(),
   voterId: voterIdSchema.optional(),
-  departmentId: objectIdSchema.optional(),
-  designationId: objectIdSchema.optional(),
-  branchId: objectIdSchema.optional(),
-  managerId: objectIdSchema.optional(),
+  departmentId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),
+  designationId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),
+  branchId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),
+  teamId: z.preprocess((val) => (val === "" || val === null ? null : val), objectIdSchema.optional().nullable()),
+  managerId: z.preprocess((val) => (val === "" || val === null ? null : val), objectIdSchema.optional().nullable()),
+  secondaryManagerIds: z.preprocess(
+    (val) => (val === "" || val === null ? [] : val),
+    z.array(objectIdSchema).optional()
+  ),
   employeeType: z.enum(["FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"]).optional(),
   confirmationDate: dateSchema.optional(),
   probationEndDate: dateSchema.optional(),
