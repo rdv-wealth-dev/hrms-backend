@@ -4,6 +4,7 @@ import { AppError, ForbiddenPermissionError } from "../errors/app.error";
 import { RequestContext } from "../types/request-context.interface";
 import { RoleModel } from "../../modules/role/role.model";
 import { EmployeeModel } from "../../modules/employee/models/employee.model";
+import { DEFAULT_ROLES } from "../../database/seeds/role.seed";
 
 declare global {
   namespace Express {
@@ -42,12 +43,16 @@ export const checkPermission = (requiredPermission: string) => {
         isDeleted: false,
       }).select("permissions");
 
-      if (!roleDoc) {
-        next(ForbiddenPermissionError(`Role '${role}' not found or inactive`));
-        return;
-      }
+      let permissions = roleDoc?.permissions ?? [];
 
-      const permissions = roleDoc.permissions ?? [];
+      // Fallback: If system role document in database is missing a newly added system permission,
+      // fallback to DEFAULT_ROLES system blueprint
+      if (!permissions.includes(requiredPermission)) {
+        const defaultRole = DEFAULT_ROLES.find((r) => r.slug === role);
+        if (defaultRole && defaultRole.permissions.includes(requiredPermission)) {
+          permissions = defaultRole.permissions;
+        }
+      }
 
       if (!permissions.includes(requiredPermission)) {
         next(
