@@ -1,3 +1,4 @@
+import ExcelJS from "exceljs";
 import { PayslipDocument } from "../models/payslip.model";
 import { PayrollRunDocument } from "../models/payroll-run.model";
 import { BankFieldSource, BankColumnMapping, DynamicBankPayoutConfig } from "../models/bank-payout-config.model";
@@ -230,6 +231,97 @@ export class BankPayoutFormatService {
     return {
       fileContent: lines.join("\n"),
       mimeType: config.mimeType,
+      filename,
+    };
+  }
+
+  public static async formatBankExportXlsx(
+    records: BankDisbursementRecord[],
+    formatConfigOrBankCode: DynamicBankPayoutConfig | string
+  ): Promise<{ fileBuffer: Buffer; mimeType: string; filename: string }> {
+    let config: DynamicBankPayoutConfig | undefined;
+
+    if (typeof formatConfigOrBankCode === "string") {
+      config = this.registeredFormats.get(formatConfigOrBankCode.toUpperCase()) || this.registeredFormats.get("STANDARD_CSV")!;
+    } else {
+      config = formatConfigOrBankCode;
+    }
+
+    if (!config) {
+      config = this.registeredFormats.get("STANDARD_CSV")!;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Salary Disbursement");
+
+    worksheet.columns = config.columns.map((col) => ({
+      header: col.headerName,
+      key: col.headerName.replace(/\s+/g, "_"),
+      width: Math.max(col.headerName.length + 5, 18),
+    }));
+
+    // Header styling
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF2886CE" },
+    };
+    headerRow.alignment = { vertical: "middle", horizontal: "center" };
+    headerRow.height = 24;
+
+    for (const record of records) {
+      const rowData: Record<string, any> = {};
+      config.columns.forEach((col) => {
+        let val: any = "";
+        switch (col.fieldSource) {
+          case "ACCOUNT_NUMBER":
+            val = record.accountNumber || col.defaultValue || "";
+            break;
+          case "NET_AMOUNT":
+            val = Number(record.amount.toFixed(2));
+            break;
+          case "BENEFICIARY_NAME":
+            val = record.beneficiaryName || col.defaultValue || "";
+            break;
+          case "IFSC_CODE":
+            val = record.ifscCode || col.defaultValue || "";
+            break;
+          case "REMARKS":
+            val = record.remarks || col.defaultValue || "SALARY";
+            break;
+          case "EMAIL":
+            val = record.email || col.defaultValue || "";
+            break;
+          case "EMPLOYEE_CODE":
+            val = record.employeeCode || col.defaultValue || "";
+            break;
+          case "BANK_NAME":
+            val = record.bankName || col.defaultValue || "";
+            break;
+          case "BRANCH_NAME":
+            val = record.branchName || col.defaultValue || "";
+            break;
+          case "PAYMENT_DATE":
+            val = record.paymentDate || new Date().toISOString().split("T")[0];
+            break;
+          case "STATIC_VALUE":
+            val = col.staticValue || col.defaultValue || "";
+            break;
+        }
+        rowData[col.headerName.replace(/\s+/g, "_")] = val;
+      });
+      worksheet.addRow(rowData);
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const timestamp = new Date().toISOString().split("T")[0];
+    const filename = `Payout_${config.bankCode}_${timestamp}.xlsx`;
+
+    return {
+      fileBuffer: Buffer.from(buffer),
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       filename,
     };
   }

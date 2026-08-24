@@ -959,6 +959,16 @@ export class PayrollController {
       }
 
       const formatTarget = customConfig ? (customConfig.toObject() as any) : bankCode;
+      const requestedFormat = (req.query.format as string || req.query.fileFormat as string || "").toLowerCase();
+
+      if (requestedFormat === "xlsx") {
+        const fileData = await BankPayoutFormatService.formatBankExportXlsx(records, formatTarget);
+        res.setHeader("Content-Type", fileData.mimeType);
+        res.setHeader("Content-Disposition", `attachment; filename="${fileData.filename}"`);
+        res.send(fileData.fileBuffer);
+        return;
+      }
+
       const fileData = BankPayoutFormatService.formatBankExport(records, formatTarget);
 
       res.setHeader("Content-Type", fileData.mimeType);
