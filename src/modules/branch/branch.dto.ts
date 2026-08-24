@@ -55,6 +55,11 @@ export const CreateBranchDto = z.object({
         weeks: z.array(z.number().int().min(1).max(5)).max(5),
       })
     ).optional(),
+    ipRestrictionEnabled: z.boolean().optional().default(false),
+    allowedIpAddresses: z.preprocess(
+      (val) => (val === "" || val === null ? [] : val),
+      z.array(z.string().trim()).optional()
+    ),
   }).optional(),
 
   statutory: z.object({

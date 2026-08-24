@@ -43,6 +43,8 @@ export interface BranchDocument extends BaseDocument {
     shiftEndTime?: string;
     workingHoursPerDay?: number;
     customWeekOffRules?: CustomWeekOffRule[];
+    ipRestrictionEnabled?: boolean;
+    allowedIpAddresses?: string[];
   };
   statutory?: {
     pfApplicable?: boolean | null;
@@ -143,6 +145,8 @@ const BranchSchema = createBaseSchema<BranchDocument>(
         dayOfWeek: { type: String, required: true },
         weeks: { type: [Number], required: true },
       }],
+      ipRestrictionEnabled: { type: Boolean, default: false },
+      allowedIpAddresses: { type: [String], default: [] },
     },
     statutory: {
       pfApplicable: { type: Boolean, default: null },

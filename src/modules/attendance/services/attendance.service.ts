@@ -171,6 +171,22 @@ export class AttendanceService {
       }
     }
 
+    // IP Whitelist check — for WEB (PC/Browser) punches
+    if (source === PunchSource.WEB) {
+      const branch = await BranchModel.findById(branchId);
+      const workPolicy = branch?.workPolicy;
+      if (workPolicy?.ipRestrictionEnabled && workPolicy.allowedIpAddresses && workPolicy.allowedIpAddresses.length > 0) {
+        const clientIp = (ipAddress || "").replace(/^::ffff:/, "").trim();
+        const allowedIps = workPolicy.allowedIpAddresses.map((i: string) => i.replace(/^::ffff:/, "").trim());
+        if (!allowedIps.includes(clientIp)) {
+          throw new AppError(
+            `Web check-in rejected: Your current IP (${clientIp || "unknown"}) is not in the authorized office network.`,
+            403
+          );
+        }
+      }
+    }
+
     let attendance = await this.attRepo.findByEmployeeAndDate(context, employeeId, today);
 
     if (!attendance) {
