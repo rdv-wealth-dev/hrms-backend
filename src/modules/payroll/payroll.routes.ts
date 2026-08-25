@@ -20,6 +20,7 @@ import {
 } from "./dto/payroll.dto";
 import { PayrollCalendarPolicyController } from "./controllers/payroll-calendar-policy.controller";
 import { UpsertPayrollCalendarPolicyDto } from "./dto/payroll-calendar-policy.dto";
+import { LoanController } from "./controllers/loan.controller";
 
 import {
   injectOnboardingStatus,
@@ -29,6 +30,7 @@ import {
 const router = Router();
 const ctrl = new PayrollController();
 const calendarPolicyCtrl = new PayrollCalendarPolicyController();
+const loanCtrl = new LoanController();
 
 router.use(authenticate);
 // Stamps req.context with onboarding phase. Never blocks on its own.
@@ -590,6 +592,53 @@ router.post(
   checkPermission("payroll.create"),
   validateBody(SetPayslipTemplateDto),
   ctrl.setDefaultPayslipTemplate.bind(ctrl)
+);
+
+// ── Loans & Salary Advances ───────────────────────────────────────────────
+
+router.get(
+  "/loans/me",
+  loanCtrl.getMyLoans.bind(loanCtrl)
+);
+
+router.post(
+  "/loans",
+  loanCtrl.create.bind(loanCtrl)
+);
+
+router.get(
+  "/loans",
+  checkPermission("payroll.read"),
+  loanCtrl.list.bind(loanCtrl)
+);
+
+router.get(
+  "/loans/:id",
+  loanCtrl.getById.bind(loanCtrl)
+);
+
+router.patch(
+  "/loans/:id",
+  checkPermission("payroll.create"),
+  loanCtrl.update.bind(loanCtrl)
+);
+
+router.patch(
+  "/loans/:id/approve",
+  checkPermission("payroll.approve"),
+  loanCtrl.approve.bind(loanCtrl)
+);
+
+router.patch(
+  "/loans/:id/reject",
+  checkPermission("payroll.approve"),
+  loanCtrl.reject.bind(loanCtrl)
+);
+
+router.delete(
+  "/loans/:id",
+  checkPermission("payroll.create"),
+  loanCtrl.delete.bind(loanCtrl)
 );
 
 export default router;

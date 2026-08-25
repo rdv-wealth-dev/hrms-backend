@@ -19,6 +19,7 @@ import { AttendanceLockModel, AttendanceLockStatus } from "../../attendance/mode
 import { ComponentType } from "../models/salary-component.model";
 import { PayrollStrategyFactory } from "../strategies";
 import { PayrollCalendarPolicyService } from "./payroll-calendar-policy.service";
+import { LoanService } from "./loan.service";
 
 import {
   assertAttendanceLocked,
@@ -76,6 +77,7 @@ export class PayrollRunService {
   private componentRepo = new SalaryComponentRepository();
   private adjustmentRepo = new PayrollAdjustmentRepository();
   private calendarPolicyService = new PayrollCalendarPolicyService();
+  private loanService = new LoanService();
 
   // ─────────────────────────────────────────────────────────────────────────
   // CREATE RUN
@@ -400,6 +402,25 @@ export class PayrollRunService {
           }
         }
 
+        // STEP 6.7: Automated Active Loan / Salary Advance EMI Deductions
+        const activeLoans = await this.loanService.getActiveLoansForPayrollCycle(
+          context.tenantId,
+          run.year,
+          run.month
+        );
+        const empLoans = activeLoans.filter(l => l.employeeId.toString() === empId);
+
+        for (const loan of empLoans) {
+          const emiToDeduct = Math.min(loan.monthlyEmi, loan.remainingBalance);
+          if (emiToDeduct > 0) {
+            deductions.push({
+              componentCode: "LOAN_REPAYMENT",
+              componentName: `Loan Repayment (${loan.loanReferenceNo})`,
+              amount: emiToDeduct,
+            });
+          }
+        }
+
         // STEP 8: Calculate Statutory Deductions via Country Strategy Plugin
         let hasPrecedingContributions = false;
         if (countryCode === "IN" && statutory.esiEnabled && grossEarned > 21000) {
@@ -630,6 +651,31 @@ export class PayrollRunService {
       },
       { payrollRunId: run._id }
     );
+
+    // Record loan repayments for all payslips in this run
+    const payslips = await PayslipModel.find({ payrollRunId: run._id, tenantId: run.tenantId });
+    for (const ps of payslips) {
+      const loanDed = ps.deductions.find((d: any) => d.componentCode === "LOAN_REPAYMENT");
+      if (loanDed && loanDed.amount > 0) {
+        const empLoans = await this.loanService.getActiveLoansForPayrollCycle(
+          run.tenantId.toString(),
+          run.year,
+          run.month
+        );
+        const matchingLoan = empLoans.find(l => l.employeeId.toString() === ps.employeeId.toString());
+        if (matchingLoan) {
+          await this.loanService.recordEmiRepayment(
+            run.tenantId.toString(),
+            matchingLoan._id.toString(),
+            run.year,
+            run.month,
+            loanDed.amount,
+            run._id.toString(),
+            ps._id.toString()
+          );
+        }
+      }
+    }
 
     return run;
   }
