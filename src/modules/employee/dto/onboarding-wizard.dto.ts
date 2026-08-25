@@ -36,7 +36,20 @@ export const OnboardingStep1Dto = z.object({
   pan: z.string().trim().optional(),
   aadhaar: z.string().trim().optional(),
   passportNo: z.string().trim().optional(),
-});
+  previousEmployerName: safeStringSchema(0, 100).optional(),
+  previousEmployerLastWorkingDate: dateSchema.optional(),
+}).refine(
+  (data) => {
+    if (data.previousEmployerName && data.previousEmployerName.trim().length > 0) {
+      return !!data.previousEmployerLastWorkingDate;
+    }
+    return true;
+  },
+  {
+    message: "Last working day is required when previous employer name is provided",
+    path: ["previousEmployerLastWorkingDate"],
+  }
+);
 
 export type OnboardingStep1Input = z.infer<typeof OnboardingStep1Dto>;
 

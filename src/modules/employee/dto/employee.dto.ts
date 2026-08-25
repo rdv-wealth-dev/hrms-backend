@@ -37,6 +37,8 @@ export const CreateEmployeeDto = withPhoneValidation(
       "JAINISM", "ZOROASTRIANISM", "JUDAISM", "OTHER", "PREFER_NOT_TO_SAY"
     ]).optional(),
     nationality: safeStringSchema(2, 100).optional(),
+    previousEmployerName: safeStringSchema(0, 100).optional(),
+    previousEmployerLastWorkingDate: dateSchema.optional(),
     pan: panSchema.optional(),
     aadhaar: aadhaarSchema.optional(),
     passportNo: passportSchema.optional(),
@@ -143,6 +145,8 @@ export const UpdateEmployeeDto = withPhoneValidation(z.object({
     "JAINISM", "ZOROASTRIANISM", "JUDAISM", "OTHER", "PREFER_NOT_TO_SAY"
   ]).optional(),
   nationality: safeStringSchema(2, 100).optional(),
+  previousEmployerName: safeStringSchema(0, 100).optional(),
+  previousEmployerLastWorkingDate: dateSchema.optional(),
   pan: panSchema.optional(),
   aadhaar: aadhaarSchema.optional(),
   passportNo: passportSchema.optional(),
