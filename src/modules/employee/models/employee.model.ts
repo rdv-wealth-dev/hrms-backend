@@ -89,6 +89,10 @@ export interface EmployeeDocument extends BaseDocument {
   maritalStatus?: MaritalStatus;
   religion?: Religion;
   nationality?: string;
+  fatherName?: string;
+  fatherPhone?: string;
+  motherName?: string;
+  motherPhone?: string;
   previousEmployerName?: string;
   previousEmployerLastWorkingDate?: Date;
   pan?: string;      // encrypted at write, masked on read
@@ -219,6 +223,10 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
       default: null,
     },
     nationality: { type: String, trim: true },
+    fatherName: { type: String, trim: true, default: null },
+    fatherPhone: { type: String, trim: true, default: null },
+    motherName: { type: String, trim: true, default: null },
+    motherPhone: { type: String, trim: true, default: null },
     previousEmployerName: { type: String, trim: true, default: null },
     previousEmployerLastWorkingDate: { type: Date, default: null },
     pan: { type: String, trim: true, uppercase: true },

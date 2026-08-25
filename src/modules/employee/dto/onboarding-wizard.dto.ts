@@ -19,6 +19,10 @@ export const OnboardingStep1Dto = z.object({
     "PREFER_NOT_TO_SAY"
   ]).optional(),
   phone: phoneSchema.optional(),
+  fatherName: safeStringSchema(0, 100).optional(),
+  fatherPhone: phoneSchema.optional(),
+  motherName: safeStringSchema(0, 100).optional(),
+  motherPhone: phoneSchema.optional(),
   currentAddress: z.object({
     addressLine1: safeStringSchema(1, 200),
     addressLine2: safeStringSchema(0, 200).optional(),

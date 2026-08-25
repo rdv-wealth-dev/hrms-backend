@@ -68,6 +68,10 @@ export class OnboardingWizardService {
       maritalStatus: refreshed?.maritalStatus,
       religion: refreshed?.religion,
       nationality: refreshed?.nationality,
+      fatherName: refreshed?.fatherName,
+      fatherPhone: refreshed?.fatherPhone,
+      motherName: refreshed?.motherName,
+      motherPhone: refreshed?.motherPhone,
       previousEmployerName: refreshed?.previousEmployerName,
       previousEmployerLastWorkingDate: refreshed?.previousEmployerLastWorkingDate,
       currentAddress: refreshed?.currentAddress,
@@ -159,10 +163,14 @@ export class OnboardingWizardService {
     employee.currentAddress = currentAddress as any;
     employee.emergencyContacts = emergencyContacts as any;
 
-    // Save optional document numbers & previous employment details
+    // Save optional document numbers, parents & previous employment details
     if (input.pan !== undefined) employee.pan = input.pan;
     if (input.aadhaar !== undefined) employee.aadhaar = input.aadhaar;
     if (input.passportNo !== undefined) employee.passportNo = input.passportNo;
+    if (input.fatherName !== undefined) employee.fatherName = input.fatherName;
+    if (input.fatherPhone !== undefined) employee.fatherPhone = input.fatherPhone;
+    if (input.motherName !== undefined) employee.motherName = input.motherName;
+    if (input.motherPhone !== undefined) employee.motherPhone = input.motherPhone;
     if (input.previousEmployerName !== undefined) employee.previousEmployerName = input.previousEmployerName;
     if (input.previousEmployerLastWorkingDate !== undefined) {
       employee.previousEmployerLastWorkingDate = input.previousEmployerLastWorkingDate
