@@ -1,6 +1,23 @@
 import { z } from "zod";
 import { safeStringSchema, dateSchema, phoneSchema, emailSchema } from "../../../shared/validators/index";
 
+export const EducationDetailDto = z.object({
+  qualificationLevel: z.enum([
+    "DOCTORATE",
+    "POST_GRADUATE",
+    "UNDER_GRADUATE",
+    "DIPLOMA",
+    "HIGHER_SECONDARY",
+    "SECONDARY",
+    "OTHER",
+  ]),
+  degree: safeStringSchema(1, 150),
+  fieldOfStudy: safeStringSchema(0, 100).optional(),
+  institutionName: safeStringSchema(1, 200),
+  yearOfPassing: z.preprocess((val) => (val ? Number(val) : undefined), z.number().int().min(1950).max(2100).optional()),
+  percentageOrCgpa: safeStringSchema(0, 50).optional(),
+});
+
 export const OnboardingStep1Dto = z.object({
   dateOfBirth: dateSchema.optional(),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
@@ -23,6 +40,16 @@ export const OnboardingStep1Dto = z.object({
   fatherPhone: phoneSchema.optional(),
   motherName: safeStringSchema(0, 100).optional(),
   motherPhone: phoneSchema.optional(),
+  highestQualification: z.enum([
+    "DOCTORATE",
+    "POST_GRADUATE",
+    "UNDER_GRADUATE",
+    "DIPLOMA",
+    "HIGHER_SECONDARY",
+    "SECONDARY",
+    "OTHER",
+  ]).optional(),
+  educationDetails: z.array(EducationDetailDto).optional(),
   currentAddress: z.object({
     addressLine1: safeStringSchema(1, 200),
     addressLine2: safeStringSchema(0, 200).optional(),

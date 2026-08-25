@@ -72,6 +72,8 @@ export class OnboardingWizardService {
       fatherPhone: refreshed?.fatherPhone,
       motherName: refreshed?.motherName,
       motherPhone: refreshed?.motherPhone,
+      highestQualification: refreshed?.highestQualification,
+      educationDetails: refreshed?.educationDetails,
       previousEmployerName: refreshed?.previousEmployerName,
       previousEmployerLastWorkingDate: refreshed?.previousEmployerLastWorkingDate,
       currentAddress: refreshed?.currentAddress,
@@ -171,6 +173,8 @@ export class OnboardingWizardService {
     if (input.fatherPhone !== undefined) employee.fatherPhone = input.fatherPhone;
     if (input.motherName !== undefined) employee.motherName = input.motherName;
     if (input.motherPhone !== undefined) employee.motherPhone = input.motherPhone;
+    if (input.highestQualification !== undefined) employee.highestQualification = input.highestQualification as any;
+    if (input.educationDetails !== undefined) employee.educationDetails = input.educationDetails as any;
     if (input.previousEmployerName !== undefined) employee.previousEmployerName = input.previousEmployerName;
     if (input.previousEmployerLastWorkingDate !== undefined) {
       employee.previousEmployerLastWorkingDate = input.previousEmployerLastWorkingDate

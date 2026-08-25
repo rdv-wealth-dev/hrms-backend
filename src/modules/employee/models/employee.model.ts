@@ -54,7 +54,26 @@ export enum Religion {
   PREFER_NOT_TO_SAY = "PREFER_NOT_TO_SAY",
 }
 
+export enum QualificationLevel {
+  DOCTORATE = "DOCTORATE",
+  POST_GRADUATE = "POST_GRADUATE",
+  UNDER_GRADUATE = "UNDER_GRADUATE",
+  DIPLOMA = "DIPLOMA",
+  HIGHER_SECONDARY = "HIGHER_SECONDARY",
+  SECONDARY = "SECONDARY",
+  OTHER = "OTHER",
+}
+
 // EMBEDDED INTERFACES
+
+export interface EmployeeEducation {
+  qualificationLevel: QualificationLevel;
+  degree: string;
+  fieldOfStudy?: string;
+  institutionName: string;
+  yearOfPassing?: number;
+  percentageOrCgpa?: string;
+}
 
 export interface EmergencyContact {
   name: string;
@@ -93,6 +112,8 @@ export interface EmployeeDocument extends BaseDocument {
   fatherPhone?: string;
   motherName?: string;
   motherPhone?: string;
+  highestQualification?: QualificationLevel;
+  educationDetails?: EmployeeEducation[];
   previousEmployerName?: string;
   previousEmployerLastWorkingDate?: Date;
   pan?: string;      // encrypted at write, masked on read
@@ -227,6 +248,21 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
     fatherPhone: { type: String, trim: true, default: null },
     motherName: { type: String, trim: true, default: null },
     motherPhone: { type: String, trim: true, default: null },
+    highestQualification: {
+      type: String,
+      enum: Object.values(QualificationLevel),
+      default: null,
+    },
+    educationDetails: [
+      {
+        qualificationLevel: { type: String, enum: Object.values(QualificationLevel) },
+        degree: { type: String, trim: true },
+        fieldOfStudy: { type: String, trim: true },
+        institutionName: { type: String, trim: true },
+        yearOfPassing: { type: Number },
+        percentageOrCgpa: { type: String, trim: true },
+      },
+    ],
     previousEmployerName: { type: String, trim: true, default: null },
     previousEmployerLastWorkingDate: { type: Date, default: null },
     pan: { type: String, trim: true, uppercase: true },

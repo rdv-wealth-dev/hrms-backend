@@ -41,6 +41,19 @@ export const CreateEmployeeDto = withPhoneValidation(
     fatherPhone: phoneSchema.optional(),
     motherName: safeStringSchema(0, 100).optional(),
     motherPhone: phoneSchema.optional(),
+    highestQualification: z.enum([
+      "DOCTORATE", "POST_GRADUATE", "UNDER_GRADUATE", "DIPLOMA", "HIGHER_SECONDARY", "SECONDARY", "OTHER"
+    ]).optional(),
+    educationDetails: z.array(z.object({
+      qualificationLevel: z.enum([
+        "DOCTORATE", "POST_GRADUATE", "UNDER_GRADUATE", "DIPLOMA", "HIGHER_SECONDARY", "SECONDARY", "OTHER"
+      ]),
+      degree: safeStringSchema(1, 150),
+      fieldOfStudy: safeStringSchema(0, 100).optional(),
+      institutionName: safeStringSchema(1, 200),
+      yearOfPassing: z.preprocess((val) => (val ? Number(val) : undefined), z.number().int().min(1950).max(2100).optional()),
+      percentageOrCgpa: safeStringSchema(0, 50).optional(),
+    })).optional(),
     previousEmployerName: safeStringSchema(0, 100).optional(),
     previousEmployerLastWorkingDate: dateSchema.optional(),
     pan: panSchema.optional(),
@@ -153,6 +166,19 @@ export const UpdateEmployeeDto = withPhoneValidation(z.object({
   fatherPhone: phoneSchema.optional(),
   motherName: safeStringSchema(0, 100).optional(),
   motherPhone: phoneSchema.optional(),
+  highestQualification: z.enum([
+    "DOCTORATE", "POST_GRADUATE", "UNDER_GRADUATE", "DIPLOMA", "HIGHER_SECONDARY", "SECONDARY", "OTHER"
+  ]).optional(),
+  educationDetails: z.array(z.object({
+    qualificationLevel: z.enum([
+      "DOCTORATE", "POST_GRADUATE", "UNDER_GRADUATE", "DIPLOMA", "HIGHER_SECONDARY", "SECONDARY", "OTHER"
+    ]),
+    degree: safeStringSchema(1, 150),
+    fieldOfStudy: safeStringSchema(0, 100).optional(),
+    institutionName: safeStringSchema(1, 200),
+    yearOfPassing: z.preprocess((val) => (val ? Number(val) : undefined), z.number().int().min(1950).max(2100).optional()),
+    percentageOrCgpa: safeStringSchema(0, 50).optional(),
+  })).optional(),
   previousEmployerName: safeStringSchema(0, 100).optional(),
   previousEmployerLastWorkingDate: dateSchema.optional(),
   pan: panSchema.optional(),
