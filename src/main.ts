@@ -10,16 +10,18 @@ const bootstrap = async (): Promise<void> => {
   await connectDatabase();
   initializeCountryPlugins();
 
-   // Seed platform permissions on every startup
-  // Safe — upsert only, skips existing
-  await seedPermissions();
-  
   // Start background database job worker
   startWorker();
-  
+
+  // Bind and listen immediately for instant startup
   app.listen(env.port, () => {
-    logger.info(`Server running on ${env.port}`);
+    logger.info(`⚡ Server running on port ${env.port} [ready for requests]`);
   });
-}
+
+  // Seed platform permissions in background without delaying server start
+  seedPermissions().catch((err) => {
+    logger.error("Permission seed error:", err);
+  });
+};
 
 bootstrap();
