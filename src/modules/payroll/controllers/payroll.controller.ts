@@ -812,6 +812,20 @@ export class PayrollController {
     } catch (e) { next(e); }
   }
 
+  async updateStructureTemplate(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await structureTemplateService.updateTemplate(req.context!.tenantId, req.params.id, req.body);
+      res.status(200).json(buildSuccessResponse(result, "Salary structure template updated successfully"));
+    } catch (e) { next(e); }
+  }
+
+  async deleteStructureTemplate(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await structureTemplateService.deleteTemplate(req.context!.tenantId, req.params.id);
+      res.status(200).json(buildSuccessResponse(null, "Salary structure template deleted successfully"));
+    } catch (e) { next(e); }
+  }
+
   async assignStructureBulk(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { templateId, employeeIds, annualCtc, effectiveFrom } = req.body;
@@ -919,6 +933,36 @@ export class PayrollController {
         tenantId: req.context!.tenantId,
       });
       res.status(201).json(buildSuccessResponse(config, "Custom bank format saved successfully"));
+    } catch (e) { next(e); }
+  }
+
+  async updateBankFormat(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const config = await BankPayoutConfigModel.findOneAndUpdate(
+        { _id: req.params.id, tenantId: req.context!.tenantId },
+        { $set: req.body },
+        { new: true }
+      );
+      if (!config) {
+        res.status(404).json({ success: false, message: "Bank format configuration not found" });
+        return;
+      }
+      res.status(200).json(buildSuccessResponse(config, "Custom bank format updated successfully"));
+    } catch (e) { next(e); }
+  }
+
+  async deleteBankFormat(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const config = await BankPayoutConfigModel.findOneAndUpdate(
+        { _id: req.params.id, tenantId: req.context!.tenantId },
+        { $set: { isActive: false } },
+        { new: true }
+      );
+      if (!config) {
+        res.status(404).json({ success: false, message: "Bank format configuration not found" });
+        return;
+      }
+      res.status(200).json(buildSuccessResponse(null, "Custom bank format deactivated successfully"));
     } catch (e) { next(e); }
   }
 
@@ -1056,6 +1100,27 @@ export class PayrollController {
     try {
       const result = await payslipTemplateService.createCustomTemplate(req.context!.tenantId, req.body);
       res.status(201).json(buildSuccessResponse(result, "Payslip template created successfully"));
+    } catch (e) { next(e); }
+  }
+
+  async updatePayslipTemplate(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await payslipTemplateService.updateCustomTemplate(req.context!.tenantId, req.params.id, req.body);
+      res.status(200).json(buildSuccessResponse(result, "Payslip template updated successfully"));
+    } catch (e) { next(e); }
+  }
+
+  async setDefaultPayslipTemplateById(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await payslipTemplateService.setDefaultById(req.context!.tenantId, req.params.id);
+      res.status(200).json(buildSuccessResponse(result, "Default payslip template updated successfully"));
+    } catch (e) { next(e); }
+  }
+
+  async deletePayslipTemplate(req: Request<{ id: string }>, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await payslipTemplateService.deleteTemplate(req.context!.tenantId, req.params.id);
+      res.status(200).json(buildSuccessResponse(null, "Payslip template deleted successfully"));
     } catch (e) { next(e); }
   }
 

@@ -384,7 +384,12 @@ export class EmployeeController {
   ): Promise<void> {
     try {
       const format = req.query.format === "csv" ? "csv" : "xlsx";
-      const buffer = await buildImportTemplate(format);
+      const buffer = await buildImportTemplate(
+        format,
+        req.context?.tenantId,
+        req.query.branchId as string | undefined,
+        req.query.departmentId as string | undefined
+      );
       const mimeType = format === "xlsx"
         ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         : "text/csv";

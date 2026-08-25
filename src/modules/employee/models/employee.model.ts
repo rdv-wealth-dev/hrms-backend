@@ -152,6 +152,9 @@ export interface EmployeeDocument extends BaseDocument {
   // Avatar
   avatarUrl?: string;
 
+  // Dynamic Custom Fields (scoped by Org, Branch, or Dept)
+  customFields?: Record<string, any>;
+
   // Profile completion tracking — step sequence
   onboardingStep: number;  // 1-5, which step they're currently on
   onboardingComplete: boolean; // true once step 5 is submitted
@@ -346,6 +349,13 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
     },
 
     avatarUrl: { type: String },
+
+    // Dynamic Custom Fields
+    customFields: {
+      type: Map,
+      of: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
 
     isActive: {
       type: Boolean,

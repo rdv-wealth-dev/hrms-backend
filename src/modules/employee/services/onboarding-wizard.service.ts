@@ -15,6 +15,7 @@ import { recalculateProfileCompletion } from "../utils/profile-completion.util";
 import { OrganizationModel } from "../../organization/organization.model";
 import { EmployeeDocumentModel } from "../../employee-document/employee-document.model";
 import { EmployeeBankAccountModel } from "../models/employee-bank-account.model";
+import { CustomFieldService } from "../../custom-field/custom-field.service";
 
 export class OnboardingWizardService {
   private familyRepo = new EmployeeFamilyRepository();
@@ -54,6 +55,15 @@ export class OnboardingWizardService {
     await recalculateProfileCompletion(context.tenantId, employee._id.toString());
     const refreshed = await EmployeeModel.findById(employee._id);
 
+    // Fetch effective custom fields (Org + Branch + Dept) for onboarding
+    const customFieldService = new CustomFieldService();
+    const effectiveCustomFields = await customFieldService.getEffectiveFieldsForEmployee(
+      context.tenantId,
+      refreshed?.branchId?.toString(),
+      refreshed?.departmentId?.toString(),
+      { forOnboarding: true }
+    );
+
     // ── 1. Step 1 Data (Personal Details & HR Pre-Filled Info) ──
     const step1Data = {
       firstName: refreshed?.firstName,
@@ -85,6 +95,25 @@ export class OnboardingWizardService {
       departmentId: refreshed?.departmentId,
       designationId: refreshed?.designationId,
       branchId: refreshed?.branchId,
+      customFields: refreshed?.customFields || {},
+      customFieldDefinitions: effectiveCustomFields.map((f: any) => ({
+        _id: f._id,
+        fieldLabel: f.fieldLabel,
+        fieldKey: f.fieldKey,
+        fieldType: f.fieldType,
+        uiComponent: f.uiComponent || "DROPDOWN",
+        scope: f.scope,
+        wizardStep: f.wizardStep || 1,
+        section: f.section || "PERSONAL_DETAILS",
+        options: (f.options || []).map((opt: any) =>
+          typeof opt === "string" ? { label: opt, value: opt } : opt
+        ),
+        placeholder: f.placeholder,
+        helperText: f.helperText,
+        defaultValue: f.defaultValue,
+        isRequired: f.isRequired,
+        order: f.order,
+      })),
     };
 
     // ── 2. Step 2 Data (Family Details) ──
@@ -180,6 +209,12 @@ export class OnboardingWizardService {
       employee.previousEmployerLastWorkingDate = input.previousEmployerLastWorkingDate
         ? new Date(input.previousEmployerLastWorkingDate)
         : undefined;
+    }
+    if (input.customFields !== undefined) {
+      employee.customFields = {
+        ...((employee.customFields as any) || {}),
+        ...input.customFields,
+      };
     }
 
     employee.onboardingStepsCompleted.personalDetails = true;

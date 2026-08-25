@@ -13,9 +13,10 @@ import {
   TaxDeclarationDto,
   CreatePayrollAdjustmentDto, BulkCreatePayrollAdjustmentDto, RejectAdjustmentDto,
   UpsertPayrollGLConfigDto,
-  CreateSalaryStructureTemplateDto, AssignStructureBulkDto,
+  CreateSalaryStructureTemplateDto, UpdateSalaryStructureTemplateDto, AssignStructureBulkDto,
   SaveWageInputsDto, SaveSalaryHoldDto, SaveTaxOverrideDto, BatchGeneratePayslipsDto,
-  CreatePayslipTemplateDto, SetPayslipTemplateDto, CreateBankPayoutConfigDto,
+  CreatePayslipTemplateDto, UpdatePayslipTemplateDto, SetPayslipTemplateDto,
+  CreateBankPayoutConfigDto, UpdateBankPayoutConfigDto,
 } from "./dto/payroll.dto";
 import { PayrollCalendarPolicyController } from "./controllers/payroll-calendar-policy.controller";
 import { UpsertPayrollCalendarPolicyDto } from "./dto/payroll-calendar-policy.dto";
@@ -450,6 +451,19 @@ router.post(
   ctrl.createStructureTemplate.bind(ctrl)
 );
 
+router.patch(
+  "/structures/templates/:id",
+  checkPermission("payroll.create"),
+  validateBody(UpdateSalaryStructureTemplateDto),
+  ctrl.updateStructureTemplate.bind(ctrl)
+);
+
+router.delete(
+  "/structures/templates/:id",
+  checkPermission("payroll.create"),
+  ctrl.deleteStructureTemplate.bind(ctrl)
+);
+
 router.post(
   "/structures/assign-bulk",
   checkPermission("payroll.create"),
@@ -506,6 +520,19 @@ router.post(
   ctrl.createBankFormat.bind(ctrl)
 );
 
+router.patch(
+  "/bank-formats/:id",
+  checkPermission("payroll.create"),
+  validateBody(UpdateBankPayoutConfigDto),
+  ctrl.updateBankFormat.bind(ctrl)
+);
+
+router.delete(
+  "/bank-formats/:id",
+  checkPermission("payroll.create"),
+  ctrl.deleteBankFormat.bind(ctrl)
+);
+
 router.get(
   "/runs/:id/payout/export",
   checkPermission("payroll.run"),
@@ -537,6 +564,25 @@ router.post(
   checkPermission("payroll.create"),
   validateBody(CreatePayslipTemplateDto),
   ctrl.createPayslipTemplate.bind(ctrl)
+);
+
+router.patch(
+  "/payslip-templates/:id",
+  checkPermission("payroll.create"),
+  validateBody(UpdatePayslipTemplateDto),
+  ctrl.updatePayslipTemplate.bind(ctrl)
+);
+
+router.patch(
+  "/payslip-templates/:id/set-default",
+  checkPermission("payroll.create"),
+  ctrl.setDefaultPayslipTemplateById.bind(ctrl)
+);
+
+router.delete(
+  "/payslip-templates/:id",
+  checkPermission("payroll.create"),
+  ctrl.deletePayslipTemplate.bind(ctrl)
 );
 
 router.post(

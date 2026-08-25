@@ -69,6 +69,7 @@ export const OnboardingStep1Dto = z.object({
   passportNo: z.string().trim().optional(),
   previousEmployerName: safeStringSchema(0, 100).optional(),
   previousEmployerLastWorkingDate: dateSchema.optional(),
+  customFields: z.record(z.string(), z.any()).optional(),
 }).refine(
   (data) => {
     if (data.previousEmployerName && data.previousEmployerName.trim().length > 0) {

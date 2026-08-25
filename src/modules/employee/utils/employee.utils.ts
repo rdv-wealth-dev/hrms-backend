@@ -7,6 +7,7 @@ import { EmployeeModel, EmployeeStatus, EmployeeType, Gender } from "../models/e
 import { DepartmentModel } from "../../department/department.model";
 import { DesignationModel } from "../../designation/designation.model";
 import { BranchModel } from "../../branch/branch.model";
+import { CustomFieldModel } from "../../custom-field/custom-field.model";
 import { getNextEmployeeCode } from "./employee-counter.util";
 import { getCountryModule } from "../../../domain/localization/country.registry";
 
@@ -29,6 +30,8 @@ export interface BulkImportRow {
   pan?: string;
   aadhaar?: string;
   countryCode?: string;
+  customFields?: Record<string, any>;
+  [key: string]: any;
 }
 
 export interface ImportError {
@@ -352,6 +355,19 @@ export async function parseImportFile(
     .select("email").lean();
   const existingEmails = new Set(existingEmployees.map(e => e.email.toLowerCase()));
 
+  // Track active custom fields for fuzzy header mapping
+  const activeCustomFields = await CustomFieldModel.find({
+    tenantId: tenantIdObj,
+    isDeleted: false,
+    isActive: true,
+  });
+
+  const customFieldMap = new Map<string, string>();
+  for (const cf of activeCustomFields) {
+    customFieldMap.set(normalize(cf.fieldLabel), cf.fieldKey);
+    customFieldMap.set(normalize(cf.fieldKey), cf.fieldKey);
+  }
+
   const errors: ImportError[] = [];
   const warnings: ImportError[] = [];
   const validRecords: any[] = [];
@@ -505,6 +521,28 @@ export async function parseImportFile(
     const employeeCode = await getNextEmployeeCode(context.tenantId);
     const newEmpId = new mongoose.Types.ObjectId();
 
+    // ── Resolve dynamic custom fields via fuzzy header matching ──
+    const resolvedCustomFields: Record<string, any> = {};
+    if (row.customFields) {
+      for (const [rawKey, rawVal] of Object.entries(row.customFields)) {
+        const normalizedKey = normalize(rawKey);
+        // 1. Direct normalized match
+        if (customFieldMap.has(normalizedKey)) {
+          resolvedCustomFields[customFieldMap.get(normalizedKey)!] = rawVal;
+        } else {
+          // 2. Fuzzy match against registered custom field labels/keys
+          let matchedKey: string | null = null;
+          for (const [normLabel, actualKey] of customFieldMap.entries()) {
+            if (levenshtein(normalizedKey, normLabel) <= 2) {
+              matchedKey = actualKey;
+              break;
+            }
+          }
+          resolvedCustomFields[matchedKey || rawKey] = rawVal;
+        }
+      }
+    }
+
     const employeeDoc = {
       _id: newEmpId,
       tenantId: tenantIdObj,
@@ -530,6 +568,7 @@ export async function parseImportFile(
       pan: row.pan?.trim().toUpperCase() || undefined,
       aadhaar: row.aadhaar?.trim() || undefined,
       countryCode,
+      customFields: resolvedCustomFields,
       isActive: true,
       onboardingStep: 1,
       onboardingComplete: false,
@@ -645,8 +684,13 @@ export async function buildExportBuffer(
 // HR downloads this to know exact column names and valid values
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function buildImportTemplate(format: "csv" | "xlsx"): Promise<Buffer> {
-  const sampleRows = [
+export async function buildImportTemplate(
+  format: "csv" | "xlsx",
+  tenantId?: string,
+  branchId?: string,
+  departmentId?: string
+): Promise<Buffer> {
+  const sampleRows: Record<string, any>[] = [
     {
       firstName: "Rahul",
       lastName: "Sharma",
@@ -665,7 +709,7 @@ export async function buildImportTemplate(format: "csv" | "xlsx"): Promise<Buffe
     },
   ];
 
-  const columns = [
+  const columns: { header: string; key: string; width: number }[] = [
     { header: "First Name", key: "firstName", width: 20 },
     { header: "Last Name", key: "lastName", width: 20 },
     { header: "Email", key: "email", width: 30 },
@@ -680,6 +724,35 @@ export async function buildImportTemplate(format: "csv" | "xlsx"): Promise<Buffe
     { header: "PAN", key: "pan", width: 15 },
     { header: "Aadhaar", key: "aadhaar", width: 15 },
   ];
+
+  // Dynamically load active custom fields configured for this organization/branch/department
+  let dynamicCustomFields: any[] = [];
+  if (tenantId && mongoose.Types.ObjectId.isValid(tenantId)) {
+    const orConditions: Record<string, any>[] = [{ scope: "ORGANIZATION" }];
+    if (branchId && mongoose.Types.ObjectId.isValid(branchId)) {
+      orConditions.push({ scope: "BRANCH", branchId: new mongoose.Types.ObjectId(branchId) });
+    }
+    if (departmentId && mongoose.Types.ObjectId.isValid(departmentId)) {
+      orConditions.push({ scope: "DEPARTMENT", departmentId: new mongoose.Types.ObjectId(departmentId) });
+    }
+
+    dynamicCustomFields = await CustomFieldModel.find({
+      tenantId: new mongoose.Types.ObjectId(tenantId),
+      isDeleted: false,
+      isActive: true,
+      showInBulkImport: true,
+      $or: orConditions,
+    }).sort({ order: 1, createdAt: 1 });
+
+    for (const cf of dynamicCustomFields) {
+      columns.push({
+        header: cf.fieldLabel,
+        key: cf.fieldKey,
+        width: Math.max(cf.fieldLabel.length + 6, 20),
+      });
+      sampleRows[0][cf.fieldKey] = cf.defaultValue ?? (cf.options && cf.options.length > 0 ? cf.options[0] : "");
+    }
+  }
 
   if (format === "csv") {
     const header = columns.map(c => `"${c.header}"`).join(",");
@@ -701,9 +774,9 @@ export async function buildImportTemplate(format: "csv" | "xlsx"): Promise<Buffe
 
   worksheet.addRow(sampleRows[0]);
 
-  // Notes sheet — valid values for enum fields
+  // Notes sheet — valid values for standard and dynamic custom fields
   const notes = workbook.addWorksheet("Valid Values");
-  notes.addRow(["Field", "Valid Values"]);
+  notes.addRow(["Field", "Valid Values / Instructions"]);
   notes.addRow(["Employee Type", "FULL_TIME, PART_TIME, CONTRACT, INTERN, CONSULTANT"]);
   notes.addRow(["Gender", "MALE, FEMALE, OTHER"]);
   notes.addRow(["Joining Date", "YYYY-MM-DD format e.g. 2024-01-15"]);
@@ -714,8 +787,19 @@ export async function buildImportTemplate(format: "csv" | "xlsx"): Promise<Buffe
   notes.addRow(["PAN", "10-character PAN e.g. ABCDE1234F"]);
   notes.addRow(["Aadhaar", "12-digit Aadhaar number"]);
 
+  for (const cf of dynamicCustomFields) {
+    let desc = `Type: ${cf.fieldType}`;
+    if (cf.options && cf.options.length > 0) {
+      desc += ` | Options: ${cf.options.join(", ")}`;
+    }
+    if (cf.isRequired) {
+      desc += ` | Mandatory`;
+    }
+    notes.addRow([cf.fieldLabel, desc]);
+  }
+
   notes.getRow(1).font = { bold: true };
-  notes.columns = [{ width: 20 }, { width: 60 }];
+  notes.columns = [{ width: 25 }, { width: 65 }];
 
   worksheet.views = [{ state: "frozen", ySplit: 1 }];
 
@@ -727,6 +811,22 @@ export async function buildImportTemplate(format: "csv" | "xlsx"): Promise<Buffe
 // CSV PARSER
 // ─────────────────────────────────────────────────────────────────────────────
 
+const STANDARD_IMPORT_KEYS = new Set([
+  "first name", "firstname", "first_name",
+  "last name", "lastname", "last_name",
+  "email", "email address",
+  "phone", "phone number",
+  "branch", "branch name", "branchname",
+  "department", "department name", "departmentname",
+  "designation", "designation name", "designationname",
+  "employee type", "employeetype", "employee_type",
+  "gender",
+  "date of birth", "dateofbirth", "dob",
+  "joining date", "joiningdate", "joining_date",
+  "pan", "aadhaar", "passport", "passport number", "passportno",
+  "country code", "countrycode", "country", "country_code"
+]);
+
 async function parseCSV(buffer: Buffer): Promise<BulkImportRow[]> {
   return new Promise((resolve, reject) => {
     const results: BulkImportRow[] = [];
@@ -735,6 +835,14 @@ async function parseCSV(buffer: Buffer): Promise<BulkImportRow[]> {
     stream
       .pipe(csvParser())
       .on("data", (data) => {
+        const customFields: Record<string, any> = {};
+        for (const [key, val] of Object.entries(data)) {
+          const norm = String(key ?? "").trim().toLowerCase();
+          if (!STANDARD_IMPORT_KEYS.has(norm) && val !== undefined && val !== null && val !== "") {
+            customFields[key] = val;
+          }
+        }
+
         results.push({
           firstName: data.firstName || data.first_name || data["First Name"],
           lastName: data.lastName || data.last_name || data["Last Name"],
@@ -750,6 +858,7 @@ async function parseCSV(buffer: Buffer): Promise<BulkImportRow[]> {
           pan: data.pan || data["PAN"],
           aadhaar: data.aadhaar || data["Aadhaar"],
           countryCode: data.countryCode || data.country || data["Country"] || data["Country Code"],
+          customFields,
         });
       })
       .on("end", () => resolve(results))
@@ -782,8 +891,15 @@ async function parseExcel(buffer: Buffer): Promise<BulkImportRow[]> {
     if (!hasData) return;
 
     const rowObj: any = {};
+    const customFields: Record<string, any> = {};
+
     headers.forEach((header, index) => {
-      if (header) rowObj[header] = values[index];
+      if (header) {
+        rowObj[header] = values[index];
+        if (!STANDARD_IMPORT_KEYS.has(header) && values[index] !== undefined && values[index] !== null && values[index] !== "") {
+          customFields[header] = values[index];
+        }
+      }
     });
 
     results.push({
@@ -801,6 +917,7 @@ async function parseExcel(buffer: Buffer): Promise<BulkImportRow[]> {
       pan: rowObj["pan"],
       aadhaar: rowObj["aadhaar"],
       countryCode: rowObj["country code"] || rowObj["countrycode"] || rowObj["country"] || rowObj["country_code"],
+      customFields,
     });
   });
 

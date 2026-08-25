@@ -37,4 +37,33 @@ export class PayslipTemplateService {
     }
     return PayslipTemplateModel.create({ ...input, tenantId });
   }
+
+  async updateCustomTemplate(tenantId: string, id: string, input: any): Promise<PayslipTemplateDocument> {
+    const template = await PayslipTemplateModel.findOne({ _id: id, tenantId });
+    if (!template) throw NotFoundError("Payslip template not found");
+
+    if (input.isCompanyDefault) {
+      await PayslipTemplateModel.updateMany({ tenantId, _id: { $ne: id } }, { isCompanyDefault: false });
+    }
+
+    Object.assign(template, input);
+    return template.save();
+  }
+
+  async setDefaultById(tenantId: string, id: string): Promise<PayslipTemplateDocument> {
+    const template = await PayslipTemplateModel.findOne({ _id: id, tenantId });
+    if (!template) throw NotFoundError("Payslip template not found");
+
+    await PayslipTemplateModel.updateMany({ tenantId }, { isCompanyDefault: false });
+    template.isCompanyDefault = true;
+    return template.save();
+  }
+
+  async deleteTemplate(tenantId: string, id: string): Promise<void> {
+    const template = await PayslipTemplateModel.findOne({ _id: id, tenantId });
+    if (!template) throw NotFoundError("Payslip template not found");
+
+    template.isActive = false;
+    await template.save();
+  }
 }

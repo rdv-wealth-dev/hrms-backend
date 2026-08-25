@@ -61,6 +61,7 @@ export const CreateEmployeeDto = withPhoneValidation(
     passportNo: passportSchema.optional(),
     drivingLicense: drivingLicenseSchema.optional(),
     voterId: voterIdSchema.optional(),
+    customFields: z.record(z.string(), z.any()).optional(),
     // Organisation
     branchId: z.preprocess(
       (val) => (val === "" ? undefined : val),
@@ -186,6 +187,7 @@ export const UpdateEmployeeDto = withPhoneValidation(z.object({
   passportNo: passportSchema.optional(),
   drivingLicense: drivingLicenseSchema.optional(),
   voterId: voterIdSchema.optional(),
+  customFields: z.record(z.string(), z.any()).optional(),
   departmentId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),
   designationId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),
   branchId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),

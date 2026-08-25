@@ -29,6 +29,26 @@ export class SalaryStructureTemplateService {
     return template;
   }
 
+  async updateTemplate(tenantId: string, id: string, input: any): Promise<SalaryStructureTemplateDocument> {
+    const template = await SalaryStructureTemplateModel.findOne({ _id: id, tenantId });
+    if (!template) throw NotFoundError("Salary structure template not found");
+
+    if (input.isCompanyDefault) {
+      await SalaryStructureTemplateModel.updateMany({ tenantId, _id: { $ne: id } }, { isCompanyDefault: false });
+    }
+
+    Object.assign(template, input);
+    return template.save();
+  }
+
+  async deleteTemplate(tenantId: string, id: string): Promise<void> {
+    const template = await SalaryStructureTemplateModel.findOne({ _id: id, tenantId });
+    if (!template) throw NotFoundError("Salary structure template not found");
+
+    template.isActive = false;
+    await template.save();
+  }
+
   async assignBulk(
     tenantId: string,
     templateId: string,

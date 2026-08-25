@@ -409,6 +409,82 @@ export const CreateBankPayoutConfigDto = z.object({
 });
 export type CreateBankPayoutConfigInput = z.infer<typeof CreateBankPayoutConfigDto>;
 
+export const UpdateSalaryStructureTemplateDto = z.object({
+  name: z.string().min(2).max(100).optional(),
+  description: z.string().optional(),
+  structureType: z.enum(["REGULAR", "CONTRACTOR", "JOB_BASED_WAGE", "HOURLY_WAGE"]).optional(),
+  isCompanyDefault: z.boolean().optional(),
+  earningsRules: z.array(StructureTemplateRuleDto).optional(),
+  deductionsRules: z.array(StructureTemplateRuleDto).optional(),
+  isActive: z.boolean().optional(),
+});
+export type UpdateSalaryStructureTemplateInput = z.infer<typeof UpdateSalaryStructureTemplateDto>;
+
+export const UpdatePayslipTemplateDto = z.object({
+  name: z.string().min(2).max(100).optional(),
+  templateCode: z.string().min(1).max(50).toUpperCase().optional(),
+  layoutType: z.enum(["STANDARD", "COMPACT", "MODERN_GRID", "EXECUTIVE", "CUSTOM_HTML"]).optional(),
+  isCompanyDefault: z.boolean().optional(),
+  sections: z.object({
+    showCompanyLogo: z.boolean().optional(),
+    showCompanyCin: z.boolean().optional(),
+    showEmployeePhoto: z.boolean().optional(),
+    showDepartmentDesignation: z.boolean().optional(),
+    showPanUan: z.boolean().optional(),
+    showBankDetails: z.boolean().optional(),
+    showAttendanceSummary: z.boolean().optional(),
+    showLeaveBalances: z.boolean().optional(),
+    showYtdTaxSummary: z.boolean().optional(),
+    showEmployerContributions: z.boolean().optional(),
+    showNetPayInWords: z.boolean().optional(),
+    showDigitalSignatureBox: z.boolean().optional(),
+  }).optional(),
+  customDisclaimerText: z.string().optional(),
+  headerColorHex: z.string().optional(),
+  accentColorHex: z.string().optional(),
+  customCss: z.string().optional(),
+  htmlTemplate: z.string().optional(),
+  isActive: z.boolean().optional(),
+});
+export type UpdatePayslipTemplateInput = z.infer<typeof UpdatePayslipTemplateDto>;
+
+export const UpdateBankPayoutConfigDto = z.object({
+  name: z.string().min(2).max(100).optional(),
+  bankCode: z.string().min(2).max(50).toUpperCase().optional(),
+  bankName: z.string().min(2).max(100).optional(),
+  branchId: z.string().min(24).optional().nullable(),
+  delimiter: z.string().min(1).optional(),
+  fileExtension: z.enum(["csv", "txt", "tsv"]).optional(),
+  mimeType: z.enum(["text/csv", "text/plain", "text/tab-separated-values"]).optional(),
+  includeHeader: z.boolean().optional(),
+  quoteStrings: z.boolean().optional(),
+  isDefault: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+  columns: z.array(
+    z.object({
+      headerName: z.string().min(1),
+      fieldSource: z.enum([
+        "ACCOUNT_NUMBER",
+        "NET_AMOUNT",
+        "BENEFICIARY_NAME",
+        "IFSC_CODE",
+        "REMARKS",
+        "EMAIL",
+        "EMPLOYEE_CODE",
+        "BANK_NAME",
+        "BRANCH_NAME",
+        "PAYMENT_DATE",
+        "STATIC_VALUE",
+      ]),
+      staticValue: z.string().optional(),
+      format: z.enum(["2_DECIMALS", "NO_DECIMALS", "YYYYMMDD", "DD/MM/YYYY", "RAW"]).optional(),
+      fixedWidth: z.number().optional(),
+      defaultValue: z.string().optional(),
+    })
+  ).min(1).optional(),
+});
+export type UpdateBankPayoutConfigInput = z.infer<typeof UpdateBankPayoutConfigDto>;
+
 
 
 
