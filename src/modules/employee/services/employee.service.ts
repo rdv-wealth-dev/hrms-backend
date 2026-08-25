@@ -864,8 +864,9 @@ export class EmployeeService {
       );
     }
 
-    const updated = await this.empRepo.updateById(context, id, updateData);
+    await this.empRepo.updateById(context, id, updateData);
     await recalculateProfileCompletion(context.tenantId, id);
+    const updated = await this.getEmployeeById(context, id);
     return updated;
   }
 
