@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import { BaseDocument } from "../../shared/database/base.model";
+import { OrgLevelDocument, createOrgLevelSchema } from "../../shared/database/base.schema";
 
 export enum CustomFieldType {
   TEXT = "TEXT",
@@ -31,8 +31,7 @@ export interface CustomFieldOption {
   color?: string; // Badge color e.g. "#2886CE"
 }
 
-export interface CustomFieldDocument extends BaseDocument {
-  tenantId: mongoose.Types.ObjectId;
+export interface CustomFieldDocument extends OrgLevelDocument {
   fieldLabel: string;        // e.g. "Office Type" or "Work Mode"
   fieldKey: string;          // e.g. "officeType" (auto-slugified)
   fieldType: CustomFieldType;
@@ -54,14 +53,8 @@ export interface CustomFieldDocument extends BaseDocument {
   isDeleted: boolean;
 }
 
-const CustomFieldSchema = new Schema<CustomFieldDocument>(
+const CustomFieldSchema = createOrgLevelSchema<CustomFieldDocument>(
   {
-    tenantId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Tenant",
-      required: true,
-      index: true,
-    },
     fieldLabel: {
       type: String,
       required: true,
@@ -94,13 +87,13 @@ const CustomFieldSchema = new Schema<CustomFieldDocument>(
       index: true,
     },
     branchId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Branch",
       default: null,
       index: true,
     },
     departmentId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Department",
       default: null,
       index: true,
