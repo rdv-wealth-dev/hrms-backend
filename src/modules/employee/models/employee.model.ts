@@ -41,6 +41,19 @@ export enum MaritalStatus {
   WIDOWED = "WIDOWED",
 }
 
+export enum Religion {
+  HINDUISM = "HINDUISM",
+  ISLAM = "ISLAM",
+  CHRISTIANITY = "CHRISTIANITY",
+  SIKHISM = "SIKHISM",
+  BUDDHISM = "BUDDHISM",
+  JAINISM = "JAINISM",
+  ZOROASTRIANISM = "ZOROASTRIANISM",
+  JUDAISM = "JUDAISM",
+  OTHER = "OTHER",
+  PREFER_NOT_TO_SAY = "PREFER_NOT_TO_SAY",
+}
+
 // EMBEDDED INTERFACES
 
 export interface EmergencyContact {
@@ -74,7 +87,10 @@ export interface EmployeeDocument extends BaseDocument {
   gender?: Gender;
   bloodGroup?: BloodGroup;
   maritalStatus?: MaritalStatus;
+  religion?: Religion;
   nationality?: string;
+  previousEmployerName?: string;
+  previousEmployerLastWorkingDate?: Date;
   pan?: string;      // encrypted at write, masked on read
   aadhaar?: string;      // encrypted at write, masked on read
   passportNo?: string;
@@ -197,7 +213,14 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
       type: String,
       enum: Object.values(MaritalStatus),
     },
+    religion: {
+      type: String,
+      enum: Object.values(Religion),
+      default: null,
+    },
     nationality: { type: String, trim: true },
+    previousEmployerName: { type: String, trim: true, default: null },
+    previousEmployerLastWorkingDate: { type: Date, default: null },
     pan: { type: String, trim: true, uppercase: true },
     aadhaar: { type: String, trim: true },
     passportNo: { type: String, trim: true, uppercase: true },

@@ -66,6 +66,7 @@ export class OnboardingWizardService {
       gender: refreshed?.gender,
       bloodGroup: refreshed?.bloodGroup,
       maritalStatus: refreshed?.maritalStatus,
+      religion: refreshed?.religion,
       nationality: refreshed?.nationality,
       currentAddress: refreshed?.currentAddress,
       permanentAddress: refreshed?.permanentAddress,
@@ -129,6 +130,7 @@ export class OnboardingWizardService {
     const gender = input.gender ?? employee.gender;
     const bloodGroup = input.bloodGroup ?? employee.bloodGroup;
     const maritalStatus = input.maritalStatus ?? employee.maritalStatus;
+    const religion = input.religion ?? employee.religion;
     const phone = input.phone ?? employee.phone;
     const currentAddress = input.currentAddress ?? employee.currentAddress;
     const emergencyContacts = input.emergencyContact ?? employee.emergencyContacts;
@@ -150,6 +152,7 @@ export class OnboardingWizardService {
     employee.gender = gender as any;
     employee.bloodGroup = bloodGroup as any;
     employee.maritalStatus = maritalStatus as any;
+    if (religion !== undefined) employee.religion = religion as any;
     employee.phone = phone;
     employee.currentAddress = currentAddress as any;
     employee.emergencyContacts = emergencyContacts as any;

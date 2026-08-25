@@ -32,6 +32,10 @@ export const CreateEmployeeDto = withPhoneValidation(
     gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
     bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]).optional(),
     maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]).optional(),
+    religion: z.enum([
+      "HINDUISM", "ISLAM", "CHRISTIANITY", "SIKHISM", "BUDDHISM",
+      "JAINISM", "ZOROASTRIANISM", "JUDAISM", "OTHER", "PREFER_NOT_TO_SAY"
+    ]).optional(),
     nationality: safeStringSchema(2, 100).optional(),
     pan: panSchema.optional(),
     aadhaar: aadhaarSchema.optional(),
@@ -134,6 +138,10 @@ export const UpdateEmployeeDto = withPhoneValidation(z.object({
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]).optional(),
   maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]).optional(),
+  religion: z.enum([
+    "HINDUISM", "ISLAM", "CHRISTIANITY", "SIKHISM", "BUDDHISM",
+    "JAINISM", "ZOROASTRIANISM", "JUDAISM", "OTHER", "PREFER_NOT_TO_SAY"
+  ]).optional(),
   nationality: safeStringSchema(2, 100).optional(),
   pan: panSchema.optional(),
   aadhaar: aadhaarSchema.optional(),

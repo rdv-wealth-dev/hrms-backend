@@ -6,6 +6,18 @@ export const OnboardingStep1Dto = z.object({
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]).optional(),
   maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]).optional(),
+  religion: z.enum([
+    "HINDUISM",
+    "ISLAM",
+    "CHRISTIANITY",
+    "SIKHISM",
+    "BUDDHISM",
+    "JAINISM",
+    "ZOROASTRIANISM",
+    "JUDAISM",
+    "OTHER",
+    "PREFER_NOT_TO_SAY"
+  ]).optional(),
   phone: phoneSchema.optional(),
   currentAddress: z.object({
     addressLine1: safeStringSchema(1, 200),
