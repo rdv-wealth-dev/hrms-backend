@@ -169,10 +169,15 @@ export class BiometricLogService {
       new Set(rawLogs.map((l: any) => l.branchId?.toString()).filter(Boolean))
     );
 
+    const regexList = empCodesToFetch.map((c) => new RegExp(`^${c.trim()}$`, "i"));
+
     const [employees, branches] = await Promise.all([
       EmployeeModel.find({
         tenantId: new mongoose.Types.ObjectId(context.tenantId),
-        employeeCode: { $in: empCodesToFetch },
+        $or: [
+          { employeeCode: { $in: regexList } },
+          { employeeCode: { $in: empCodesToFetch } },
+        ],
       })
         .populate("departmentId", "name code")
         .populate("designationId", "name code")
@@ -188,7 +193,14 @@ export class BiometricLogService {
     const empMap = new Map<string, any>();
     for (const emp of employees) {
       if (emp.employeeCode) {
-        empMap.set(emp.employeeCode.toUpperCase(), emp);
+        const cleanCode = emp.employeeCode.trim().toUpperCase();
+        empMap.set(cleanCode, emp);
+        // Also map without leading zeros or stripped numeric
+        const numericMatch = cleanCode.match(/\d+$/);
+        if (numericMatch) {
+          empMap.set(numericMatch[0], emp);
+          empMap.set(String(parseInt(numericMatch[0], 10)), emp);
+        }
       }
     }
 
