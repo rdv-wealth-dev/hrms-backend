@@ -88,7 +88,22 @@ export class BiometricLogService {
       punchDate: { $gte: startDate, $lte: endDate },
     };
 
-    if (query.branchId && mongoose.Types.ObjectId.isValid(query.branchId)) {
+    // Role-based branch scoping:
+    // ORG_ADMIN & SUPER_ADMIN have unrestricted access to ALL branches.
+    // HR_ADMIN / BRANCH_ADMIN with assigned branchIds are strictly scoped to their assigned branch(es).
+    const isMasterAdmin = ["ORG_ADMIN", "SUPER_ADMIN", "CEO"].includes(context.role);
+    const userBranchIds = (context.branchIds || []).map((id) => id.toString());
+
+    if (!isMasterAdmin && userBranchIds.length > 0) {
+      if (query.branchId) {
+        if (!userBranchIds.includes(query.branchId)) {
+          throw new AppError("Access denied: You do not have permission to view attendance logs for this branch location", 403);
+        }
+        filter.branchId = new mongoose.Types.ObjectId(query.branchId);
+      } else {
+        filter.branchId = { $in: userBranchIds.map((id) => new mongoose.Types.ObjectId(id)) };
+      }
+    } else if (query.branchId && mongoose.Types.ObjectId.isValid(query.branchId)) {
       filter.branchId = new mongoose.Types.ObjectId(query.branchId);
     }
 
@@ -297,18 +312,23 @@ export class BiometricLogService {
     const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
     const tenantOId = new mongoose.Types.ObjectId(context.tenantId);
+    const isMasterAdmin = ["ORG_ADMIN", "SUPER_ADMIN", "CEO"].includes(context.role);
+    const userBranchIds = (context.branchIds || []).map((id) => id.toString());
+
+    const matchFilter: Record<string, any> = {
+      tenantId: tenantOId,
+      punchDate: todayStr,
+    };
+
+    if (!isMasterAdmin && userBranchIds.length > 0) {
+      matchFilter.branchId = { $in: userBranchIds.map((id) => new mongoose.Types.ObjectId(id)) };
+    }
 
     const [totalToday, distinctEmployeesToday, modeBreakdown] = await Promise.all([
-      RawLogModel.countDocuments({
-        tenantId: tenantOId,
-        punchDate: todayStr,
-      }),
-      RawLogModel.distinct("employeeID", {
-        tenantId: tenantOId,
-        punchDate: todayStr,
-      }),
+      RawLogModel.countDocuments(matchFilter),
+      RawLogModel.distinct("employeeID", matchFilter),
       RawLogModel.aggregate([
-        { $match: { tenantId: tenantOId, punchDate: todayStr } },
+        { $match: matchFilter },
         { $group: { _id: "$payload.modeofPunch", count: { $sum: 1 } } },
       ]),
     ]);
