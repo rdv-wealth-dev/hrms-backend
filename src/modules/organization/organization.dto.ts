@@ -49,9 +49,24 @@ export const UpdateOrganizationDto = z.object({
       })
     ).optional(),
   }).optional(),
+
+  employeeCodeConfig: z.object({
+    prefix: z.string().trim().min(1).max(15).toUpperCase(),
+    digits: z.number().int().min(1).max(8).optional().default(2),
+    separator: z.string().max(3).optional().default(""),
+    startSequenceNumber: z.number().int().min(1).optional(),
+  }).optional(),
 });
 
 export type UpdateOrganizationInput = z.infer<typeof UpdateOrganizationDto>;
+
+export const UpdateEmployeeCodeConfigDto = z.object({
+  prefix: z.string().trim().min(1).max(15).toUpperCase(),
+  digits: z.number().int().min(1).max(8).optional().default(2),
+  separator: z.string().max(3).optional().default(""),
+  startSequenceNumber: z.number().int().min(1).optional().default(1),
+});
+export type UpdateEmployeeCodeConfigInput = z.infer<typeof UpdateEmployeeCodeConfigDto>;
 
 //Update Modules
 export const UpdateModulesDto = z.object({

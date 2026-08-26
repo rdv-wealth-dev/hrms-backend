@@ -2,6 +2,13 @@ import mongoose, { Document } from "mongoose";
 import { createPlatformSchema } from "../../shared/database/base.schema";
 import { CustomWeekOffRule } from "../attendance/services/schedule-engine.service";
 
+export interface EmployeeCodeConfig {
+  prefix: string;
+  digits: number;
+  separator: string;
+  startSequenceNumber: number;
+}
+
 export interface OrganizationDocument extends Document {
   companyName: string;
   slug: string;
@@ -18,6 +25,7 @@ export interface OrganizationDocument extends Document {
   employeeStrength: number;
   phone?: string;
   mandatoryDocumentTypes: string[];
+  employeeCodeConfig?: EmployeeCodeConfig;
   address?: {
     addressLine1?: string;
     addressLine2?: string;
@@ -211,6 +219,13 @@ const OrganizationSchema = createPlatformSchema<OrganizationDocument>({
     tdsEnabled: { type: Boolean, default: true },
     ptEnabled: { type: Boolean, default: false },
     lwfEnabled: { type: Boolean, default: false },
+  },
+
+  employeeCodeConfig: {
+    prefix: { type: String, default: "EMP", uppercase: true, trim: true },
+    digits: { type: Number, default: 2, min: 1, max: 8 },
+    separator: { type: String, default: "" },
+    startSequenceNumber: { type: Number, default: 1 },
   },
 
   isActive: { type: Boolean, default: true },

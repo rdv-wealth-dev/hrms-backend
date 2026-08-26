@@ -62,10 +62,41 @@ export class OrganizationService {
       };
     }
 
+    if (input.employeeCodeConfig) {
+      updateData.employeeCodeConfig = {
+        ...(org.employeeCodeConfig ?? { prefix: "EMP", digits: 2, separator: "", startSequenceNumber: 1 }),
+        ...input.employeeCodeConfig,
+      };
+    }
+
     const updated = await this.orgRepo.updateById(
       context.tenantId,
       updateData
     );
+
+    return updated;
+  }
+
+  // Update employee code prefix & sequence configuration
+  async updateEmployeeCodeConfig(
+    context: RequestContext,
+    input: { prefix: string; digits?: number; separator?: string; startSequenceNumber?: number }
+  ) {
+    const org = await this.orgRepo.findById(context.tenantId);
+    if (!org) {
+      throw new AppError("Organization not found", 404);
+    }
+
+    const newConfig = {
+      prefix: input.prefix.trim().toUpperCase(),
+      digits: input.digits ?? org.employeeCodeConfig?.digits ?? 2,
+      separator: input.separator ?? org.employeeCodeConfig?.separator ?? "",
+      startSequenceNumber: input.startSequenceNumber ?? org.employeeCodeConfig?.startSequenceNumber ?? 1,
+    };
+
+    const updated = await this.orgRepo.updateById(context.tenantId, {
+      employeeCodeConfig: newConfig,
+    });
 
     return updated;
   }

@@ -50,4 +50,11 @@ router.patch(
   controller.updateMandatoryDocs.bind(controller)
 );
 
+// PATCH /api/v1/organizations/me/employee-code-config
+router.patch(
+  "/me/employee-code-config",
+  checkPermission("settings.update"),
+  controller.updateEmployeeCodeConfig.bind(controller)
+);
+
 export default router;
