@@ -8,17 +8,19 @@ import { AppError } from "../../../shared/errors/app.error";
 import { BiometricLogQueryInput } from "../dto/biometric-log.dto";
 
 export interface FormattedBiometricLog {
-  _id: string;
+  sNo: number;
   employeeCode: string;
-  employeeName?: string;
+  employeeName: string;
+  punchLog: string;
+  punchDate: string;
+  _id: string;
+  punchTime: string;
+  punchTimestamp?: Date;
   departmentName?: string;
   designationName?: string;
   avatarUrl?: string;
   branchId?: string;
   branchName?: string;
-  punchDate: string;
-  punchTime: string;
-  punchTimestamp?: Date;
   modeofPunch: string;
   modeofAttn: string;
   deviceSerialno: string;
@@ -196,7 +198,7 @@ export class BiometricLogService {
     }
 
     // Format logs with human-friendly metadata
-    const data: FormattedBiometricLog[] = rawLogs.map((log: any) => {
+    const data: FormattedBiometricLog[] = rawLogs.map((log: any, index: number) => {
       const codeKey = (log.employeeID || "").toUpperCase();
       const emp = empMap.get(codeKey);
       const branch = log.branchId ? branchMap.get(log.branchId.toString()) : undefined;
@@ -206,17 +208,23 @@ export class BiometricLogService {
       const modeofAttn = payload.modeofAttn || payload.inOutMode || "Default";
       const deviceIp = payload.ip || payload.deviceIp || undefined;
 
+      const sNo = (page - 1) * limit + index + 1;
+      const employeeName = emp ? `${emp.firstName || ""} ${emp.lastName || ""}`.trim() : (log.employeeID || "Unknown");
+      const punchLog = log.punchTime || "";
+
       return {
-        _id: log._id.toString(),
+        sNo,
         employeeCode: log.employeeID || "",
-        employeeName: emp ? `${emp.firstName || ""} ${emp.lastName || ""}`.trim() : undefined,
+        employeeName,
+        punchLog,
+        punchDate: log.punchDate || "",
+        _id: log._id.toString(),
+        punchTime: log.punchTime || "",
         departmentName: (emp?.departmentId as any)?.name || undefined,
         designationName: (emp?.designationId as any)?.name || undefined,
         avatarUrl: emp?.avatarUrl || undefined,
         branchId: log.branchId?.toString(),
         branchName: branch?.name || undefined,
-        punchDate: log.punchDate || "",
-        punchTime: log.punchTime || "",
         modeofPunch,
         modeofAttn,
         deviceSerialno: log.deviceSerialno || payload.deviceSerialno || payload.deviceID || "",
