@@ -22,6 +22,10 @@ import { PayrollCalendarPolicyController } from "./controllers/payroll-calendar-
 import { UpsertPayrollCalendarPolicyDto } from "./dto/payroll-calendar-policy.dto";
 import { LoanController } from "./controllers/loan.controller";
 import { ReimbursementController } from "./controllers/reimbursement.controller";
+import { ArrearsBatchController } from "./controllers/arrears-batch.controller";
+import { FnFSettlementController } from "./controllers/fnf-settlement.controller";
+import { Form16Controller } from "./controllers/form16.controller";
+import { ApprovalsInboxController } from "./controllers/approvals-inbox.controller";
 
 import {
   injectOnboardingStatus,
@@ -33,6 +37,10 @@ const ctrl = new PayrollController();
 const calendarPolicyCtrl = new PayrollCalendarPolicyController();
 const loanCtrl = new LoanController();
 const reimbCtrl = new ReimbursementController();
+const arrearsCtrl = new ArrearsBatchController();
+const fnfCtrl = new FnFSettlementController();
+const form16Ctrl = new Form16Controller();
+const approvalsCtrl = new ApprovalsInboxController();
 
 router.use(authenticate);
 // Stamps req.context with onboarding phase. Never blocks on its own.
@@ -688,6 +696,74 @@ router.patch(
 router.delete(
   "/reimbursements/:id",
   reimbCtrl.cancelClaim.bind(reimbCtrl)
+);
+
+// ── 7. ARREARS BATCHES ──────────────────────────────────────────────────────
+
+router.post(
+  "/arrears/batches",
+  checkPermission("payroll.create"),
+  arrearsCtrl.createBatch.bind(arrearsCtrl)
+);
+
+router.get(
+  "/arrears/batches",
+  checkPermission("payroll.read"),
+  arrearsCtrl.listBatches.bind(arrearsCtrl)
+);
+
+router.get(
+  "/arrears/batches/:id",
+  checkPermission("payroll.read"),
+  arrearsCtrl.getBatchById.bind(arrearsCtrl)
+);
+
+router.patch(
+  "/arrears/batches/:id/process",
+  checkPermission("payroll.create"),
+  arrearsCtrl.processBatch.bind(arrearsCtrl)
+);
+
+// ── 8. FULL & FINAL SETTLEMENT (FnF) ─────────────────────────────────────────
+
+router.get(
+  "/fnf/:employeeId/compute",
+  checkPermission("payroll.read"),
+  fnfCtrl.computeSettlement.bind(fnfCtrl)
+);
+
+router.post(
+  "/fnf/:employeeId/process",
+  checkPermission("payroll.create"),
+  fnfCtrl.processSettlement.bind(fnfCtrl)
+);
+
+router.get(
+  "/fnf",
+  checkPermission("payroll.read"),
+  fnfCtrl.listSettlements.bind(fnfCtrl)
+);
+
+router.get(
+  "/fnf/:id",
+  checkPermission("payroll.read"),
+  fnfCtrl.getSettlementById.bind(fnfCtrl)
+);
+
+// ── 9. FORM 16 / ANNUAL TDS CERTIFICATE ─────────────────────────────────────
+
+router.get(
+  "/statutory/form16",
+  checkPermission("payroll.read"),
+  form16Ctrl.getForm16.bind(form16Ctrl)
+);
+
+// ── 10. CONSOLIDATED APPROVALS INBOX ────────────────────────────────────────
+
+router.get(
+  "/approvals",
+  checkPermission("payroll.read"),
+  approvalsCtrl.getApprovals.bind(approvalsCtrl)
 );
 
 export default router;
