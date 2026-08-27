@@ -9,7 +9,7 @@ interface DesignationSeed {
 }
 
 const DEFAULT_DESIGNATIONS: DesignationSeed[] = [
-  // ─── Software Engineering ───────────────────────────────────────────
+  // ─── Software Engineering 
   { name: "Junior Software Engineer", code: "JSE", departmentCode: "ENG", level: 1, description: "Entry-level software developer focused on learning and implementation under guidance." },
   { name: "Software Engineer", code: "SE", departmentCode: "ENG", level: 2, description: "Mid-level developer building features independently." },
   { name: "Senior Software Engineer", code: "SSE", departmentCode: "ENG", level: 3, description: "Senior developer handling complex modules and mentoring juniors." },
@@ -22,7 +22,7 @@ const DEFAULT_DESIGNATIONS: DesignationSeed[] = [
   { name: "VP of Engineering", code: "VPE", departmentCode: "ENG", level: 7, description: "VP-level leadership defining engineering vision and strategy." },
   { name: "Chief Technology Officer", code: "CTO", departmentCode: "ENG", level: 8, description: "C-level executive responsible for all technology decisions." },
 
-  // ─── Quality Assurance ─────────────────────────────────────────────
+  // ─── Quality Assurance 
   { name: "Junior QA Engineer", code: "JQA", departmentCode: "QA", level: 1, description: "Entry-level tester executing manual test cases." },
   { name: "QA Engineer", code: "QA", departmentCode: "QA", level: 2, description: "Mid-level quality assurance engineer." },
   { name: "Senior QA Engineer", code: "SQA", departmentCode: "QA", level: 3, description: "Senior QA owning test strategy and automation." },
@@ -30,7 +30,7 @@ const DEFAULT_DESIGNATIONS: DesignationSeed[] = [
   { name: "QA Lead", code: "QAL", departmentCode: "QA", level: 4, description: "QA team lead managing testing efforts." },
   { name: "QA Manager", code: "QAM", departmentCode: "QA", level: 5, description: "Manager overseeing the QA function." },
 
-  // ─── Cloud & Infrastructure / DevOps ───────────────────────────────
+  // ─── Cloud & Infrastructure / DevOps 
   { name: "Junior DevOps Engineer", code: "JDO", departmentCode: "DEVOPS", level: 1, description: "Entry-level infrastructure engineer." },
   { name: "DevOps Engineer", code: "DO", departmentCode: "DEVOPS", level: 2, description: "Managing CI/CD, cloud resources, and deployments." },
   { name: "Senior DevOps Engineer", code: "SDO", departmentCode: "DEVOPS", level: 3, description: "Senior engineer owning production reliability." },
@@ -38,14 +38,14 @@ const DEFAULT_DESIGNATIONS: DesignationSeed[] = [
   { name: "Cloud Architect", code: "CA", departmentCode: "DEVOPS", level: 5, description: "Architect designing cloud infrastructure and strategy." },
   { name: "DevOps Manager", code: "DOM", departmentCode: "DEVOPS", level: 5, description: "Manager leading the infrastructure team." },
 
-  // ─── Cybersecurity ─────────────────────────────────────────────────
+  // ─── Cybersecurity 
   { name: "Security Analyst", code: "SA", departmentCode: "SEC", level: 2, description: "Monitoring threats and managing access controls." },
   { name: "Senior Security Engineer", code: "SSE", departmentCode: "SEC", level: 3, description: "Senior engineer handling security architecture." },
   { name: "SOC Analyst", code: "SOC", departmentCode: "SEC", level: 2, description: "Security Operations Center analyst monitoring incidents." },
   { name: "Penetration Tester", code: "PT", departmentCode: "SEC", level: 3, description: "Ethical hacker performing security assessments." },
   { name: "CISO", code: "CISO", departmentCode: "SEC", level: 8, description: "Chief Information Security Officer — executive security leadership." },
 
-  // ─── Data & Analytics ──────────────────────────────────────────────
+  // ─── Data & Analytics 
   { name: "Junior Data Analyst", code: "JDA", departmentCode: "DATA", level: 1, description: "Entry-level data analyst." },
   { name: "Data Analyst", code: "DA", departmentCode: "DATA", level: 2, description: "Mid-level analyst building reports and dashboards." },
   { name: "Data Engineer", code: "DE", departmentCode: "DATA", level: 3, description: "Engineer building data pipelines and infrastructure." },
@@ -55,7 +55,7 @@ const DEFAULT_DESIGNATIONS: DesignationSeed[] = [
   { name: "Database Administrator", code: "DBA", departmentCode: "DATA", level: 3, description: "Managing and optimizing database systems." },
   { name: "Data Engineering Manager", code: "DEM", departmentCode: "DATA", level: 5, description: "Manager leading the data team." },
 
-  // ─── Product Management ────────────────────────────────────────────
+  // ─── Product Management 
   { name: "Associate Product Manager", code: "APM", departmentCode: "PM", level: 1, description: "Entry-level product manager." },
   { name: "Product Manager", code: "PM", departmentCode: "PM", level: 3, description: "Product manager owning the roadmap and feature delivery." },
   { name: "Senior Product Manager", code: "SPM", departmentCode: "PM", level: 4, description: "Senior PM handling complex product lines." },
@@ -71,14 +71,14 @@ const DEFAULT_DESIGNATIONS: DesignationSeed[] = [
   { name: "IT Infrastructure Manager", code: "ITIM", departmentCode: "ITSUP", level: 4, description: "Manager overseeing IT operations and infrastructure." },
   { name: "Chief Information Officer", code: "CIO", departmentCode: "ITSUP", level: 8, description: "C-level executive responsible for IT infrastructure and systems." },
 
-  // ─── Design ────────────────────────────────────────────────────────
+  // ─── Design 
   { name: "Junior UI/UX Designer", code: "JUX", departmentCode: "UIX", level: 1, description: "Entry-level designer." },
   { name: "UI/UX Designer", code: "UX", departmentCode: "UIX", level: 2, description: "Mid-level designer creating interfaces and prototypes." },
   { name: "Senior UI/UX Designer", code: "SUX", departmentCode: "UIX", level: 3, description: "Senior designer owning product design systems." },
   { name: "UX Researcher", code: "UXR", departmentCode: "UIX", level: 3, description: "Researcher conducting user studies and usability tests." },
   { name: "Design Lead", code: "DL", departmentCode: "UIX", level: 4, description: "Lead designer managing the design team." },
 
-  // ─── Human Resources ───────────────────────────────────────────────
+  // ─── Human Resources 
   { name: "HR Executive", code: "HRE", departmentCode: "HR", level: 1, description: "Entry-level HR generalist." },
   { name: "HR Generalist", code: "HRG", departmentCode: "HR", level: 2, description: "Mid-level HR handling employee lifecycle." },
   { name: "Senior HR Generalist", code: "SHR", departmentCode: "HR", level: 3, description: "Senior HR business partner." },
@@ -87,14 +87,14 @@ const DEFAULT_DESIGNATIONS: DesignationSeed[] = [
   { name: "Chief Human Resources Officer", code: "CHRO", departmentCode: "HR", level: 8, description: "C-level executive heading people, culture, and human resources." },
   { name: "Talent Acquisition Specialist", code: "TA", departmentCode: "HR", level: 2, description: "Recruiter focused on sourcing and hiring." },
 
-  // ─── Finance & Accounts ────────────────────────────────────────────
+  // ─── Finance & Accounts 
   { name: "Accounts Executive", code: "ACE", departmentCode: "FIN", level: 1, description: "Entry-level accounts assistant." },
   { name: "Accountant", code: "ACC", departmentCode: "FIN", level: 2, description: "Managing day-to-day accounting and bookkeeping." },
   { name: "Senior Accountant", code: "SACC", departmentCode: "FIN", level: 3, description: "Senior accountant handling financial reporting." },
   { name: "Finance Manager", code: "FM", departmentCode: "FIN", level: 4, description: "Manager overseeing financial operations." },
   { name: "Chief Financial Officer", code: "CFO", departmentCode: "FIN", level: 8, description: "C-level executive responsible for financial strategy." },
 
-  // ─── Administration ────────────────────────────────────────────────
+  // ─── Administration 
   { name: "Administrative Executive", code: "ADME", departmentCode: "ADMIN", level: 1, description: "Entry-level administrator." },
   { name: "Office Manager", code: "OM", departmentCode: "ADMIN", level: 3, description: "Manager overseeing office operations and facilities." },
   { name: "Administration Manager", code: "ADMM", departmentCode: "ADMIN", level: 4, description: "Manager handling administration and vendor coordination." },

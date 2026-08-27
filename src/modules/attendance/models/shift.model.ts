@@ -99,11 +99,11 @@ const ShiftSchema = createBaseSchema<ShiftDocument>(
         },
         absentThresholdMinutes: { type: Number, default: 255 },
         lateArrivalHalfDayMinutes: { type: Number, default: 90 },
-        // ─── Cutoff & Minimum Thresholds (industry-standard) ─────────────────
+        // ─── Cutoff & Minimum Thresholds (industry-standard) 
         firstHalfCutoffMinutes: { type: Number, default: 240 },
         secondHalfCutoffMinutes: { type: Number, default: 210 },
         minimumWorkMinutesForHalfDay: { type: Number, default: 270 },
-        // ─── Check-in Window & Early-Leave Window ────────────────────────────
+        // ─── Check-in Window & Early-Leave Window 
         allowedCheckInFromTime: {
             type: String,
             match: /^([01]\d|2[0-3]):([0-5]\d)$/,
@@ -125,10 +125,10 @@ const ShiftSchema = createBaseSchema<ShiftDocument>(
             match: /^([01]\d|2[0-3]):([0-5]\d)$/,
             // default is set dynamically to endTime in the service if not provided
         },
-        // ─── Monthly Soft Quotas ──────────────────────────────────────────────
+        // ─── Monthly Soft Quotas 
         lateArrivalQuotaPerMonth: { type: Number, default: 3, min: 0 },
         earlyLeaveQuotaPerMonth: { type: Number, default: 3, min: 0 },
-        // ─── Fully Flexible Customization Defaults ────────────────────────────
+        // ─── Fully Flexible Customization Defaults 
         halfDayWeight: { type: Number, default: 0.5, min: 0, max: 1 },
         rejectEarlyPunch: { type: Boolean, default: false },
         isActive: {

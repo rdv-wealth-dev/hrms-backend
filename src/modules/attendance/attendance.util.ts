@@ -186,13 +186,13 @@ export function calculateAttendanceStatus(
   // e.g. a punch at 10:00:03 vs shiftStart 10:00:00 = 0 minutes late, NOT 0.05 minutes late.
   const minutesLate = Math.floor(Math.max(0, (firstCheckIn.getTime() - shiftStart.getTime()) / 60000));
 
-  // ── 1. Arrival-based ABSENT: arrived after absent threshold (e.g. 255 mins = ~2:15 PM) ────
+  // ── 1. Arrival-based ABSENT: arrived after absent threshold (e.g. 255 mins = ~2:15 PM) 
   const absentThresholdMins = shift.absentThresholdMinutes ?? 255;
   if (minutesLate >= absentThresholdMins) {
     return none(AttendanceStatus.ABSENT);
   }
 
-  // ── 2. First-half cutoff: arrived after firstHalfCutoffMinutes (e.g. 240 = 2:00 PM) ───────
+  // ── 2. First-half cutoff: arrived after firstHalfCutoffMinutes (e.g. 240 = 2:00 PM) 
   //    Any arrival beyond this cannot get 2nd-half credit — treat as ABSENT
   //    (They're arriving in the 2nd half and there's no remaining shift time to qualify)
   const firstHalfCutoffMins = shift.firstHalfCutoffMinutes ?? 240;
@@ -200,7 +200,7 @@ export function calculateAttendanceStatus(
     return none(AttendanceStatus.ABSENT);
   }
 
-  // ── 3. Minimum hours floor: worked below this → ABSENT regardless of anything else ─────────
+  // ── 3. Minimum hours floor: worked below this → ABSENT regardless of anything else 
   //    e.g. worked only 2 hrs — cannot credit even a half day
   const minWorkForHalfDay = shift.minimumWorkMinutesForHalfDay ?? 270;
   if (workedMinutes > 0 && workedMinutes < minWorkForHalfDay) {
@@ -210,7 +210,7 @@ export function calculateAttendanceStatus(
     }
   }
 
-  // ── 4. Arrival-based HALF_DAY_AFTERNOON: arrived past lateArrivalHalfDayMinutes ──────────
+  // ── 4. Arrival-based HALF_DAY_AFTERNOON: arrived past lateArrivalHalfDayMinutes 
   //    Employee was absent in the first half, present in the second half.
   //    Condition: late arrival AND they worked enough hours (>= minimumWorkMinutesForHalfDay)
   const lateHalfDayMins = shift.lateArrivalHalfDayMinutes ?? 90;
@@ -219,7 +219,7 @@ export function calculateAttendanceStatus(
     return { status: AttendanceStatus.HALF_DAY_AFTERNOON, halfDayType: "AFTERNOON" };
   }
 
-  // ── 5. Duration-based HALF_DAY_MORNING: worked below full-day threshold ────────────────────
+  // ── 5. Duration-based HALF_DAY_MORNING: worked below full-day threshold 
   //    Employee arrived on time but left early — first half present, second half absent.
   const halfDayThreshMins = shift.halfDayThresholdMinutes ?? 240;
   if (workedMinutes < halfDayThreshMins && workedMinutes >= minWorkForHalfDay) {
@@ -237,12 +237,12 @@ export function calculateAttendanceStatus(
     return none(AttendanceStatus.ABSENT);
   }
 
-  // ── 6. Duration below halfDayThreshold AND below minWorkForHalfDay → ABSENT ───────────────
+  // ── 6. Duration below halfDayThreshold AND below minWorkForHalfDay → ABSENT 
   if (workedMinutes < halfDayThreshMins) {
     return none(AttendanceStatus.ABSENT);
   }
 
-  // ── 7. Grace Period & Late-mark check (full-day duration met) ────────────────────────────
+  // ── 7. Grace Period & Late-mark check (full-day duration met) 
   const hasGraceLeft = !graceLimit || (graceUsed ?? 0) < graceLimit;
   const effectiveGraceMin = hasGraceLeft ? (shift.gracePeriodMinutes ?? 15) : 0;
 
@@ -250,7 +250,7 @@ export function calculateAttendanceStatus(
     return none(AttendanceStatus.LATE);
   }
 
-  // ── 8. Full Day PRESENT ───────────────────────────────────────────────────────────────────
+  // ── 8. Full Day PRESENT 
   return none(AttendanceStatus.PRESENT);
 }
 

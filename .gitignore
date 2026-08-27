@@ -14,7 +14,7 @@ payroll.md
 #
 .DS_Store
 public/*
- 
+
 # Sonar
 .scannerwork
 .scannerwork/*
@@ -22,9 +22,10 @@ public/*
 # logs
 app-error.log
 app-info.log
- 
+
 #
 project-code.txt
 export-project.py
+
 start-app.sh
  

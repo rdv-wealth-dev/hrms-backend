@@ -11,9 +11,7 @@ import { CustomFieldModel } from "../../custom-field/custom-field.model";
 import { getNextEmployeeCode } from "./employee-counter.util";
 import { getCountryModule } from "../../../domain/localization/country.registry";
 
-// ─────────────────────────────────────────────────────────────────────────────
 // TYPES
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface BulkImportRow {
   firstName: string;
@@ -52,11 +50,10 @@ export interface ParsedImportData {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // FUZZY MATCHING ENGINE
 // Handles: case differences, extra spaces, special chars, common typos
 // "software engineer" = "Software Engineer" = "Software  Engineer" = "softwareEngineer"
-// ─────────────────────────────────────────────────────────────────────────────
 
 function normalize(str: string): string {
   return str
@@ -126,10 +123,8 @@ function buildNameMap(docs: { _id: any; name: string }[]): Map<string, { id: any
   return map;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // CODE GENERATOR — for auto-created departments and designations
 // "Software Engineering" → "SOFT-ENG", "Human Resources" → "HUM-RES"
-// ─────────────────────────────────────────────────────────────────────────────
 
 function generateCode(name: string, existingCodes: Set<string>): string {
   const words = name.trim().toUpperCase().split(/\s+/);
@@ -153,10 +148,8 @@ function generateCode(name: string, existingCodes: Set<string>): string {
   return code;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // AUTO-CREATE DEPARTMENT
 // Called when a department name in the import file doesn't exist
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function findOrCreateDepartment(
   tenantId: mongoose.Types.ObjectId,
@@ -201,10 +194,8 @@ async function findOrCreateDepartment(
   return { id: newDept._id, name: cleanName, wasCreated: true };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // AUTO-CREATE DESIGNATION
 // Called when a designation name doesn't exist under the resolved department
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function findOrCreateDesignation(
   tenantId: mongoose.Types.ObjectId,
@@ -293,9 +284,7 @@ async function findOrCreateDesignation(
   return { id: newDesig._id, name: cleanName, wasCreated: true, wrongDept: false };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // MAIN PARSE FUNCTION
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function parseImportFile(
   context: RequestContext,
@@ -372,13 +361,13 @@ export async function parseImportFile(
   const warnings: ImportError[] = [];
   const validRecords: any[] = [];
 
-  // ── Per-row processing ────────────────────────────────────────────────────
+  // ── Per-row processing 
   for (let idx = 0; idx < rawRows.length; idx++) {
     const row = rawRows[idx];
     const rowNumber = idx + 2; // row 1 = header
     const emailClean = row.email?.trim().toLowerCase();
 
-    // ── Required field checks ──────────────────────────────────────────────
+    // ── Required field checks 
     if (!emailClean) {
       errors.push({ rowNumber, reason: "Email is required", severity: "ERROR" });
       continue;
@@ -413,7 +402,7 @@ export async function parseImportFile(
     }
     const branchId = new mongoose.Types.ObjectId(branchEntry.id);
 
-    // ── Joining date validation ────────────────────────────────────────────
+    // ── Joining date validation 
     const joiningDate = new Date(row.joiningDate);
     if (isNaN(joiningDate.getTime())) {
       errors.push({
@@ -425,7 +414,7 @@ export async function parseImportFile(
       continue;
     }
 
-    // ── Department — fuzzy match OR auto-create ────────────────────────────
+    // ── Department — fuzzy match OR auto-create 
     const deptResult = await findOrCreateDepartment(
       tenantIdObj,
       branchId,
@@ -517,11 +506,11 @@ export async function parseImportFile(
     }
     if (!statutoryValid) continue;
 
-    // ── Build employee document ────────────────────────────────────────────
+    // ── Build employee document 
     const employeeCode = await getNextEmployeeCode(context.tenantId);
     const newEmpId = new mongoose.Types.ObjectId();
 
-    // ── Resolve dynamic custom fields via fuzzy header matching ──
+    // ── Resolve dynamic custom fields via fuzzy header matching 
     const resolvedCustomFields: Record<string, any> = {};
     if (row.customFields) {
       for (const [rawKey, rawVal] of Object.entries(row.customFields)) {
@@ -593,10 +582,8 @@ export async function parseImportFile(
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // EXPORT BUILDER
 // Same columns as import template so HR can export → edit → re-import
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function buildExportBuffer(
   employees: any[],
@@ -679,10 +666,8 @@ export async function buildExportBuffer(
   return Buffer.from(arrayBuffer);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // IMPORT TEMPLATE GENERATOR
 // HR downloads this to know exact column names and valid values
-// ─────────────────────────────────────────────────────────────────────────────
 
 export async function buildImportTemplate(
   format: "csv" | "xlsx",
@@ -807,9 +792,7 @@ export async function buildImportTemplate(
   return Buffer.from(arrayBuffer);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // CSV PARSER
-// ─────────────────────────────────────────────────────────────────────────────
 
 const STANDARD_IMPORT_KEYS = new Set([
   "first name", "firstname", "first_name",
@@ -866,9 +849,7 @@ async function parseCSV(buffer: Buffer): Promise<BulkImportRow[]> {
   });
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // EXCEL PARSER
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function parseExcel(buffer: Buffer): Promise<BulkImportRow[]> {
   const workbook = new ExcelJS.Workbook();

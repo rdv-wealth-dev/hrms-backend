@@ -188,7 +188,7 @@ router.delete("/shifts/:id",
   shiftCtrl.delete.bind(shiftCtrl)
 );
 
-// ─── ROTATION PLANS ──────────────────────────────────────────────────────────
+// ─── ROTATION PLANS 
 
 // POST /api/v1/attendance/rotation-plans/assign  (must be before /:id)
 router.post(
