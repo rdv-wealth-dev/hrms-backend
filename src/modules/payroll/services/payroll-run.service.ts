@@ -20,6 +20,7 @@ import { ComponentType } from "../models/salary-component.model";
 import { PayrollStrategyFactory } from "../strategies";
 import { PayrollCalendarPolicyService } from "./payroll-calendar-policy.service";
 import { LoanService } from "./loan.service";
+import { ReimbursementService } from "./reimbursement.service";
 
 import {
   assertAttendanceLocked,
@@ -78,6 +79,7 @@ export class PayrollRunService {
   private adjustmentRepo = new PayrollAdjustmentRepository();
   private calendarPolicyService = new PayrollCalendarPolicyService();
   private loanService = new LoanService();
+  private reimbursementService = new ReimbursementService();
 
   // ─────────────────────────────────────────────────────────────────────────
   // CREATE RUN
@@ -421,6 +423,24 @@ export class PayrollRunService {
           }
         }
 
+        // STEP 6.8: Automated Approved Reimbursement Claims (Non-Taxable Earnings)
+        const approvedReimbursements = await this.reimbursementService.getApprovedUnpaidReimbursements(
+          context.tenantId,
+          empId
+        );
+
+        for (const reimb of approvedReimbursements) {
+          const reimbAmt = reimb.approvedAmount ?? reimb.amount;
+          if (reimbAmt > 0) {
+            earnings.push({
+              componentCode: "REIMBURSEMENT",
+              componentName: `Reimbursement (${reimb.category} - ${reimb.claimNumber})`,
+              amount: reimbAmt,
+            });
+            grossEarned += reimbAmt;
+          }
+        }
+
         // STEP 8: Calculate Statutory Deductions via Country Strategy Plugin
         let hasPrecedingContributions = false;
         if (countryCode === "IN" && statutory.esiEnabled && grossEarned > 21000) {
@@ -672,6 +692,23 @@ export class PayrollRunService {
             loanDed.amount,
             run._id.toString(),
             ps._id.toString()
+          );
+        }
+      }
+
+      // Mark approved reimbursements as PAID for this employee
+      const hasReimbursement = ps.earnings.some((e: any) => e.componentCode === "REIMBURSEMENT");
+      if (hasReimbursement) {
+        const empReimbs = await this.reimbursementService.getApprovedUnpaidReimbursements(
+          run.tenantId.toString(),
+          ps.employeeId.toString()
+        );
+        if (empReimbs.length > 0) {
+          await this.reimbursementService.markReimbursementsPaid(
+            run.tenantId.toString(),
+            empReimbs.map((r) => r._id as mongoose.Types.ObjectId),
+            run._id as mongoose.Types.ObjectId,
+            period
           );
         }
       }

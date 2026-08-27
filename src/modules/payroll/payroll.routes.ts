@@ -21,6 +21,7 @@ import {
 import { PayrollCalendarPolicyController } from "./controllers/payroll-calendar-policy.controller";
 import { UpsertPayrollCalendarPolicyDto } from "./dto/payroll-calendar-policy.dto";
 import { LoanController } from "./controllers/loan.controller";
+import { ReimbursementController } from "./controllers/reimbursement.controller";
 
 import {
   injectOnboardingStatus,
@@ -31,6 +32,7 @@ const router = Router();
 const ctrl = new PayrollController();
 const calendarPolicyCtrl = new PayrollCalendarPolicyController();
 const loanCtrl = new LoanController();
+const reimbCtrl = new ReimbursementController();
 
 router.use(authenticate);
 // Stamps req.context with onboarding phase. Never blocks on its own.
@@ -639,6 +641,53 @@ router.delete(
   "/loans/:id",
   checkPermission("payroll.create"),
   loanCtrl.delete.bind(loanCtrl)
+);
+
+// ── REIMBURSEMENTS ──────────────────────────────────────────────────────────
+
+// Employee self-service: list personal claims
+router.get(
+  "/reimbursements/me",
+  reimbCtrl.getMyClaims.bind(reimbCtrl)
+);
+
+// Submit new claim
+router.post(
+  "/reimbursements",
+  reimbCtrl.createClaim.bind(reimbCtrl)
+);
+
+// Admin/HR: list all claims with filters
+router.get(
+  "/reimbursements",
+  checkPermission("payroll.read"),
+  reimbCtrl.listClaims.bind(reimbCtrl)
+);
+
+// Get single claim details
+router.get(
+  "/reimbursements/:id",
+  reimbCtrl.getClaimById.bind(reimbCtrl)
+);
+
+// Approve claim
+router.patch(
+  "/reimbursements/:id/approve",
+  checkPermission("payroll.approve"),
+  reimbCtrl.approveClaim.bind(reimbCtrl)
+);
+
+// Reject claim
+router.patch(
+  "/reimbursements/:id/reject",
+  checkPermission("payroll.approve"),
+  reimbCtrl.rejectClaim.bind(reimbCtrl)
+);
+
+// Cancel claim (Employee self-service)
+router.delete(
+  "/reimbursements/:id",
+  reimbCtrl.cancelClaim.bind(reimbCtrl)
 );
 
 export default router;
