@@ -95,7 +95,9 @@ export class OnboardingWizardService {
       departmentId: refreshed?.departmentId,
       designationId: refreshed?.designationId,
       branchId: refreshed?.branchId,
-      customFields: refreshed?.customFields || {},
+      customFields: refreshed?.customFields instanceof Map
+        ? Object.fromEntries(refreshed.customFields)
+        : (refreshed?.customFields || {}),
       customFieldDefinitions: effectiveCustomFields.map((f: any) => ({
         _id: f._id,
         fieldLabel: f.fieldLabel,
@@ -211,10 +213,12 @@ export class OnboardingWizardService {
         : undefined;
     }
     if (input.customFields !== undefined) {
-      employee.customFields = {
-        ...((employee.customFields as any) || {}),
-        ...input.customFields,
-      };
+      if (!employee.customFields || !(employee.customFields instanceof Map)) {
+        employee.customFields = new Map() as any;
+      }
+      for (const [key, val] of Object.entries(input.customFields)) {
+        (employee.customFields as Map<string, any>).set(key, val);
+      }
     }
 
     employee.onboardingStepsCompleted.personalDetails = true;
