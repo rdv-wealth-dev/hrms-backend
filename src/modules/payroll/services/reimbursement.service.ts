@@ -17,11 +17,21 @@ import {
   RejectReimbursementInput,
   ReimbursementQueryInput,
 } from "../dto/reimbursement.dto";
+import { ReimbursementPolicyConfigService } from "./reimbursement-policy-config.service";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN ROLES — used for ownership guards
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ADMIN_ROLES = ["SUPER_ADMIN", "ORG_ADMIN", "HR_ADMIN", "HR_MANAGER"];
 
 export class ReimbursementService {
-  /**
-   * Generates a unique atomic claim reference number: CLM-YYYYMM-0001
-   */
+  private policyService = new ReimbursementPolicyConfigService();
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // REFERENCE GENERATION — atomic CLM-YYYYMM-0001
+  // ─────────────────────────────────────────────────────────────────────────
+
   private async generateClaimNumber(tenantId: string): Promise<string> {
     const now = new Date();
     const yearMonth = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -37,9 +47,10 @@ export class ReimbursementService {
     return `CLM-${yearMonth}-${seq}`;
   }
 
-  /**
-   * Submit a new Reimbursement Claim
-   */
+  // ─────────────────────────────────────────────────────────────────────────
+  // CREATE CLAIM
+  // ─────────────────────────────────────────────────────────────────────────
+
   async createClaim(context: RequestContext, input: CreateReimbursementInput): Promise<IReimbursement> {
     let employeeObjectId: mongoose.Types.ObjectId;
 
@@ -65,6 +76,17 @@ export class ReimbursementService {
       throw new AppError("Employee not found in this organization", 404);
     }
 
+    // ── Policy validation ────────────────────────────────────────────────────
+    const { warnings } = await this.policyService.validateClaimAgainstPolicy(
+      context,
+      employeeObjectId.toString(),
+      {
+        category: input.category ?? ReimbursementCategory.GENERAL,
+        amount: input.amount,
+        expenseDate: input.expenseDate,
+      }
+    );
+
     const claimNumber = await this.generateClaimNumber(context.tenantId);
 
     const claim = await ReimbursementModel.create({
@@ -83,12 +105,16 @@ export class ReimbursementService {
       remarks: input.remarks?.trim(),
     });
 
+    // Surface policy warnings in response metadata (non-blocking)
+    (claim as any)._policyWarnings = warnings;
+
     return claim;
   }
 
-  /**
-   * List Reimbursement Claims (Admin / HR)
-   */
+  // ─────────────────────────────────────────────────────────────────────────
+  // LIST CLAIMS — Admin / HR
+  // ─────────────────────────────────────────────────────────────────────────
+
   async listClaims(context: RequestContext, query: ReimbursementQueryInput) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
@@ -99,26 +125,17 @@ export class ReimbursementService {
       isDeleted: false,
     };
 
-    if (query.status) {
-      filter.status = query.status;
-    }
-
-    if (query.category) {
-      filter.category = query.category;
-    }
-
+    if (query.status) filter.status = query.status;
+    if (query.category) filter.category = query.category;
     if (query.employeeId && mongoose.Types.ObjectId.isValid(query.employeeId)) {
       filter.employeeId = new mongoose.Types.ObjectId(query.employeeId);
     }
-
     if (query.startDate && query.endDate) {
       filter.expenseDate = {
         $gte: new Date(query.startDate),
         $lte: new Date(query.endDate),
       };
     }
-
-    // Keyword search on title or claimNumber
     if (query.search) {
       const searchRegex = new RegExp(query.search.trim(), "i");
       filter.$or = [{ claimNumber: searchRegex }, { title: searchRegex }];
@@ -135,17 +152,13 @@ export class ReimbursementService {
       ReimbursementModel.countDocuments(filter),
     ]);
 
-    return {
-      data: claims,
-      totalRecords,
-      pageNumber: page,
-      pageSize: limit,
-    };
+    return { data: claims, totalRecords, pageNumber: page, pageSize: limit };
   }
 
-  /**
-   * List Personal Reimbursements (Logged-in Employee)
-   */
+  // ─────────────────────────────────────────────────────────────────────────
+  // GET MY CLAIMS — logged-in employee only
+  // ─────────────────────────────────────────────────────────────────────────
+
   async getMyClaims(context: RequestContext, query: ReimbursementQueryInput) {
     let employeeObjectId: mongoose.Types.ObjectId | undefined;
 
@@ -159,23 +172,17 @@ export class ReimbursementService {
     }
 
     if (!employeeObjectId) {
-      return {
-        data: [],
-        totalRecords: 0,
-        pageNumber: 1,
-        pageSize: 20,
-      };
+      return { data: [], totalRecords: 0, pageNumber: 1, pageSize: 20 };
     }
 
-    return this.listClaims(context, {
-      ...query,
-      employeeId: employeeObjectId.toString(),
-    });
+    return this.listClaims(context, { ...query, employeeId: employeeObjectId.toString() });
   }
 
-  /**
-   * Get single claim by ID
-   */
+  // ─────────────────────────────────────────────────────────────────────────
+  // GET CLAIM BY ID — with ownership guard
+  // Employees can only view their own claims. Admins see all.
+  // ─────────────────────────────────────────────────────────────────────────
+
   async getClaimById(context: RequestContext, id: string): Promise<IReimbursement> {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       throw new AppError("Invalid claim ID format", 400);
@@ -189,16 +196,24 @@ export class ReimbursementService {
       .populate("employeeId", "firstName lastName employeeCode avatarUrl departmentId designationId")
       .populate("approvedBy", "name email");
 
-    if (!claim) {
-      throw new AppError("Reimbursement claim not found", 404);
+    if (!claim) throw new AppError("Reimbursement claim not found", 404);
+
+    // ── Ownership guard ────────────────────────────────────────────────────
+    const isAdmin = ADMIN_ROLES.includes(context.role);
+    if (!isAdmin) {
+      const callerEmpId = context.employeeId;
+      if (!callerEmpId || claim.employeeId.toString() !== callerEmpId) {
+        throw new AppError("Access denied — you can only view your own reimbursement claims", 403);
+      }
     }
 
     return claim;
   }
 
-  /**
-   * Approve Reimbursement Claim
-   */
+  // ─────────────────────────────────────────────────────────────────────────
+  // APPROVE
+  // ─────────────────────────────────────────────────────────────────────────
+
   async approveClaim(
     context: RequestContext,
     id: string,
@@ -214,17 +229,16 @@ export class ReimbursementService {
     claim.approvedAmount = input.approvedAmount ?? claim.amount;
     claim.approvedBy = new mongoose.Types.ObjectId(context.userId);
     claim.approvedAt = new Date();
-    if (input.remarks) {
-      claim.remarks = input.remarks.trim();
-    }
+    if (input.remarks) claim.remarks = input.remarks.trim();
 
     await claim.save();
     return claim;
   }
 
-  /**
-   * Reject Reimbursement Claim
-   */
+  // ─────────────────────────────────────────────────────────────────────────
+  // REJECT
+  // ─────────────────────────────────────────────────────────────────────────
+
   async rejectClaim(
     context: RequestContext,
     id: string,
@@ -245,14 +259,25 @@ export class ReimbursementService {
     return claim;
   }
 
-  /**
-   * Cancel Claim (Employee self-action)
-   */
+  // ─────────────────────────────────────────────────────────────────────────
+  // CANCEL — employee self-action with ownership guard
+  // ─────────────────────────────────────────────────────────────────────────
+
   async cancelClaim(context: RequestContext, id: string): Promise<IReimbursement> {
-    const claim = await this.getClaimById(context, id);
+    const claim = await this.getClaimById(context, id); // ownership guard runs here
 
     if (claim.status !== ReimbursementStatus.PENDING) {
-      throw new AppError(`Only PENDING claims can be cancelled`, 400);
+      throw new AppError("Only PENDING claims can be cancelled", 400);
+    }
+
+    // Non-admins can only cancel their own claims (already enforced in getClaimById)
+    // Extra guard: employees cannot cancel others' claims even if they know the ID
+    const isAdmin = ADMIN_ROLES.includes(context.role);
+    if (!isAdmin) {
+      const callerEmpId = context.employeeId;
+      if (!callerEmpId || claim.employeeId.toString() !== callerEmpId) {
+        throw new AppError("You can only cancel your own reimbursement claims", 403);
+      }
     }
 
     claim.status = ReimbursementStatus.CANCELLED;
@@ -260,8 +285,26 @@ export class ReimbursementService {
     return claim;
   }
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // SPEND SUMMARY — spend vs. policy limits dashboard for an employee
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async getSummary(context: RequestContext, employeeId: string, year: number, month: number) {
+    // Admins can query any employee; employees can only see their own
+    const isAdmin = ADMIN_ROLES.includes(context.role);
+    if (!isAdmin && context.employeeId !== employeeId) {
+      throw new AppError("Access denied — you can only view your own reimbursement summary", 403);
+    }
+
+    return this.policyService.getSummary(context.tenantId, employeeId, year, month);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PAYROLL ENGINE HELPERS
+  // ─────────────────────────────────────────────────────────────────────────
+
   /**
-   * Helper for Payroll Engine: Get all approved, unpaid reimbursements for an employee
+   * Get all approved, unpaid reimbursements for payroll engine inclusion.
    */
   async getApprovedUnpaidReimbursements(
     tenantId: string,
@@ -276,7 +319,7 @@ export class ReimbursementService {
   }
 
   /**
-   * Helper for Payroll Engine: Mark approved reimbursements as PAID upon payroll finalization
+   * Mark approved reimbursements as PAID upon payroll finalization.
    */
   async markReimbursementsPaid(
     tenantId: string,
@@ -287,17 +330,8 @@ export class ReimbursementService {
     if (!claimIds || claimIds.length === 0) return;
 
     await ReimbursementModel.updateMany(
-      {
-        _id: { $in: claimIds },
-        tenantId: new mongoose.Types.ObjectId(tenantId),
-      },
-      {
-        $set: {
-          status: ReimbursementStatus.PAID,
-          payrollRunId,
-          paidMonth,
-        },
-      }
+      { _id: { $in: claimIds }, tenantId: new mongoose.Types.ObjectId(tenantId) },
+      { $set: { status: ReimbursementStatus.PAID, payrollRunId, paidMonth } }
     );
   }
 }

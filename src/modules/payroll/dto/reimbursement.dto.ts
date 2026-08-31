@@ -55,3 +55,39 @@ export const ReimbursementQueryDto = z.object({
 });
 
 export type ReimbursementQueryInput = z.infer<typeof ReimbursementQueryDto>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REIMBURSEMENT POLICY CONFIG DTOs
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CategoryLimitDto = z.object({
+  category: z.nativeEnum(ReimbursementCategory),
+  /** 0 = unlimited */
+  monthlyLimit: z.number().min(0).optional().default(0),
+  /** 0 = unlimited */
+  annualLimit: z.number().min(0).optional().default(0),
+  requiresReceipt: z.boolean().optional().default(false),
+  requiresApproval: z.boolean().optional().default(true),
+});
+
+export const UpsertReimbursementPolicyDto = z.object({
+  /** Empty array = all categories permitted */
+  allowedCategories: z.array(z.nativeEnum(ReimbursementCategory)).optional(),
+  categoryLimits: z.array(CategoryLimitDto).optional(),
+  /** 0 = unlimited */
+  maxClaimsPerMonth: z.number().int().min(0).optional(),
+  /** 0 = disabled — all claims go through approval per category setting */
+  approvalThresholdAmount: z.number().min(0).optional(),
+  /** 0 = no deadline enforced */
+  claimDeadlineDays: z.number().int().min(0).optional(),
+  /** true = block submission when limit exceeded; false = warn only */
+  blockOnLimitExceeded: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+});
+export type UpsertReimbursementPolicyInput = z.infer<typeof UpsertReimbursementPolicyDto>;
+
+export const ReimbursementSummaryQueryDto = z.object({
+  year: z.coerce.number().int().min(2020).max(2100),
+  month: z.coerce.number().int().min(1).max(12),
+});
+export type ReimbursementSummaryQueryInput = z.infer<typeof ReimbursementSummaryQueryDto>;

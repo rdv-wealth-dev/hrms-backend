@@ -604,6 +604,20 @@ router.post(
   ctrl.setDefaultPayslipTemplate.bind(ctrl)
 );
 
+// ── Loan Policy (HR configures once per tenant) ──────────────────────────────────
+
+router.get(
+  "/loan-policy",
+  checkPermission("payroll.read"),
+  loanCtrl.getPolicy.bind(loanCtrl)
+);
+
+router.post(
+  "/loan-policy",
+  checkPermission("payroll.create"),
+  loanCtrl.upsertPolicy.bind(loanCtrl)
+);
+
 // ── Loans & Salary Advances ───────────────────────────────────────────────
 
 router.get(
@@ -620,6 +634,12 @@ router.get(
   "/loans",
   checkPermission("payroll.read"),
   loanCtrl.list.bind(loanCtrl)
+);
+
+// Amortization schedule — must come before /:id to avoid route collision
+router.get(
+  "/loans/:id/schedule",
+  loanCtrl.getSchedule.bind(loanCtrl)
 );
 
 router.get(
@@ -692,10 +712,30 @@ router.patch(
   reimbCtrl.rejectClaim.bind(reimbCtrl)
 );
 
-// Cancel claim (Employee self-service)
+// Cancel claim (Employee self-service — ownership guard enforced in service)
 router.delete(
   "/reimbursements/:id",
   reimbCtrl.cancelClaim.bind(reimbCtrl)
+);
+
+// ── Reimbursement Policy (HR configures once per tenant) ─────────────────────
+
+router.get(
+  "/reimbursement-policy",
+  checkPermission("payroll.read"),
+  reimbCtrl.getPolicy.bind(reimbCtrl)
+);
+
+router.post(
+  "/reimbursement-policy",
+  checkPermission("payroll.create"),
+  reimbCtrl.upsertPolicy.bind(reimbCtrl)
+);
+
+// Spend vs. limits summary — must come before /:id to avoid route collision
+router.get(
+  "/reimbursements/summary/:employeeId",
+  reimbCtrl.getSummary.bind(reimbCtrl)
 );
 
 // ── 7. ARREARS BATCHES ──────────────────────────────────────────────────────

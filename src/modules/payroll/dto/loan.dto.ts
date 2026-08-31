@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { InterestMethod } from "../models/loan-policy-config.model";
 
 export const LoanTypeEnum = z.enum([
   "SALARY_ADVANCE",
@@ -27,11 +28,15 @@ export const DisbursementMethodEnum = z.enum([
   "CASH",
 ]);
 
+export const InterestMethodEnum = z.nativeEnum(InterestMethod);
+
 export const CreateLoanDto = z.object({
   employeeId: z.string().min(24).optional(), // optional when employee self-applies
   loanType: LoanTypeEnum.optional().default("SALARY_ADVANCE"),
   principalAmount: z.number().positive("Principal amount must be greater than zero"),
   interestRateAnnualPercent: z.number().min(0).max(100).optional().default(0),
+  /** Override the tenant-default interest method for this specific loan */
+  interestMethod: InterestMethodEnum.optional(),
   tenureMonths: z.number().int().min(1).max(120),
   monthlyEmi: z.number().positive().optional(),
   disbursementMethod: DisbursementMethodEnum.optional().default("BANK_TRANSFER"),
@@ -75,3 +80,29 @@ export const ListLoansQueryDto = z.object({
   limit: z.coerce.number().int().positive().max(100).optional(),
 });
 export type ListLoansQueryInput = z.infer<typeof ListLoansQueryDto>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOAN POLICY CONFIG DTOs
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LoanTypeLimitDto = z.object({
+  loanType: LoanTypeEnum,
+  maxPrincipalAmount: z.number().min(0),
+  defaultInterestRatePercent: z.number().min(0).max(100).optional().default(0),
+  maxTenureMonths: z.number().int().min(1).max(120),
+});
+
+export const UpsertLoanPolicyDto = z.object({
+  allowedLoanTypes: z.array(LoanTypeEnum).optional(),
+  typeLimits: z.array(LoanTypeLimitDto).optional(),
+  globalMaxPrincipalAmount: z.number().min(0).optional(),
+  defaultInterestMethod: InterestMethodEnum.optional(),
+  maxActiveLoanCountPerEmployee: z.number().int().min(1).optional(),
+  /** 0 = disabled, 1–100 = max EMI as % of gross */
+  maxEmiAsPercentOfGross: z.number().min(0).max(100).optional(),
+  adminCreatedLoansAutoApprove: z.boolean().optional(),
+  allowEmployeeSelfApply: z.boolean().optional(),
+  autoDeductFromPayroll: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+});
+export type UpsertLoanPolicyInput = z.infer<typeof UpsertLoanPolicyDto>;
