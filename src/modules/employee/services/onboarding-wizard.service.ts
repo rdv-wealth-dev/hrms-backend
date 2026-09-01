@@ -159,10 +159,87 @@ export class OnboardingWizardService {
       }
       : {};
 
+    // ── 4. Step 4 Data (Documents) ──
+    const uploadedDocs = await EmployeeDocumentModel.find({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      employeeId: employee._id,
+      isDeleted: false,
+    }).select("documentType fileName fileUrl isVerified createdAt").lean();
+
+    const org = await OrganizationModel.findById(context.tenantId).select("mandatoryDocumentTypes");
+    const requiredDocTypes = org?.mandatoryDocumentTypes ?? [];
+
+    const step4Data = {
+      mandatoryRequired: requiredDocTypes,
+      uploadedCount: uploadedDocs.length,
+      documents: uploadedDocs,
+      isComplete: !!refreshed?.onboardingStepsCompleted?.documents,
+    };
+
+    // ── 5. Step 5 Data (Review & Final Submission) ──
+    const stepsCompleted = refreshed!.onboardingStepsCompleted || {
+      personalDetails: false,
+      familyDetails: false,
+      bankDetails: false,
+      documents: false,
+      reviewed: false,
+    };
+
+    const allStepsCompleted = !!(
+      stepsCompleted.personalDetails &&
+      stepsCompleted.familyDetails &&
+      stepsCompleted.bankDetails &&
+      stepsCompleted.documents
+    );
+
+    const missingSteps: { step: number; key: string; label: string }[] = [];
+    if (!stepsCompleted.personalDetails) {
+      missingSteps.push({ step: 1, key: "personalDetails", label: "Personal & Education Details (Step 1)" });
+    }
+    if (!stepsCompleted.familyDetails) {
+      missingSteps.push({ step: 2, key: "familyDetails", label: "Family Details (Step 2)" });
+    }
+    if (!stepsCompleted.bankDetails) {
+      missingSteps.push({ step: 3, key: "bankDetails", label: "Bank Account Details (Step 3)" });
+    }
+    if (!stepsCompleted.documents) {
+      missingSteps.push({ step: 4, key: "documents", label: "Mandatory KYC Documents (Step 4)" });
+    }
+
+    const step5Data = {
+      canAccessReview: allStepsCompleted,
+      allStepsCompleted,
+      missingSteps,
+      canContinueToApp: true,
+      continueToAppUrl: "/dashboard",
+      review: allStepsCompleted
+        ? {
+            personalAndEducation: step1Data,
+            family: step2Data,
+            bank: step3Data,
+            documents: step4Data,
+          }
+        : null,
+    };
+
+    // Navigation & active step state
+    const currentStep = Math.min(Math.max(refreshed!.onboardingStep || 1, 1), 5);
+    const navigation = {
+      currentStep,
+      prevStep: currentStep > 1 ? currentStep - 1 : null,
+      nextStep: currentStep < 5 ? currentStep + 1 : null,
+      canGoPrev: currentStep > 1,
+      canGoNext: currentStep < (allStepsCompleted ? 5 : 4),
+      canSkipCurrentStep: currentStep < 5,
+      canAccessStep5: allStepsCompleted,
+      continueToAppUrl: "/dashboard",
+    };
+
     return {
       onboardingStep: refreshed!.onboardingStep,
       onboardingComplete: refreshed!.onboardingComplete,
       onboardingStepsCompleted: refreshed!.onboardingStepsCompleted,
+      navigation,
       educationCatalog: {
         UNDER_GRADUATE: UNDERGRADUATE_CATALOG,
         POST_GRADUATE: POSTGRADUATE_CATALOG,
@@ -172,6 +249,59 @@ export class OnboardingWizardService {
       step1Data,
       step2Data,
       step3Data,
+      step4Data,
+      step5Data,
+    };
+  }
+
+  // Skip a specific wizard step to fill later
+  async skipStep(context: RequestContext, stepToSkip?: number) {
+    const employee = await this.resolveOwnEmployee(context);
+    const current = stepToSkip || employee.onboardingStep || 1;
+
+    if (current >= 5) {
+      throw new AppError("Step 5 (Final Review) cannot be skipped. Complete all steps to finish onboarding.", 400);
+    }
+
+    const nextStep = Math.min(current + 1, 4);
+    employee.onboardingStep = nextStep;
+    await employee.save();
+
+    return {
+      message: `Step ${current} skipped. You can complete it later.`,
+      currentStep: nextStep,
+      nextStep,
+      continueToAppUrl: "/dashboard",
+    };
+  }
+
+  // Navigate to a specific wizard step (Previous / Next)
+  async navigateStep(context: RequestContext, targetStep: number) {
+    const employee = await this.resolveOwnEmployee(context);
+
+    if (targetStep < 1 || targetStep > 5) {
+      throw new AppError("Invalid wizard step. Must be between 1 and 5.", 400);
+    }
+
+    if (targetStep === 5) {
+      const steps = employee.onboardingStepsCompleted;
+      const allDone = !!(steps?.personalDetails && steps?.familyDetails && steps?.bankDetails && steps?.documents);
+      if (!allDone) {
+        throw new AppError(
+          "Cannot access Step 5 (Final Review). Please complete all previous 4 steps first.",
+          403
+        );
+      }
+    }
+
+    employee.onboardingStep = targetStep;
+    await employee.save();
+
+    return {
+      message: `Navigated to step ${targetStep}`,
+      currentStep: targetStep,
+      prevStep: targetStep > 1 ? targetStep - 1 : null,
+      nextStep: targetStep < 5 ? targetStep + 1 : null,
     };
   }
 
@@ -429,8 +559,18 @@ export class OnboardingWizardService {
     this.assertStepAllowed(employee, 5);
 
     const steps = employee.onboardingStepsCompleted;
-    if (!steps.personalDetails || !steps.familyDetails || !steps.bankDetails || !steps.documents) {
-      throw new AppError("All previous steps must be completed before final submission", 400);
+    const missing: string[] = [];
+    if (!steps?.personalDetails) missing.push("Personal & Education Details (Step 1)");
+    if (!steps?.familyDetails) missing.push("Family Details (Step 2)");
+    if (!steps?.bankDetails) missing.push("Bank Details (Step 3)");
+    if (!steps?.documents) missing.push("Mandatory Documents (Step 4)");
+
+    if (missing.length > 0) {
+      throw new AppError(
+        `Cannot submit final onboarding. The following steps are incomplete: ${missing.join(", ")}. Please complete all 4 steps to submit.`,
+        400,
+        ErrorCode.VALIDATION_FAILED
+      );
     }
 
     employee.onboardingStepsCompleted.reviewed = true;
@@ -438,7 +578,11 @@ export class OnboardingWizardService {
     employee.isProfileComplete = true; // ties into the existing dashboard gate
 
     await employee.save();
-    return { message: "Onboarding complete! Welcome to the team." };
+    return {
+      message: "Onboarding complete! Welcome to the team.",
+      onboardingComplete: true,
+      isProfileComplete: true,
+    };
   }
 }
 

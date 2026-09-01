@@ -90,4 +90,28 @@ export class OnboardingWizardController {
       next(e);
     }
   }
+
+  async skip(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const step = req.body?.step ? Number(req.body.step) : undefined;
+      const result = await onboardingWizardService.skipStep(req.context, step);
+      res.status(200).json(
+        buildSuccessResponse(result, result.message)
+      );
+    } catch (e) {
+      next(e);
+    }
+  }
+
+  async navigate(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const step = Number(req.body.step);
+      const result = await onboardingWizardService.navigateStep(req.context, step);
+      res.status(200).json(
+        buildSuccessResponse(result, result.message)
+      );
+    } catch (e) {
+      next(e);
+    }
+  }
 }

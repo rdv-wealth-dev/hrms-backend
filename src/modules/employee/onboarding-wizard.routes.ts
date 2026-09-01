@@ -53,5 +53,14 @@ router.post(
     controller.step5.bind(controller)
 ); // no body — final confirm
 
+router.post(
+    "/skip",
+    controller.skip.bind(controller)
+);
+
+router.post(
+    "/navigate",
+    controller.navigate.bind(controller)
+);
 
 export default router;

@@ -127,7 +127,17 @@ export type OnboardingStep3Input = z.infer<typeof OnboardingStep3Dto>;
 // Step 4 — Documents — no body needed, checked against what's uploaded 
 // (uses existing /employees/me/documents/* routes — step 4 just checks completion)
 
-// Step 5 — Review & Submit
+// Step 5 — Review & Submit — no body needed (review is aggregated from previous steps)
+
+export const SkipStepDto = z.object({
+  step: z.number().int().min(1).max(4).optional(),
+});
+export type SkipStepInput = z.infer<typeof SkipStepDto>;
+
+export const NavigateStepDto = z.object({
+  step: z.number().int().min(1).max(5),
+});
+export type NavigateStepInput = z.infer<typeof NavigateStepDto>;
 export const OnboardingStep5Dto = z.object({
   confirmed: z.literal(true).refine((v) => v === true, {
     message: "You must confirm to complete onboarding",
