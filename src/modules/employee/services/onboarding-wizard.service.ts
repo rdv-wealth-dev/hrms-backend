@@ -310,8 +310,8 @@ export class OnboardingWizardService {
   }
 
   // Education options lookup helper for dynamic dropdowns
-  getEducationOptions(qualificationLevel?: string) {
-    return getEducationCatalogForLevel(qualificationLevel);
+  getEducationOptions(qualificationLevel?: string, countryCode?: string) {
+    return getEducationCatalogForLevel(qualificationLevel, countryCode);
   }
 
   // Step 1 — Personal Details 

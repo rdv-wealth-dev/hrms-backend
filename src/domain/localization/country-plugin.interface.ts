@@ -6,9 +6,24 @@ export interface StatutoryFieldConfig {
   mask: (value: string) => string;
 }
 
+export interface SchoolBoardOption {
+  code: string;
+  name: string;
+  requiresStateSelection?: boolean;
+  description?: string;
+}
+
+export interface StateBoardOption {
+  state: string;
+  boardName: string;
+  boardCode: string;
+}
+
 export interface CountryPlugin {
   countryCode: string;
   statutoryFields: StatutoryFieldConfig[];
+  schoolBoards?: SchoolBoardOption[];
+  stateBoards?: StateBoardOption[];
   calculatePF?: (wages: number, pfEnabled: boolean, pfOnActuals?: boolean) => {
     employee: number;
     employerEPF: number;

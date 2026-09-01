@@ -545,73 +545,33 @@ export const DOCTORATE_CATALOG: EducationStreamCategory[] = [
   },
 ];
 
-export interface SchoolBoardOption {
-  code: string;
-  name: string;
-  requiresStateSelection?: boolean;
-  description?: string;
-}
+import {
+  SchoolBoardOption,
+  StateBoardOption,
+} from "../../../domain/localization/country-plugin.interface";
+import {
+  IN_SCHOOL_BOARDS,
+  IN_STATE_BOARDS,
+} from "../../../domain/localization/IN/education.config";
+import { CountryRegistry } from "../../../domain/localization/country.registry";
 
-export const SCHOOL_BOARD_OPTIONS: SchoolBoardOption[] = [
-  { code: "CBSE", name: "Central Board of Secondary Education", description: "CBSE - All India National Board" },
-  { code: "ICSE", name: "Indian Certificate of Secondary Education (CISCE, Class 10)", description: "ICSE - Class 10 CISCE" },
-  { code: "ISC", name: "Indian School Certificate (CISCE, Class 12)", description: "ISC - Class 12 CISCE" },
-  { code: "STATE_BOARD", name: "State Board", requiresStateSelection: true, description: "State Education Board (Select your state)" },
-  { code: "NIOS", name: "National Institute of Open Schooling", description: "NIOS - Open Schooling National Board" },
-  { code: "IB", name: "International Baccalaureate", description: "IB - International Diploma Programme" },
-  { code: "IGCSE", name: "Cambridge IGCSE / A-Levels (CAIE)", description: "Cambridge Assessment International Education" },
-  { code: "OTHER", name: "Other", description: "Other Board (Enter board name manually)" },
-];
-
-export interface StateBoardOption {
-  state: string;
-  boardName: string;
-  boardCode: string;
-}
-
-export const INDIAN_STATE_BOARDS: StateBoardOption[] = [
-  { state: "Andhra Pradesh", boardName: "Board of Intermediate / Secondary Education AP (BIEAP / BSEAP)", boardCode: "AP_BOARD" },
-  { state: "Assam", boardName: "Assam Higher Secondary Education Council / SEBA", boardCode: "ASSAM_BOARD" },
-  { state: "Bihar", boardName: "Bihar School Examination Board (BSEB)", boardCode: "BIHAR_BOARD" },
-  { state: "Chhattisgarh", boardName: "Chhattisgarh Board of Secondary Education (CGBSE)", boardCode: "CG_BOARD" },
-  { state: "Delhi", boardName: "Delhi Board of School Education (DBSE) / Recognized", boardCode: "DELHI_BOARD" },
-  { state: "Goa", boardName: "Goa Board of Secondary and Higher Secondary Education (GBSHSE)", boardCode: "GOA_BOARD" },
-  { state: "Gujarat", boardName: "Gujarat Secondary and Higher Secondary Education Board (GSHSEB)", boardCode: "GUJARAT_BOARD" },
-  { state: "Haryana", boardName: "Board of School Education Haryana (HBSE)", boardCode: "HARYANA_BOARD" },
-  { state: "Himachal Pradesh", boardName: "Himachal Pradesh Board of School Education (HPBOSE)", boardCode: "HP_BOARD" },
-  { state: "Jammu and Kashmir", boardName: "Jammu and Kashmir State Board of School Education (JKBOSE)", boardCode: "JK_BOARD" },
-  { state: "Jharkhand", boardName: "Jharkhand Academic Council (JAC)", boardCode: "JHARKHAND_BOARD" },
-  { state: "Karnataka", boardName: "Karnataka School Examination and Assessment Board (KSEAB)", boardCode: "KARNATAKA_BOARD" },
-  { state: "Kerala", boardName: "Kerala Board of Public Examinations / DHSE Kerala", boardCode: "KERALA_BOARD" },
-  { state: "Madhya Pradesh", boardName: "Madhya Pradesh Board of Secondary Education (MPBSE)", boardCode: "MP_BOARD" },
-  { state: "Maharashtra", boardName: "Maharashtra State Board of Secondary and Higher Secondary Education (MSBSHSE)", boardCode: "MAHARASHTRA_BOARD" },
-  { state: "Manipur", boardName: "Board of Secondary Education / Council of Higher Secondary Education Manipur", boardCode: "MANIPUR_BOARD" },
-  { state: "Meghalaya", boardName: "Meghalaya Board of School Education (MBOSE)", boardCode: "MEGHALAYA_BOARD" },
-  { state: "Mizoram", boardName: "Mizoram Board of School Education (MBSE)", boardCode: "MIZORAM_BOARD" },
-  { state: "Nagaland", boardName: "Nagaland Board of School Education (NBSE)", boardCode: "NAGALAND_BOARD" },
-  { state: "Odisha", boardName: "Council of Higher Secondary Education / Board of Secondary Education Odisha (CHSE / BSE)", boardCode: "ODISHA_BOARD" },
-  { state: "Punjab", boardName: "Punjab School Education Board (PSEB)", boardCode: "PUNJAB_BOARD" },
-  { state: "Rajasthan", boardName: "Board of Secondary Education Rajasthan (RBSE)", boardCode: "RAJASTHAN_BOARD" },
-  { state: "Tamil Nadu", boardName: "Tamil Nadu Directorate of Government Examinations (TNDGE)", boardCode: "TAMILNADU_BOARD" },
-  { state: "Telangana", boardName: "Telangana State Board of Intermediate / Secondary Education (TSBIE / BSE)", boardCode: "TELANGANA_BOARD" },
-  { state: "Tripura", boardName: "Tripura Board of Secondary Education (TBSE)", boardCode: "TRIPURA_BOARD" },
-  { state: "Uttar Pradesh", boardName: "Uttar Pradesh Madhyamik Shiksha Parishad (UPMSP)", boardCode: "UP_BOARD" },
-  { state: "Uttarakhand", boardName: "Uttarakhand Board of School Education (UBSE)", boardCode: "UTTARAKHAND_BOARD" },
-  { state: "West Bengal", boardName: "West Bengal Board of Secondary / Higher Secondary Education (WBBSE / WBCHSE)", boardCode: "WB_BOARD" },
-  { state: "Other State Board", boardName: "Other State Board", boardCode: "OTHER_STATE_BOARD" },
-];
+export { SchoolBoardOption, StateBoardOption, IN_SCHOOL_BOARDS, IN_STATE_BOARDS };
+export const SCHOOL_BOARD_OPTIONS = IN_SCHOOL_BOARDS;
+export const INDIAN_STATE_BOARDS = IN_STATE_BOARDS;
 
 /**
- * Returns structured catalog for the given qualification level along with school board options.
+ * Returns structured catalog for the given qualification level along with country-specific school board options.
  */
-export function getEducationCatalogForLevel(qualificationLevel?: string): {
+export function getEducationCatalogForLevel(qualificationLevel?: string, countryCode?: string): {
   qualificationLevel: string;
+  countryCode: string;
   categories: EducationStreamCategory[];
   allDegrees: string[];
   boardOptions: SchoolBoardOption[];
   stateBoards: StateBoardOption[];
 } {
   const normalized = (qualificationLevel || "").toUpperCase().trim();
+  const normalizedCountry = (countryCode || "IN").toUpperCase().trim();
 
   let categories: EducationStreamCategory[];
 
@@ -633,11 +593,20 @@ export function getEducationCatalogForLevel(qualificationLevel?: string): {
 
   const allDegrees = categories.flatMap((cat) => cat.degrees);
 
+  // Dynamically resolve country plugin for school boards & state options
+  let plugin;
+  try {
+    plugin = CountryRegistry.resolve(normalizedCountry);
+  } catch {
+    plugin = CountryRegistry.resolve("IN");
+  }
+
   return {
     qualificationLevel: normalized || "ALL",
+    countryCode: normalizedCountry,
     categories,
     allDegrees,
-    boardOptions: SCHOOL_BOARD_OPTIONS,
-    stateBoards: INDIAN_STATE_BOARDS,
+    boardOptions: plugin?.schoolBoards || IN_SCHOOL_BOARDS,
+    stateBoards: plugin?.stateBoards || IN_STATE_BOARDS,
   };
 }

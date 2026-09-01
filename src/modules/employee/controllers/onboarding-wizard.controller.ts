@@ -22,7 +22,12 @@ export class OnboardingWizardController {
         : typeof req.query.level === "string"
           ? req.query.level
           : undefined;
-      const result = onboardingWizardService.getEducationOptions(qualificationLevel);
+      const countryCode = typeof req.query.countryCode === "string"
+        ? req.query.countryCode
+        : typeof req.query.country === "string"
+          ? req.query.country
+          : undefined;
+      const result = onboardingWizardService.getEducationOptions(qualificationLevel, countryCode);
       res.status(200).json(
         buildSuccessResponse(result, "Education options fetched successfully")
       );
