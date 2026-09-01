@@ -141,11 +141,12 @@ export class AuthService {
     const rawRange = input.employeeCountRange || input.teamSize || input.companySize || "1-10";
     const { normalizedRange, maxEmployees } = parseEmployeeCountRange(rawRange);
 
-    // 3. Create organization (saving actual selected team size range immediately)
+    // 3. Create organization (saving actual selected team size range and phone immediately)
     const organization = await this.orgRepo.create({
       companyName: input.companyName,
       slug,
       workspaceSlug: input.workspaceSlug,
+      phone: input.phone, // Pre-filled from signup
       employeeCountRange: normalizedRange,
       onboardingCompleted: false,
       onboardingStatus: "step1_completed",
@@ -197,6 +198,7 @@ export class AuthService {
     const superAdmin = await new UserModel({
       tenantId: tenantObjectId,
       email: input.email.toLowerCase(),
+      phone: input.phone, // Saved in user account
       passwordHash,
       firstName: capitalize(input.firstName),
       lastName: capitalize(input.lastName),
@@ -418,6 +420,7 @@ export class AuthService {
         companyName: org!.companyName,
         slug: org!.slug,
         workspaceSlug: org!.workspaceSlug,
+        phone: org!.phone || user.phone, // 👈 Pre-fills phone in organization onboarding
         employeeCountRange: org!.employeeCountRange, // 👈 FIX: needed by frontend to pre-fill company size
         locale: org!.locale,              // 👈 FIX: needed by frontend to pre-fill timezone/locale
         subscription: org!.subscription,
@@ -754,9 +757,12 @@ export class AuthService {
     const rawWizardRange = input.employeeCountRange || input.teamSize || input.companySize || org.employeeCountRange || "1-10";
     const { normalizedRange, maxEmployees } = parseEmployeeCountRange(rawWizardRange);
 
-    // Update locale, industry, employee count and team size limit from wizard
+    const resolvedPhone = input.phone || org.phone;
+
+    // Update locale, industry, employee count, phone and team size limit from wizard
     await this.orgRepo.updateById(tenantId, {
       industry: input.industry,
+      phone: resolvedPhone,
       employeeCountRange: normalizedRange,
       subscription: {
         ...org.subscription,
@@ -770,6 +776,13 @@ export class AuthService {
         fiscalYearStart: input.fiscalYearStart,
       },
     });
+
+    if (resolvedPhone) {
+      await UserModel.updateMany(
+        { tenantId: tenantObjectId, isOrgAdmin: true },
+        { $set: { phone: resolvedPhone } }
+      );
+    }
 
     // Create Head Office branch using actual country and timezone
     const headOffice = await this.branchRepo.create({

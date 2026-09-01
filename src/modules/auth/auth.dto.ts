@@ -23,6 +23,7 @@ export const RegisterDto = z.object({
   firstName: safeStringSchema(2, 100),
   lastName: safeStringSchema(2, 100),
   email: emailSchema,
+  phone: phoneSchema, // Mandatory at signup
   password: passwordSchema.max(12, "Password must not exceed 12 characters"),
   companyName: safeStringSchema(2, 200),
   workspaceSlug: workspaceSlugSchema,
@@ -93,7 +94,7 @@ export const OnboardingWizardDto = z.object({
   teamSize: z.string().optional(),
   companySize: z.string().optional(),
   industry: safeStringSchema(2, 100),
-  phone: phoneSchema,
+  phone: optionalString(phoneSchema),
   baseCurrency: optionalString(currencyCodeSchema),  // auto-filled from country, but overridable
   fiscalYearStart: z.enum([
     "January", "February", "March", "April",
