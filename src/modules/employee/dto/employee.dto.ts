@@ -48,6 +48,7 @@ export const CreateEmployeeDto = withPhoneValidation(
       qualificationLevel: z.enum([
         "DOCTORATE", "POST_GRADUATE", "UNDER_GRADUATE", "DIPLOMA", "HIGHER_SECONDARY", "SECONDARY", "OTHER"
       ]),
+      degreeType: safeStringSchema(0, 100).optional(), // e.g. "B.Tech", "B.E.", "MBA"
       degree: safeStringSchema(1, 150),
       fieldOfStudy: safeStringSchema(0, 100).optional(),
       institutionName: safeStringSchema(1, 200),
@@ -174,6 +175,7 @@ export const UpdateEmployeeDto = withPhoneValidation(z.object({
     qualificationLevel: z.enum([
       "DOCTORATE", "POST_GRADUATE", "UNDER_GRADUATE", "DIPLOMA", "HIGHER_SECONDARY", "SECONDARY", "OTHER"
     ]),
+    degreeType: safeStringSchema(0, 100).optional(), // e.g. "B.Tech", "B.E.", "MBA"
     degree: safeStringSchema(1, 150),
     fieldOfStudy: safeStringSchema(0, 100).optional(),
     institutionName: safeStringSchema(1, 200),

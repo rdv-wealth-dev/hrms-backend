@@ -310,8 +310,33 @@ export class OnboardingWizardService {
   }
 
   // Education options lookup helper for dynamic dropdowns
-  getEducationOptions(qualificationLevel?: string, countryCode?: string) {
-    return getEducationCatalogForLevel(qualificationLevel, countryCode);
+  // Optional `search` param filters degrees by keyword (case-insensitive)
+  getEducationOptions(qualificationLevel?: string, countryCode?: string, search?: string) {
+    const catalog = getEducationCatalogForLevel(qualificationLevel, countryCode);
+
+    if (!search || search.trim().length < 2) {
+      return catalog;
+    }
+
+    const q = search.trim().toLowerCase();
+
+    // Filter categories — keep only categories that have at least one matching degree
+    const filteredCategories = catalog.categories
+      .map((cat) => ({
+        category: cat.category,
+        degrees: cat.degrees.filter((deg) => deg.toLowerCase().includes(q)),
+      }))
+      .filter((cat) => cat.degrees.length > 0);
+
+    const allDegrees = filteredCategories.flatMap((cat) => cat.degrees);
+
+    return {
+      ...catalog,
+      categories: filteredCategories,
+      allDegrees,
+      searchQuery: search.trim(),
+      totalMatches: allDegrees.length,
+    };
   }
 
   // Step 1 — Personal Details 

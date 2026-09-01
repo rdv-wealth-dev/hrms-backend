@@ -11,7 +11,8 @@ export const EducationDetailDto = z.object({
     "SECONDARY",
     "OTHER",
   ]),
-  degree: safeStringSchema(1, 150),
+  degreeType: safeStringSchema(0, 100).optional(),  // e.g. "B.Tech", "B.E.", "MBA" — Screen 1 selection
+  degree: safeStringSchema(1, 150),                  // e.g. "Computer Science and Engineering (CSE)" — Screen 2
   fieldOfStudy: safeStringSchema(0, 100).optional(),
   institutionName: safeStringSchema(1, 200),
   yearOfPassing: z.preprocess((val) => (val ? Number(val) : undefined), z.number().int().min(1950).max(2100).optional()),

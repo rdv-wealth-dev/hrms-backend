@@ -68,7 +68,8 @@ export enum QualificationLevel {
 
 export interface EmployeeEducation {
   qualificationLevel: QualificationLevel;
-  degree: string;
+  degreeType?: string;       // e.g. "B.Tech", "B.E.", "MBA", "B.Com" — Screen 1 selection
+  degree: string;            // e.g. "Computer Science and Engineering (CSE)" — Screen 2 specialization
   fieldOfStudy?: string;
   institutionName: string;
   yearOfPassing?: number;
@@ -266,7 +267,8 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
     educationDetails: [
       {
         qualificationLevel: { type: String, enum: Object.values(QualificationLevel) },
-        degree: { type: String, trim: true },
+        degreeType: { type: String, trim: true },     // e.g. "B.Tech", "B.E.", "MBA" — Step 1 UI
+        degree: { type: String, trim: true },          // e.g. "Computer Science and Engineering (CSE)" — Step 2 UI
         fieldOfStudy: { type: String, trim: true },
         institutionName: { type: String, trim: true },
         yearOfPassing: { type: Number },

@@ -27,9 +27,17 @@ export class OnboardingWizardController {
         : typeof req.query.country === "string"
           ? req.query.country
           : undefined;
-      const result = onboardingWizardService.getEducationOptions(qualificationLevel, countryCode);
+      // search / q param — filters degrees by keyword (min 2 chars)
+      const search = typeof req.query.search === "string"
+        ? req.query.search
+        : typeof req.query.q === "string"
+          ? req.query.q
+          : undefined;
+      const result = onboardingWizardService.getEducationOptions(qualificationLevel, countryCode, search);
       res.status(200).json(
-        buildSuccessResponse(result, "Education options fetched successfully")
+        buildSuccessResponse(result, search
+          ? `Education options fetched for search: "${search}"`
+          : "Education options fetched successfully")
       );
     } catch (e) {
       next(e);
