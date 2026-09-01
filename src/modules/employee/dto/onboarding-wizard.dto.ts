@@ -16,6 +16,9 @@ export const EducationDetailDto = z.object({
   institutionName: safeStringSchema(1, 200),
   yearOfPassing: z.preprocess((val) => (val ? Number(val) : undefined), z.number().int().min(1950).max(2100).optional()),
   percentageOrCgpa: safeStringSchema(0, 50).optional(),
+  boardCode: safeStringSchema(0, 50).optional(),
+  stateBoardState: safeStringSchema(0, 100).optional(),
+  otherBoardName: safeStringSchema(0, 150).optional(),
 });
 
 export const OnboardingStep1Dto = z.object({

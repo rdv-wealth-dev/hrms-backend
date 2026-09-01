@@ -21,6 +21,8 @@ import {
   POSTGRADUATE_CATALOG,
   DIPLOMA_CATALOG,
   DOCTORATE_CATALOG,
+  SCHOOL_BOARD_OPTIONS,
+  INDIAN_STATE_BOARDS,
   getEducationCatalogForLevel,
 } from "../constants/education-catalog.constant";
 
@@ -245,6 +247,8 @@ export class OnboardingWizardService {
         POST_GRADUATE: POSTGRADUATE_CATALOG,
         DIPLOMA: DIPLOMA_CATALOG,
         DOCTORATE: DOCTORATE_CATALOG,
+        boardOptions: SCHOOL_BOARD_OPTIONS,
+        stateBoards: INDIAN_STATE_BOARDS,
       },
       step1Data,
       step2Data,
@@ -335,6 +339,23 @@ export class OnboardingWizardService {
     }
     if (!emergencyContacts || emergencyContacts.length === 0) {
       throw new AppError("At least one emergency contact is required", 400, ErrorCode.VALIDATION_FAILED);
+    }
+
+    // Validate DOB vs Year of Passing for education details (must be >= 15 years from birth year)
+    if (input.educationDetails && Array.isArray(input.educationDetails) && dateOfBirth) {
+      const dobYear = new Date(dateOfBirth).getFullYear();
+      for (const edu of input.educationDetails) {
+        if (edu.yearOfPassing) {
+          const ageAtPassing = edu.yearOfPassing - dobYear;
+          if (ageAtPassing < 15) {
+            throw new AppError(
+              `Year of passing (${edu.yearOfPassing}) for "${edu.degree || edu.qualificationLevel}" is invalid. Minimum age at passing must be at least 15 years from your birth year (${dobYear}).`,
+              400,
+              ErrorCode.VALIDATION_FAILED
+            );
+          }
+        }
+      }
     }
 
     // Apply values to employee model
