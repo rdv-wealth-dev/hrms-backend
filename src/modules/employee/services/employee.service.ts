@@ -74,6 +74,7 @@ export class EmployeeService {
     const rangeMap: Record<string, number> = {
       "1-10": 10,
       "11-50": 50,
+      "10-50": 50,
       "51-200": 200,
       "201-500": 500,
       "500+": 1000,
@@ -279,6 +280,7 @@ export class EmployeeService {
       passwordHash: null,
       firstName: input.firstName,
       lastName: input.lastName,
+      phone: input.phone,
       role: assignedRole,
       isOrgAdmin: assignedRole === "ORG_ADMIN" || assignedRole === "SUPER_ADMIN",
       isActive: false,
@@ -385,6 +387,7 @@ export class EmployeeService {
         firstName: employee.firstName,
         lastName: employee.lastName,
         email: employee.email,
+        phone: employee.phone,
         status: employee.status,
         joiningDate: employee.joiningDate,
       },
@@ -1531,6 +1534,7 @@ export class EmployeeService {
     const rangeMap: Record<string, number> = {
       "1-10": 10,
       "11-50": 50,
+      "10-50": 50,
       "51-200": 200,
       "201-500": 500,
       "500+": 1000,

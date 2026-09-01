@@ -751,6 +751,7 @@ export class AuthService {
       const rangeMap: Record<string, number> = {
         "1-10": 10,
         "11-50": 50,
+        "10-50": 50,
         "51-200": 200,
         "201-500": 500,
         "500+": 1000,
