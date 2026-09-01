@@ -16,9 +16,15 @@ export const EducationDetailDto = z.object({
   institutionName: safeStringSchema(1, 200),
   yearOfPassing: z.preprocess((val) => (val ? Number(val) : undefined), z.number().int().min(1950).max(2100).optional()),
   percentageOrCgpa: safeStringSchema(0, 50).optional(),
+  isCustom: z.boolean().optional().default(false),
+  // Board custom & standard fields
   boardCode: safeStringSchema(0, 50).optional(),
+  boardName: safeStringSchema(0, 150).optional(),
+  boardDescription: safeStringSchema(0, 300).optional(),
   stateBoardState: safeStringSchema(0, 100).optional(),
   otherBoardName: safeStringSchema(0, 150).optional(),
+  // Degree / College custom description
+  degreeDescription: safeStringSchema(0, 300).optional(),
 });
 
 export const OnboardingStep1Dto = z.object({

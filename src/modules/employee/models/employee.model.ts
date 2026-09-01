@@ -73,9 +73,13 @@ export interface EmployeeEducation {
   institutionName: string;
   yearOfPassing?: number;
   percentageOrCgpa?: string;
+  isCustom?: boolean;
   boardCode?: string;
+  boardName?: string;
+  boardDescription?: string;
   stateBoardState?: string;
   otherBoardName?: string;
+  degreeDescription?: string;
 }
 
 export interface EmergencyContact {
@@ -267,9 +271,13 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
         institutionName: { type: String, trim: true },
         yearOfPassing: { type: Number },
         percentageOrCgpa: { type: String, trim: true },
+        isCustom: { type: Boolean, default: false },
         boardCode: { type: String, trim: true, uppercase: true },
+        boardName: { type: String, trim: true },
+        boardDescription: { type: String, trim: true },
         stateBoardState: { type: String, trim: true },
         otherBoardName: { type: String, trim: true },
+        degreeDescription: { type: String, trim: true },
       },
     ],
     previousEmployerName: { type: String, trim: true, default: null },
