@@ -16,6 +16,13 @@ import { OrganizationModel } from "../../organization/organization.model";
 import { EmployeeDocumentModel } from "../../employee-document/employee-document.model";
 import { EmployeeBankAccountModel } from "../models/employee-bank-account.model";
 import { CustomFieldService } from "../../custom-field/custom-field.service";
+import {
+  UNDERGRADUATE_CATALOG,
+  POSTGRADUATE_CATALOG,
+  DIPLOMA_CATALOG,
+  DOCTORATE_CATALOG,
+  getEducationCatalogForLevel,
+} from "../constants/education-catalog.constant";
 
 export class OnboardingWizardService {
   private familyRepo = new EmployeeFamilyRepository();
@@ -153,10 +160,21 @@ export class OnboardingWizardService {
       onboardingStep: refreshed!.onboardingStep,
       onboardingComplete: refreshed!.onboardingComplete,
       onboardingStepsCompleted: refreshed!.onboardingStepsCompleted,
+      educationCatalog: {
+        UNDER_GRADUATE: UNDERGRADUATE_CATALOG,
+        POST_GRADUATE: POSTGRADUATE_CATALOG,
+        DIPLOMA: DIPLOMA_CATALOG,
+        DOCTORATE: DOCTORATE_CATALOG,
+      },
       step1Data,
       step2Data,
       step3Data,
     };
+  }
+
+  // Education options lookup helper for dynamic dropdowns
+  getEducationOptions(qualificationLevel?: string) {
+    return getEducationCatalogForLevel(qualificationLevel);
   }
 
   // Step 1 — Personal Details 

@@ -20,6 +20,11 @@ router.get(
     controller.getStatus.bind(controller)
 );
 
+router.get(
+    "/education-options",
+    controller.getEducationOptions.bind(controller)
+);
+
 router.post(
     "/step-1",
     validateBody(OnboardingStep1Dto),

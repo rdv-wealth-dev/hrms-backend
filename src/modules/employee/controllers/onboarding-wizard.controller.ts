@@ -15,6 +15,22 @@ export class OnboardingWizardController {
     }
   }
 
+  async getEducationOptions(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const qualificationLevel = typeof req.query.qualificationLevel === "string"
+        ? req.query.qualificationLevel
+        : typeof req.query.level === "string"
+          ? req.query.level
+          : undefined;
+      const result = onboardingWizardService.getEducationOptions(qualificationLevel);
+      res.status(200).json(
+        buildSuccessResponse(result, "Education options fetched successfully")
+      );
+    } catch (e) {
+      next(e);
+    }
+  }
+
   async step1(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await onboardingWizardService.submitStep1(req.context, req.body);
