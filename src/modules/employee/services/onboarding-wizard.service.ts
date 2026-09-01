@@ -310,7 +310,7 @@ export class OnboardingWizardService {
   }
 
   // Education options lookup helper for dynamic dropdowns
-  // Optional `search` param filters degrees by keyword (case-insensitive)
+  // Optional `search` param filters specializations and degrees by keyword (case-insensitive)
   getEducationOptions(qualificationLevel?: string, countryCode?: string, search?: string) {
     const catalog = getEducationCatalogForLevel(qualificationLevel, countryCode);
 
@@ -320,22 +320,27 @@ export class OnboardingWizardService {
 
     const q = search.trim().toLowerCase();
 
-    // Filter categories — keep only categories that have at least one matching degree
-    const filteredCategories = catalog.categories
-      .map((cat) => ({
-        category: cat.category,
-        degrees: cat.degrees.filter((deg) => deg.toLowerCase().includes(q)),
-      }))
-      .filter((cat) => cat.degrees.length > 0);
+    // Filter degrees — keep only degrees that match the query or have at least one matching specialization
+    const filteredDegrees = catalog.degrees
+      .map((deg) => {
+        const degreeMatches = deg.degree.toLowerCase().includes(q);
+        const matchedSpecs = deg.specialization.filter((spec) => spec.toLowerCase().includes(q));
 
-    const allDegrees = filteredCategories.flatMap((cat) => cat.degrees);
+        return {
+          degree: deg.degree,
+          specialization: degreeMatches ? deg.specialization : matchedSpecs,
+        };
+      })
+      .filter((deg) => deg.specialization.length > 0);
+
+    const allSpecializations = filteredDegrees.flatMap((deg) => deg.specialization);
 
     return {
       ...catalog,
-      categories: filteredCategories,
-      allDegrees,
+      degrees: filteredDegrees,
+      allSpecializations,
       searchQuery: search.trim(),
-      totalMatches: allDegrees.length,
+      totalMatches: allSpecializations.length,
     };
   }
 
