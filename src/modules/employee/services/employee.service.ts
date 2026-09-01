@@ -22,6 +22,7 @@ import { EmployeeDocumentModel } from "../../employee-document/employee-document
 import { AppError, ValidationFailedError } from "../../../shared/errors/app.error";
 import { RequestContext } from "../../../shared/types/request-context.interface";
 import { buildPagedResponse } from "../../../shared/database/base.schema";
+import { parseEmployeeCountRange } from "../../organization/utils/team-size.util";
 import crypto from "crypto";
 import { UserModel } from "../../user/user.model";
 import { OrganizationModel } from "../../organization/organization.model";
@@ -71,19 +72,8 @@ export class EmployeeService {
     const org = await OrganizationModel.findById(context.tenantId);
     if (!org) throw new AppError("Organization not found", 404);
 
-    const rangeMap: Record<string, number> = {
-      "1-10": 10,
-      "11-50": 50,
-      "10-50": 50,
-      "51-200": 200,
-      "201-500": 500,
-      "500+": 1000,
-    };
-
-    const maxEmployees =
-      (org.employeeCountRange && rangeMap[org.employeeCountRange]) ||
-      org.subscription?.maxEmployees ||
-      10;
+    const { maxEmployees: parsedMax } = parseEmployeeCountRange(org.employeeCountRange);
+    const maxEmployees = Math.max(parsedMax, org.subscription?.maxEmployees || 10);
 
     const currentCount = await EmployeeModel.countDocuments({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
@@ -1531,19 +1521,8 @@ export class EmployeeService {
     const org = await OrganizationModel.findById(context.tenantId);
     if (!org) throw new AppError("Organization not found", 404);
 
-    const rangeMap: Record<string, number> = {
-      "1-10": 10,
-      "11-50": 50,
-      "10-50": 50,
-      "51-200": 200,
-      "201-500": 500,
-      "500+": 1000,
-    };
-
-    const maxEmployees =
-      (org.employeeCountRange && rangeMap[org.employeeCountRange]) ||
-      org.subscription?.maxEmployees ||
-      10;
+    const { maxEmployees: parsedBulkMax } = parseEmployeeCountRange(org.employeeCountRange);
+    const maxEmployees = Math.max(parsedBulkMax, org.subscription?.maxEmployees || 10);
 
     const currentCount = await EmployeeModel.countDocuments({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),

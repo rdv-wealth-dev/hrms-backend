@@ -26,6 +26,9 @@ export const RegisterDto = z.object({
   password: passwordSchema.max(12, "Password must not exceed 12 characters"),
   companyName: safeStringSchema(2, 200),
   workspaceSlug: workspaceSlugSchema,
+  employeeCountRange: z.string().optional(),
+  teamSize: z.string().optional(),
+  companySize: z.string().optional(),
 });
 
 export type RegisterInput = z.infer<typeof RegisterDto>;
@@ -86,9 +89,9 @@ export type CheckSlugInput = z.infer<typeof CheckSlugDto>;
 export const OnboardingWizardDto = z.object({
   countryCode: countryCodeSchema,
   timezone: z.string().min(1, "Timezone is required"),
-  employeeCountRange: z
-    .enum(["1-10", "11-50", "10-50", "51-200", "201-500", "500+"])
-    .transform((val) => (val === "10-50" ? "11-50" : val)),
+  employeeCountRange: z.string().optional(),
+  teamSize: z.string().optional(),
+  companySize: z.string().optional(),
   industry: safeStringSchema(2, 100),
   phone: phoneSchema,
   baseCurrency: optionalString(currencyCodeSchema),  // auto-filled from country, but overridable

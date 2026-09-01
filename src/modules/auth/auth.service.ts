@@ -7,6 +7,7 @@ import { SessionEventType } from "../audit/session-log.model";
 
 import { UserRepository } from "../user/user.repository";
 import { OrganizationRepository } from "../organization/organization.repository";
+import { parseEmployeeCountRange } from "../organization/utils/team-size.util";
 import { BranchRepository } from "../branch/branch.repository";
 import { UserModel } from "../user/user.model";
 import { seedDefaultRoles } from "../../database/seeds/role.seed";
@@ -137,12 +138,15 @@ export class AuthService {
     const defaultCountry = "IN";
     const defaultTimezone = "Asia/Kolkata";
 
-    // 3. Create organization (using default locale/ranges until Step 2 onboarding wizard)
+    const rawRange = input.employeeCountRange || input.teamSize || input.companySize || "1-10";
+    const { normalizedRange, maxEmployees } = parseEmployeeCountRange(rawRange);
+
+    // 3. Create organization (saving actual selected team size range immediately)
     const organization = await this.orgRepo.create({
       companyName: input.companyName,
       slug,
       workspaceSlug: input.workspaceSlug,
-      employeeCountRange: "1-10",
+      employeeCountRange: normalizedRange,
       onboardingCompleted: false,
       onboardingStatus: "step1_completed",
       industry: "Technology",
@@ -160,7 +164,7 @@ export class AuthService {
         plan: "free",
         status: "trial",
         trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        maxEmployees: 10,
+        maxEmployees: maxEmployees,
         maxBranches: 2,
       },
       modules: {
@@ -747,22 +751,13 @@ export class AuthService {
 
     const tenantObjectId = new mongoose.Types.ObjectId(tenantId);
 
-    const maxEmployees = (() => {
-      const rangeMap: Record<string, number> = {
-        "1-10": 10,
-        "11-50": 50,
-        "10-50": 50,
-        "51-200": 200,
-        "201-500": 500,
-        "500+": 1000,
-      };
-      return rangeMap[input.employeeCountRange] || 50;
-    })();
+    const rawWizardRange = input.employeeCountRange || input.teamSize || input.companySize || org.employeeCountRange || "1-10";
+    const { normalizedRange, maxEmployees } = parseEmployeeCountRange(rawWizardRange);
 
     // Update locale, industry, employee count and team size limit from wizard
     await this.orgRepo.updateById(tenantId, {
       industry: input.industry,
-      employeeCountRange: input.employeeCountRange,
+      employeeCountRange: normalizedRange,
       subscription: {
         ...org.subscription,
         maxEmployees,

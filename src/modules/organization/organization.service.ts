@@ -2,6 +2,7 @@ import { OrganizationRepository } from "./organization.repository";
 import { UpdateOrganizationInput, UpdateModulesInput, UpdateStatutoryInput, UpdateMandatoryDocsInput } from "./organization.dto";
 import { RequestContext } from "../../shared/types/request-context.interface";
 import { AppError } from "../../shared/errors/app.error";
+import { parseEmployeeCountRange } from "./utils/team-size.util";
 
 export class OrganizationService {
   private orgRepo = new OrganizationRepository();
@@ -39,6 +40,16 @@ export class OrganizationService {
     if (input.pan)         updateData.pan          = input.pan;
     if (input.cin)         updateData.cin          = input.cin;
     if (input.tan)         updateData.tan          = input.tan;
+
+    const providedRange = input.employeeCountRange || input.teamSize || input.companySize;
+    if (providedRange) {
+      const { normalizedRange, maxEmployees } = parseEmployeeCountRange(providedRange);
+      updateData.employeeCountRange = normalizedRange;
+      updateData.subscription = {
+        ...org.subscription,
+        maxEmployees,
+      };
+    }
 
     // Merge nested objects
     if (input.address) {
