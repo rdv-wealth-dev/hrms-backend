@@ -4,14 +4,14 @@
  */
 
 export interface EducationStreamCategory {
-  category: string;
-  degrees: string[];
+  degree: string;
+  specialization: string[];
 }
 
 export const UNDERGRADUATE_CATALOG: EducationStreamCategory[] = [
   {
-    category: "Engineering & Technology (B.Tech / B.E. / B.Sc Tech)",
-    degrees: [
+    degree: "Engineering & Technology (B.Tech / B.E. / B.Sc Tech)",
+    specialization: [
       "Computer Science and Engineering (CSE)",
       "Information Technology (IT)",
       "Electronics and Communication Engineering (ECE)",
@@ -48,8 +48,8 @@ export const UNDERGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Medical & Health Sciences",
-    degrees: [
+    degree: "Medical & Health Sciences",
+    specialization: [
       "MBBS (Bachelor of Medicine and Bachelor of Surgery)",
       "BDS (Bachelor of Dental Surgery)",
       "BAMS (Bachelor of Ayurvedic Medicine and Surgery)",
@@ -75,8 +75,8 @@ export const UNDERGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Commerce, Business & Management",
-    degrees: [
+    degree: "Commerce, Business & Management",
+    specialization: [
       "B.Com (Bachelor of Commerce) – General",
       "B.Com (Honours)",
       "B.Com in Accounting and Finance",
@@ -96,8 +96,8 @@ export const UNDERGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Arts, Humanities & Social Sciences",
-    degrees: [
+    degree: "Arts, Humanities & Social Sciences",
+    specialization: [
       "BA General",
       "BA (Honours) in English",
       "BA (Honours) in Hindi / Regional Languages",
@@ -127,8 +127,8 @@ export const UNDERGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Science & Computer Applications",
-    degrees: [
+    degree: "Science & Computer Applications",
+    specialization: [
       "B.Sc General",
       "B.Sc (Honours) in Physics",
       "B.Sc (Honours) in Chemistry",
@@ -158,8 +158,8 @@ export const UNDERGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Law",
-    degrees: [
+    degree: "Law",
+    specialization: [
       "LLB (3-Year Degree)",
       "BA LLB (5-Year Integrated)",
       "BBA LLB (5-Year Integrated)",
@@ -170,8 +170,8 @@ export const UNDERGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Architecture, Planning & Design",
-    degrees: [
+    degree: "Architecture, Planning & Design",
+    specialization: [
       "B.Arch (Bachelor of Architecture)",
       "B.Planning (Bachelor of Planning)",
       "B.Des (Fashion Design)",
@@ -187,8 +187,8 @@ export const UNDERGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Education & Physical Education",
-    degrees: [
+    degree: "Education & Physical Education",
+    specialization: [
       "B.Ed (Bachelor of Education)",
       "BA B.Ed / B.Sc B.Ed (Integrated 4-Year)",
       "BPEd (Bachelor of Physical Education)",
@@ -197,8 +197,8 @@ export const UNDERGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Hospitality, Tourism & Aviation",
-    degrees: [
+    degree: "Hospitality, Tourism & Aviation",
+    specialization: [
       "BHM (Bachelor of Hotel Management)",
       "BHMCT (Hotel Management and Catering Technology)",
       "B.Sc in Hospitality and Hotel Administration",
@@ -209,8 +209,8 @@ export const UNDERGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Media, Animation & Mass Communication",
-    degrees: [
+    degree: "Media, Animation & Mass Communication",
+    specialization: [
       "BJMC (Journalism and Mass Communication)",
       "B.Sc in Animation and Multimedia",
       "BAMC (Bachelor of Animation and Multimedia Communication)",
@@ -220,8 +220,8 @@ export const UNDERGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Vocational & Other Professional Courses",
-    degrees: [
+    degree: "Vocational & Other Professional Courses",
+    specialization: [
       "B.Voc (Bachelor of Vocation - IT / Retail / Healthcare)",
       "BLIS (Bachelor of Library and Information Science)",
       "BFD (Bachelor of Fashion Designing)",
@@ -234,8 +234,8 @@ export const UNDERGRADUATE_CATALOG: EducationStreamCategory[] = [
 
 export const POSTGRADUATE_CATALOG: EducationStreamCategory[] = [
   {
-    category: "Engineering & Technology (M.Tech / M.E. / M.S.)",
-    degrees: [
+    degree: "Engineering & Technology (M.Tech / M.E. / M.S.)",
+    specialization: [
       "M.Tech / M.E. Computer Science and Engineering",
       "M.Tech / M.E. Information Technology",
       "M.Tech / M.E. Electronics and Communication Engineering",
@@ -272,8 +272,8 @@ export const POSTGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Medical & Health Sciences (MD / MS / MDS / Super-Specialization)",
-    degrees: [
+    degree: "Medical & Health Sciences (MD / MS / MDS / Super-Specialization)",
+    specialization: [
       "MD (General Medicine)",
       "MD (Pediatrics)",
       "MD (Dermatology)",
@@ -312,8 +312,8 @@ export const POSTGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Commerce, Management & Business (MBA / M.Com / PGDM)",
-    degrees: [
+    degree: "Commerce, Management & Business (MBA / M.Com / PGDM)",
+    specialization: [
       "MBA (Finance)",
       "MBA (Marketing)",
       "MBA (Human Resource Management / HR)",
@@ -337,8 +337,8 @@ export const POSTGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Arts, Humanities & Social Sciences (MA / MSW / MFA)",
-    degrees: [
+    degree: "Arts, Humanities & Social Sciences (MA / MSW / MFA)",
+    specialization: [
       "MA English",
       "MA Hindi / Regional Languages",
       "MA History",
@@ -370,8 +370,8 @@ export const POSTGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Science, IT & Computer Applications (M.Sc / MCA / M.Sc IT)",
-    degrees: [
+    degree: "Science, IT & Computer Applications (M.Sc / MCA / M.Sc IT)",
+    specialization: [
       "M.Sc Physics",
       "M.Sc Chemistry",
       "M.Sc Mathematics",
@@ -408,8 +408,8 @@ export const POSTGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Law (LLM)",
-    degrees: [
+    degree: "Law (LLM)",
+    specialization: [
       "LLM (Constitutional Law)",
       "LLM (Criminal Law)",
       "LLM (Corporate & Commercial Law)",
@@ -424,8 +424,8 @@ export const POSTGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Architecture, Planning & Design (M.Arch / M.Des / M.Planning)",
-    degrees: [
+    degree: "Architecture, Planning & Design (M.Arch / M.Des / M.Planning)",
+    specialization: [
       "M.Arch (Urban Design)",
       "M.Arch (Landscape Architecture)",
       "M.Arch (Building Engineering & Management)",
@@ -444,8 +444,8 @@ export const POSTGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Education & Physical Education (M.Ed / MPEd)",
-    degrees: [
+    degree: "Education & Physical Education (M.Ed / MPEd)",
+    specialization: [
       "M.Ed (Master of Education)",
       "MPEd (Master of Physical Education)",
       "M.El.Ed (Master of Elementary Education)",
@@ -453,8 +453,8 @@ export const POSTGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Hospitality, Tourism & Aviation (MHM / MTTM)",
-    degrees: [
+    degree: "Hospitality, Tourism & Aviation (MHM / MTTM)",
+    specialization: [
       "MHM (Master of Hotel Management)",
       "M.Sc Hospitality Administration",
       "MTTM (Master of Tourism and Travel Management)",
@@ -463,8 +463,8 @@ export const POSTGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Mass Communication, Media & Film (MJMC / MA Media)",
-    degrees: [
+    degree: "Mass Communication, Media & Film (MJMC / MA Media)",
+    specialization: [
       "MJMC (Master of Journalism and Mass Communication)",
       "M.Sc Animation and Multimedia",
       "MA Visual Communication",
@@ -474,8 +474,8 @@ export const POSTGRADUATE_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Vocational & Library Science",
-    degrees: [
+    degree: "Vocational & Library Science",
+    specialization: [
       "M.Voc (Master of Vocation)",
       "MLIS (Master of Library and Information Science)",
       "M.Sc Fashion Designing / Technology",
@@ -487,8 +487,8 @@ export const POSTGRADUATE_CATALOG: EducationStreamCategory[] = [
 
 export const DIPLOMA_CATALOG: EducationStreamCategory[] = [
   {
-    category: "Engineering & Polytechnic Diplomas",
-    degrees: [
+    degree: "Engineering & Polytechnic Diplomas",
+    specialization: [
       "Diploma in Computer Science & Engineering",
       "Diploma in Information Technology",
       "Diploma in Electronics & Communication",
@@ -502,8 +502,8 @@ export const DIPLOMA_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Paramedical & Allied Health Diplomas",
-    degrees: [
+    degree: "Paramedical & Allied Health Diplomas",
+    specialization: [
       "Diploma in General Nursing & Midwifery (GNM)",
       "Diploma in Pharmacy (D.Pharm)",
       "Diploma in Medical Laboratory Technology (DMLT)",
@@ -514,8 +514,8 @@ export const DIPLOMA_CATALOG: EducationStreamCategory[] = [
     ],
   },
   {
-    category: "Management, Design & Other Diplomas",
-    degrees: [
+    degree: "Management, Design & Other Diplomas",
+    specialization: [
       "Diploma in Digital Marketing",
       "Diploma in Graphic Design / UI-UX",
       "Diploma in Fashion Designing",
@@ -529,8 +529,8 @@ export const DIPLOMA_CATALOG: EducationStreamCategory[] = [
 
 export const DOCTORATE_CATALOG: EducationStreamCategory[] = [
   {
-    category: "Doctorate & Post-Doctoral Programs",
-    degrees: [
+    degree: "Doctorate & Post-Doctoral Programs",
+    specialization: [
       "Ph.D. in Engineering & Technology",
       "Ph.D. in Computer Science / Artificial Intelligence",
       "Ph.D. in Management / Business Administration",
@@ -565,33 +565,33 @@ export const INDIAN_STATE_BOARDS = IN_STATE_BOARDS;
 export function getEducationCatalogForLevel(qualificationLevel?: string, countryCode?: string): {
   qualificationLevel: string;
   countryCode: string;
-  categories: EducationStreamCategory[];
-  allDegrees: string[];
+  degrees: EducationStreamCategory[];
+  allSpecializations: string[];
   boardOptions: SchoolBoardOption[];
   stateBoards: StateBoardOption[];
 } {
   const normalized = (qualificationLevel || "").toUpperCase().trim();
   const normalizedCountry = (countryCode || "IN").toUpperCase().trim();
 
-  let categories: EducationStreamCategory[];
+  let degrees: EducationStreamCategory[];
 
   if (normalized === "UNDER_GRADUATE" || normalized === "GRADUATE" || normalized === "BACHELORS" || normalized === "UG") {
-    categories = UNDERGRADUATE_CATALOG;
+    degrees = UNDERGRADUATE_CATALOG;
   } else if (normalized === "POST_GRADUATE" || normalized === "MASTERS" || normalized === "PG") {
-    categories = POSTGRADUATE_CATALOG;
+    degrees = POSTGRADUATE_CATALOG;
   } else if (normalized === "DIPLOMA") {
-    categories = DIPLOMA_CATALOG;
+    degrees = DIPLOMA_CATALOG;
   } else if (normalized === "DOCTORATE" || normalized === "PHD") {
-    categories = DOCTORATE_CATALOG;
+    degrees = DOCTORATE_CATALOG;
   } else {
     // Default: combine both UG and PG with group tags
-    categories = [
+    degrees = [
       ...UNDERGRADUATE_CATALOG,
       ...POSTGRADUATE_CATALOG,
     ];
   }
 
-  const allDegrees = categories.flatMap((cat) => cat.degrees);
+  const allSpecializations = degrees.flatMap((deg) => deg.specialization);
 
   // Dynamically resolve country plugin for school boards & state options
   let plugin;
@@ -604,8 +604,8 @@ export function getEducationCatalogForLevel(qualificationLevel?: string, country
   return {
     qualificationLevel: normalized || "ALL",
     countryCode: normalizedCountry,
-    categories,
-    allDegrees,
+    degrees,
+    allSpecializations,
     boardOptions: plugin?.schoolBoards || IN_SCHOOL_BOARDS,
     stateBoards: plugin?.stateBoards || IN_STATE_BOARDS,
   };
