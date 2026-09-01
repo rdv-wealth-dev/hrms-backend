@@ -98,8 +98,21 @@ export const FamilyMemberDto = z.object({
 });
 
 export const OnboardingStep2Dto = z.object({
-  familyMembers: z.array(FamilyMemberDto).min(0), // allow empty — single employees with no dependents
-});
+  familyMembers: z.array(FamilyMemberDto).optional().default([]),
+  isNotApplicable: z.boolean().optional().default(false),
+  isNa: z.boolean().optional(),
+  hasNoFamily: z.boolean().optional(),
+}).refine(
+  (data) => {
+    const isNa = !!(data.isNotApplicable || data.isNa || data.hasNoFamily);
+    if (isNa) return true;
+    return Array.isArray(data.familyMembers) && data.familyMembers.length > 0;
+  },
+  {
+    message: "Please add at least one family member or check 'Not Applicable' (NA) to proceed.",
+    path: ["familyMembers"],
+  }
+);
 export type OnboardingStep2Input = z.infer<typeof OnboardingStep2Dto>;
 
 // Step 3 — Bank Details 

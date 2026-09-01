@@ -127,7 +127,10 @@ export class OnboardingWizardService {
 
     // ── 2. Step 2 Data (Family Details) ──
     const familyDocs = await this.familyRepo.findAllForEmployee(context, employee._id.toString());
+    const isFamilyStepCompleted = !!refreshed?.onboardingStepsCompleted?.familyDetails;
+    const hasFamilyDocs = (familyDocs || []).length > 0;
     const step2Data = {
+      isNotApplicable: isFamilyStepCompleted && !hasFamilyDocs,
       familyMembers: (familyDocs || []).map((m: any) => ({
         fullName: m.fullName,
         relationship: m.relationship,
@@ -254,9 +257,25 @@ export class OnboardingWizardService {
     const employee = await this.resolveOwnEmployee(context);
     this.assertStepAllowed(employee, 2);
 
-    await this.familyRepo.replaceAllForEmployee(
-      context, employee._id.toString(), employee.branchId.toString(), input.familyMembers as any
-    );
+    const isNa = !!(input.isNotApplicable || input.isNa || input.hasNoFamily);
+
+    if (isNa) {
+      // Clear family members if explicitly marked Not Applicable
+      await this.familyRepo.replaceAllForEmployee(
+        context, employee._id.toString(), employee.branchId.toString(), []
+      );
+    } else {
+      if (!input.familyMembers || input.familyMembers.length === 0) {
+        throw new AppError(
+          "Please add at least one family member or check 'Not Applicable' (NA) to proceed.",
+          400,
+          ErrorCode.VALIDATION_FAILED
+        );
+      }
+      await this.familyRepo.replaceAllForEmployee(
+        context, employee._id.toString(), employee.branchId.toString(), input.familyMembers as any
+      );
+    }
 
     employee.onboardingStepsCompleted.familyDetails = true;
     await employee.save();
@@ -265,7 +284,11 @@ export class OnboardingWizardService {
     await recalculateProfileCompletion(context.tenantId, employee._id.toString());
     const refreshed = await EmployeeModel.findById(employee._id);
 
-    return { message: "Family details saved", nextStep: refreshed!.onboardingStep };
+    const message = isNa
+      ? "Family details marked as Not Applicable"
+      : "Family details saved successfully";
+
+    return { message, nextStep: refreshed!.onboardingStep };
   }
 
   // Step 3 — Bank Details 
