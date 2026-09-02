@@ -7,6 +7,9 @@ import { PaginationOptions, } from "../../shared/database/base.repository";
 import { BranchRepository } from "../branch/branch.repository";
 import { seedDepartments } from "../../database/seeds/department.seed";
 import { seedDesignations } from "../../database/seeds/designation.seed";
+import { EmployeeModel } from "../employee/models/employee.model";
+import { DesignationModel } from "../designation/designation.model";
+import { DepartmentModel } from "./department.model";
 
 
 export class DepartmentService {
@@ -112,18 +115,146 @@ export class DepartmentService {
     return updated;
   }
 
-  //Delete
+  // Delete department (and optionally cascade child designations)
   async deleteDepartment(
     context: RequestContext,
-    id: string
+    id: string,
+    options: { force?: boolean } = {}
   ) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError("Invalid department ID format", 400);
+    }
+
     const dept = await this.deptRepo.findById(context, id);
     if (!dept) {
       throw new AppError("Department not found", 404);
     }
 
+    const activeEmployeesCount = await EmployeeModel.countDocuments({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      departmentId: new mongoose.Types.ObjectId(id),
+      isDeleted: false,
+    });
+
+    if (activeEmployeesCount > 0 && !options.force) {
+      throw new AppError(
+        `Cannot delete department "${dept.name}" because ${activeEmployeesCount} active employee(s) are currently assigned to it. Please reassign them first or specify force=true.`,
+        400
+      );
+    }
+
     await this.deptRepo.softDeleteById(context, id);
-    return { message: "Department deleted successfully" };
+
+    // Soft delete associated designations
+    const now = new Date();
+    const updatedBy = context.userId ? new mongoose.Types.ObjectId(context.userId) : undefined;
+    const desigResult = await DesignationModel.updateMany(
+      {
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        departmentId: new mongoose.Types.ObjectId(id),
+        isDeleted: false,
+      },
+      {
+        $set: {
+          isDeleted: true,
+          isActive: false,
+          updatedBy,
+          updatedAt: now,
+        },
+      }
+    );
+
+    return {
+      message: "Department and associated designations deleted successfully",
+      departmentId: id,
+      deletedDesignationsCount: desigResult.modifiedCount,
+    };
+  }
+
+  // Delete all departments & their designations for a particular branch
+  async deleteDepartmentsByBranch(
+    context: RequestContext,
+    branchId: string,
+    options: { force?: boolean } = {}
+  ) {
+    if (!mongoose.Types.ObjectId.isValid(branchId)) {
+      throw new AppError("Invalid branch ID format", 400);
+    }
+
+    const depts = await DepartmentModel.find({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      branchId: new mongoose.Types.ObjectId(branchId),
+      isDeleted: false,
+    });
+
+    if (depts.length === 0) {
+      return {
+        message: "No active departments found for the specified branch",
+        branchId,
+        deletedDepartmentsCount: 0,
+        deletedDesignationsCount: 0,
+      };
+    }
+
+    const deptIds = depts.map((d) => d._id);
+
+    const activeEmployeesCount = await EmployeeModel.countDocuments({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      departmentId: { $in: deptIds },
+      isDeleted: false,
+    });
+
+    if (activeEmployeesCount > 0 && !options.force) {
+      throw new AppError(
+        `Cannot delete departments because ${activeEmployeesCount} active employee(s) are assigned to them in this branch. Please reassign them first or specify force=true.`,
+        400
+      );
+    }
+
+    const now = new Date();
+    const updatedBy = context.userId ? new mongoose.Types.ObjectId(context.userId) : undefined;
+
+    const deptResult = await DepartmentModel.updateMany(
+      {
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        branchId: new mongoose.Types.ObjectId(branchId),
+        isDeleted: false,
+      },
+      {
+        $set: {
+          isDeleted: true,
+          isActive: false,
+          updatedBy,
+          updatedAt: now,
+        },
+      }
+    );
+
+    const desigResult = await DesignationModel.updateMany(
+      {
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        $or: [
+          { branchId: new mongoose.Types.ObjectId(branchId) },
+          { departmentId: { $in: deptIds } },
+        ],
+        isDeleted: false,
+      },
+      {
+        $set: {
+          isDeleted: true,
+          isActive: false,
+          updatedBy,
+          updatedAt: now,
+        },
+      }
+    );
+
+    return {
+      message: "Branch departments and associated designations deleted successfully",
+      branchId,
+      deletedDepartmentsCount: deptResult.modifiedCount,
+      deletedDesignationsCount: desigResult.modifiedCount,
+    };
   }
 
   // Seed default departments & designations

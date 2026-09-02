@@ -10,6 +10,8 @@ import { seedLeaveTypes } from "../../database/seeds/leave-type.seed";
 import { seedShifts } from "../../database/seeds/shift.seed";
 import { seedDepartments } from "../../database/seeds/department.seed";
 import { seedDesignations } from "../../database/seeds/designation.seed";
+import { DepartmentService } from "../department/department.service";
+import { DesignationService } from "../designation/designation.service";
 
 
 export class BranchService {
@@ -273,5 +275,39 @@ export class BranchService {
       branchId,
       departmentsSeeded: deptMap.size,
     };
+  }
+
+  // Delete all departments and child designations of a branch
+  async deleteBranchDepartments(context: RequestContext, id: string, options: { force?: boolean } = {}) {
+    let branch = await this.branchRepo.findById(id);
+    if (!branch && id === context.tenantId.toString()) {
+      branch = await this.branchRepo.findHeadOffice(context.tenantId);
+    }
+    if (!branch) {
+      throw new AppError("Branch not found", 404);
+    }
+    if (branch.tenantId.toString() !== context.tenantId.toString()) {
+      throw new AppError("Branch not found", 404);
+    }
+
+    const deptService = new DepartmentService();
+    return deptService.deleteDepartmentsByBranch(context, branch._id.toString(), options);
+  }
+
+  // Delete all designations of a branch
+  async deleteBranchDesignations(context: RequestContext, id: string, options: { force?: boolean } = {}) {
+    let branch = await this.branchRepo.findById(id);
+    if (!branch && id === context.tenantId.toString()) {
+      branch = await this.branchRepo.findHeadOffice(context.tenantId);
+    }
+    if (!branch) {
+      throw new AppError("Branch not found", 404);
+    }
+    if (branch.tenantId.toString() !== context.tenantId.toString()) {
+      throw new AppError("Branch not found", 404);
+    }
+
+    const desgService = new DesignationService();
+    return desgService.deleteDesignationsByBranch(context, branch._id.toString(), options);
   }
 }

@@ -44,6 +44,12 @@ router.patch(
 );
 
 router.delete(
+  "/branch/:branchId",
+  checkPermission("department.update"),
+  controller.deleteByBranch.bind(controller)
+);
+
+router.delete(
   "/:id",
   checkPermission("department.update"),
   controller.delete.bind(controller)

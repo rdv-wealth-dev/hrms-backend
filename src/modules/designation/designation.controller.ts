@@ -94,12 +94,56 @@ export class DesignationController {
     next: NextFunction
   ): Promise<void> {
     try {
+      const force = req.query.force === "true" || req.query.force === "1";
       const result = await desgService.deleteDesignation(
         req.context,
-        req.params.id
+        req.params.id,
+        { force }
       );
       res.status(200).json(
-        buildSuccessResponse(result, "Designation deleted successfully")
+        buildSuccessResponse(result, result.message || "Designation deleted successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // DELETE /api/v1/designations/branch/:branchId
+  async deleteByBranch(
+    req: Request<{ branchId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const force = req.query.force === "true" || req.query.force === "1";
+      const result = await desgService.deleteDesignationsByBranch(
+        req.context,
+        req.params.branchId,
+        { force }
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, result.message || "Branch designations deleted successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // DELETE /api/v1/designations/department/:departmentId
+  async deleteByDepartment(
+    req: Request<{ departmentId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const force = req.query.force === "true" || req.query.force === "1";
+      const result = await desgService.deleteDesignationsByDepartment(
+        req.context,
+        req.params.departmentId,
+        { force }
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, result.message || "Department designations deleted successfully")
       );
     } catch (error) {
       next(error);

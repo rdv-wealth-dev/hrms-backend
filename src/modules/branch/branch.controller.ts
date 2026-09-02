@@ -139,4 +139,48 @@ export class BranchController {
       next(error);
     }
   }
+
+  // DELETE /api/v1/branches/:id/departments
+  async deleteBranchDepartments(
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { id } = req.params;
+      const force = req.query.force === "true" || req.query.force === "1";
+      const result = await branchService.deleteBranchDepartments(
+        req.context,
+        id,
+        { force }
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, result.message || "Branch departments deleted successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // DELETE /api/v1/branches/:id/designations
+  async deleteBranchDesignations(
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const { id } = req.params;
+      const force = req.query.force === "true" || req.query.force === "1";
+      const result = await branchService.deleteBranchDesignations(
+        req.context,
+        id,
+        { force }
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, result.message || "Branch designations deleted successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
 }

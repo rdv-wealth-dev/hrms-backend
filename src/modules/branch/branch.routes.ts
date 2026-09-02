@@ -86,4 +86,18 @@ router.post(
   controller.seedBranchData.bind(controller)
 );
 
+// DELETE /api/v1/branches/:id/departments
+router.delete(
+  "/:id/departments",
+  checkPermission("branch.update"),
+  controller.deleteBranchDepartments.bind(controller)
+);
+
+// DELETE /api/v1/branches/:id/designations
+router.delete(
+  "/:id/designations",
+  checkPermission("branch.update"),
+  controller.deleteBranchDesignations.bind(controller)
+);
+
 export default router;

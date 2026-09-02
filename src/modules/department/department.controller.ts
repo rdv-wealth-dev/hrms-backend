@@ -93,12 +93,35 @@ export class DepartmentController {
     next: NextFunction
   ): Promise<void> {
     try {
+      const force = req.query.force === "true" || req.query.force === "1";
       const result = await deptService.deleteDepartment(
         req.context,
-        req.params.id
+        req.params.id,
+        { force }
       );
       res.status(200).json(
-        buildSuccessResponse(result, "Department deleted successfully")
+        buildSuccessResponse(result, result.message || "Department deleted successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // DELETE /api/v1/departments/branch/:branchId
+  async deleteByBranch(
+    req: Request<{ branchId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const force = req.query.force === "true" || req.query.force === "1";
+      const result = await deptService.deleteDepartmentsByBranch(
+        req.context,
+        req.params.branchId,
+        { force }
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, result.message || "Branch departments deleted successfully")
       );
     } catch (error) {
       next(error);
