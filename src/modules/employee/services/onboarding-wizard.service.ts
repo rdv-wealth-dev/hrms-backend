@@ -267,9 +267,17 @@ export class OnboardingWizardService {
       throw new AppError("Step 5 (Final Review) cannot be skipped. Complete all steps to finish onboarding.", 400);
     }
 
+    if (current === 2) {
+      employee.onboardingStepsCompleted.familyDetails = true;
+    } else if (current === 4) {
+      employee.onboardingStepsCompleted.documents = true;
+    }
+
     const nextStep = Math.min(current + 1, 4);
     employee.onboardingStep = nextStep;
     await employee.save();
+
+    await recalculateProfileCompletion(context.tenantId, employee._id.toString());
 
     return {
       message: `Step ${current} skipped. You can complete it later.`,
@@ -565,14 +573,14 @@ export class OnboardingWizardService {
       required.forEach((t: string) => {
         const label = documentLabels[t] || t;
         if (t === "PAN") {
-          const hasIt = uploadedTypes.includes("PAN") && (isIndia ? !!refreshed!.pan : true);
+          const hasIt = uploadedTypes.includes("PAN") || !!refreshed!.pan;
           if (!hasIt) {
-            missing.push(isIndia ? `${label} Upload & Valid PAN Number` : `${label} Document`);
+            missing.push(isIndia ? `${label} Upload or Valid PAN Number` : `${label} Document`);
           }
         } else if (t === "AADHAAR") {
-          const hasIt = uploadedTypes.includes("AADHAAR") && (isIndia ? !!refreshed!.aadhaar : true);
+          const hasIt = uploadedTypes.includes("AADHAAR") || !!refreshed!.aadhaar;
           if (!hasIt) {
-            missing.push(isIndia ? `${label} Upload & Aadhaar Number` : `${label} Document`);
+            missing.push(isIndia ? `${label} Upload or Aadhaar Number` : `${label} Document`);
           }
         } else if (t === "PASSPORT") {
           const hasIt = !!refreshed!.passportNo || uploadedTypes.includes("PASSPORT");

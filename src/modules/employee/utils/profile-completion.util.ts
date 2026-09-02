@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { EmployeeModel } from "../models/employee.model";
 import { EmployeeDocumentModel } from "../../employee-document/employee-document.model";
 import { EmployeeBankAccountModel } from "../models/employee-bank-account.model";
+import { EmployeeFamilyModel } from "../models/employee-family.model";
 import { OrganizationModel } from "../../organization/organization.model";
 
 // Recalculates and persists the profile completion flags for one employee.
@@ -28,6 +29,13 @@ export async function recalculateProfileCompletion(
   });
   const bankDetails = bankCount > 0;
 
+  // Family details check — marked true if flag is set, or if family members exist in DB
+  const familyCount = await EmployeeFamilyModel.countDocuments({
+    tenantId: new mongoose.Types.ObjectId(tenantId),
+    employeeId: new mongoose.Types.ObjectId(employeeId),
+  });
+  const familyDetails = !!(employee.onboardingStepsCompleted?.familyDetails || familyCount > 0);
+
   const org = await OrganizationModel.findById(tenantId).select("mandatoryDocumentTypes");
   const required = org?.mandatoryDocumentTypes ?? [];
 
@@ -39,23 +47,24 @@ export async function recalculateProfileCompletion(
       isDeleted: false,
     }) as unknown as string[];
 
-    // Check if document numbers and physical document files are uploaded
-    const isIndia = (employee.countryCode || "IN").toUpperCase() === "IN";
+    // Document is satisfied if either the document file is uploaded OR the text number is provided
     mandatoryDocs = required.every((t: string) => {
       if (t === "PAN") {
-        // PAN Card upload is strictly required for payroll readiness
-        return uploadedTypes.includes("PAN") && (isIndia ? !!employee.pan : true);
+        return uploadedTypes.includes("PAN") || !!employee.pan;
       }
       if (t === "AADHAAR") {
-        return isIndia
-          ? (!!employee.aadhaar && uploadedTypes.includes("AADHAAR"))
-          : uploadedTypes.includes("AADHAAR");
+        return uploadedTypes.includes("AADHAAR") || !!employee.aadhaar;
       }
       if (t === "PASSPORT") {
-        return !!employee.passportNo || uploadedTypes.includes("PASSPORT");
+        return uploadedTypes.includes("PASSPORT") || !!employee.passportNo;
       }
       return uploadedTypes.includes(t);
     });
+  }
+
+  // Preserve existing documents flag if already completed
+  if (employee.onboardingStepsCompleted?.documents && !mandatoryDocs && required.length === 0) {
+    mandatoryDocs = true;
   }
 
   const isProfileComplete = personalDetails && address && emergencyContact && bankDetails && mandatoryDocs;
@@ -64,13 +73,13 @@ export async function recalculateProfileCompletion(
   employee.profileCompletion = { personalDetails, address, emergencyContact, bankDetails, mandatoryDocs };
   employee.isProfileComplete = isProfileComplete;
 
-  //Onboarding step flags (keep in sync with legacy)
+  // Onboarding step flags (keep in sync with legacy)
   employee.onboardingStepsCompleted = {
     personalDetails,
-    familyDetails: employee.onboardingStepsCompleted?.familyDetails ?? false, // set by family endpoint
+    familyDetails,
     bankDetails,
     documents: mandatoryDocs,
-    reviewed: employee.onboardingStepsCompleted?.reviewed ?? false,       // set by HR
+    reviewed: employee.onboardingStepsCompleted?.reviewed ?? false, // set by HR
   };
 
   // Auto-resolve onboarding step based on first incomplete step
