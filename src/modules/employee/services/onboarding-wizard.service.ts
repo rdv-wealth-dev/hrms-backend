@@ -240,6 +240,8 @@ export class OnboardingWizardService {
     return {
       onboardingStep: refreshed!.onboardingStep,
       onboardingComplete: refreshed!.onboardingComplete,
+      isProfileComplete: refreshed!.isProfileComplete,
+      onboardingPhase: refreshed!.onboardingComplete ? "COMPLETE" : undefined,
       onboardingStepsCompleted: refreshed!.onboardingStepsCompleted,
       navigation,
       educationCatalog: {

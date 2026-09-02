@@ -67,7 +67,10 @@ export async function recalculateProfileCompletion(
     mandatoryDocs = true;
   }
 
-  const isProfileComplete = personalDetails && address && emergencyContact && bankDetails && mandatoryDocs;
+  const legacyComplete = personalDetails && address && emergencyContact && bankDetails && mandatoryDocs;
+  // Once the 5-step wizard has been completed, that's the authoritative signal —
+  // don't let the stricter legacy field-count check downgrade it back to incomplete.
+  const isProfileComplete = !!(employee.onboardingComplete || legacyComplete);
 
   // Write legacy fields (service builds its response from these)
   employee.profileCompletion = { personalDetails, address, emergencyContact, bankDetails, mandatoryDocs };
