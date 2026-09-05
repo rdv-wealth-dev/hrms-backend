@@ -93,6 +93,16 @@ export const dateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format");
 
+// Optional Date string: normalizes empty string "", whitespace, or null to undefined
+export const optionalDateSchema = z.preprocess(
+  (val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    if (typeof val === "string" && val.trim() === "") return undefined;
+    return val;
+  },
+  dateSchema.optional()
+);
+
 // Indian PAN (Permanent Account Number - AAAAA9999A)
 // Characters 1-3 : Random alphabetic series from AAA to ZZZ ([A-Z]{3})
 // Character 4    : Status of PAN holder ([PCHFATBLJGE]: P=Individual, C=Company, H=HUF, F=Firm, A=AOP, T=Trust, B=BOI, L=Local Authority, J=Artificial Juridical Person, G=Govt)

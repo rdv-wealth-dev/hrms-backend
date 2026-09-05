@@ -11,6 +11,7 @@ import {
   drivingLicenseSchema,
   voterIdSchema,
   dateSchema,
+  optionalDateSchema,
   countryCodeSchema,
   withPhoneValidation,
 } from "../../../shared/validators/common.validator";
@@ -28,7 +29,7 @@ export const CreateEmployeeDto = withPhoneValidation(
     phone: phoneSchema.optional(),
     countryCode: countryCodeSchema.optional().default("IN"),
     pfOnActuals: z.boolean().optional().default(false),
-    dateOfBirth: dateSchema.optional(),
+    dateOfBirth: optionalDateSchema,
     gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
     bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]).optional(),
     maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]).optional(),
@@ -56,7 +57,7 @@ export const CreateEmployeeDto = withPhoneValidation(
       percentageOrCgpa: safeStringSchema(0, 50).optional(),
     })).optional(),
     previousEmployerName: safeStringSchema(0, 100).optional(),
-    previousEmployerLastWorkingDate: dateSchema.optional(),
+    previousEmployerLastWorkingDate: optionalDateSchema,
     pan: panSchema.optional(),
     aadhaar: aadhaarSchema.optional(),
     passportNo: passportSchema.optional(),
@@ -83,9 +84,9 @@ export const CreateEmployeeDto = withPhoneValidation(
     employmentType: z.enum([
       "FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"
     ]).optional(),
-    joiningDate: dateSchema.optional(),
-    dateOfJoining: dateSchema.optional(),
-    probationEndDate: dateSchema.optional(),
+    joiningDate: optionalDateSchema,
+    dateOfJoining: optionalDateSchema,
+    probationEndDate: optionalDateSchema,
     shiftId: objectIdSchema.optional(),
 
     // Address
@@ -155,7 +156,7 @@ export const UpdateEmployeeDto = withPhoneValidation(z.object({
   phone: phoneSchema.optional(),
   countryCode: countryCodeSchema.optional(),
   pfOnActuals: z.boolean().optional(),
-  dateOfBirth: dateSchema.optional(),
+  dateOfBirth: optionalDateSchema,
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]).optional(),
   maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]).optional(),
@@ -183,7 +184,7 @@ export const UpdateEmployeeDto = withPhoneValidation(z.object({
     percentageOrCgpa: safeStringSchema(0, 50).optional(),
   })).optional(),
   previousEmployerName: safeStringSchema(0, 100).optional(),
-  previousEmployerLastWorkingDate: dateSchema.optional(),
+  previousEmployerLastWorkingDate: optionalDateSchema,
   pan: panSchema.optional(),
   aadhaar: aadhaarSchema.optional(),
   passportNo: passportSchema.optional(),
@@ -201,8 +202,8 @@ export const UpdateEmployeeDto = withPhoneValidation(z.object({
   ),
   role: z.preprocess((val) => (val === "" || val === null ? undefined : String(val).trim().toUpperCase()), z.string().optional()),
   employeeType: z.enum(["FULL_TIME", "PART_TIME", "CONTRACT", "INTERN", "CONSULTANT"]).optional(),
-  confirmationDate: dateSchema.optional(),
-  probationEndDate: dateSchema.optional(),
+  confirmationDate: optionalDateSchema,
+  probationEndDate: optionalDateSchema,
   currentAddress: z.object({
     addressLine1: safeStringSchema(1, 200).optional(),
     addressLine2: safeStringSchema(1, 200).optional(),
@@ -235,7 +236,7 @@ export type UpdateEmployeeInput = z.infer<typeof UpdateEmployeeDto>;
 //Update Status
 export const UpdateEmployeeStatusDto = z.object({
   status: z.enum(["ACTIVE", "INACTIVE", "ON_LEAVE", "TERMINATED", "RESIGNED"]),
-  exitDate: dateSchema.optional(),
+  exitDate: optionalDateSchema,
   exitReason: safeStringSchema(2, 500).optional(),
 });
 

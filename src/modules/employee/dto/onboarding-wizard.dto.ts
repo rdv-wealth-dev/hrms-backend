@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { safeStringSchema, dateSchema, phoneSchema, emailSchema } from "../../../shared/validators/index";
+import { safeStringSchema, dateSchema, optionalDateSchema, phoneSchema, emailSchema } from "../../../shared/validators/index";
 
 export const EducationDetailDto = z.object({
   qualificationLevel: z.enum([
@@ -29,7 +29,7 @@ export const EducationDetailDto = z.object({
 });
 
 export const OnboardingStep1Dto = z.object({
-  dateOfBirth: dateSchema.optional(),
+  dateOfBirth: optionalDateSchema,
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
   bloodGroup: z.enum(["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]).optional(),
   maritalStatus: z.enum(["SINGLE", "MARRIED", "DIVORCED", "WIDOWED"]).optional(),
@@ -78,7 +78,7 @@ export const OnboardingStep1Dto = z.object({
   aadhaar: z.string().trim().optional(),
   passportNo: z.string().trim().optional(),
   previousEmployerName: safeStringSchema(0, 100).optional(),
-  previousEmployerLastWorkingDate: dateSchema.optional(),
+  previousEmployerLastWorkingDate: optionalDateSchema,
   customFields: z.record(z.string(), z.any()).optional(),
 }).refine(
   (data) => {
@@ -99,7 +99,7 @@ export type OnboardingStep1Input = z.infer<typeof OnboardingStep1Dto>;
 export const FamilyMemberDto = z.object({
   fullName: safeStringSchema(2, 100),
   relationship: z.enum(["SPOUSE", "CHILD", "FATHER", "MOTHER", "SIBLING", "OTHER"]),
-  dateOfBirth: dateSchema.optional(),
+  dateOfBirth: optionalDateSchema,
   gender: z.string().trim().optional(),
   isDependent: z.boolean().optional().default(true),
   occupation: safeStringSchema(0, 100).optional(),

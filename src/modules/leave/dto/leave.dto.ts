@@ -3,6 +3,7 @@ import {
   safeStringSchema,
   objectIdSchema,
   dateSchema,
+  optionalDateSchema,
   countryCodeSchema,
 } from "../../../shared/validators/common.validator";
 
@@ -84,8 +85,8 @@ export type UpdateHolidayInput = z.infer<typeof UpdateHolidayDto>;
 
 //Query DTOs
 export const LeaveReportQueryDto = z.object({
-  fromDate: dateSchema.optional(),
-  toDate: dateSchema.optional(),
+  fromDate: optionalDateSchema,
+  toDate: optionalDateSchema,
   employeeId: objectIdSchema.optional(),
   leaveTypeId: objectIdSchema.optional(),
   status: z.enum(["PENDING", "APPROVED", "REJECTED", "CANCELLED"]).optional(),

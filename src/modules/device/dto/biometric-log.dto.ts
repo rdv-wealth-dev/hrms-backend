@@ -1,9 +1,10 @@
 import { z } from "zod";
+import { optionalDateSchema } from "../../../shared/validators/common.validator";
 
 export const BiometricLogQueryDto = z.object({
   period: z.enum(["today", "this_week", "this_month", "last_month", "custom"]).optional().default("today"),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format must be YYYY-MM-DD").optional(),
-  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format must be YYYY-MM-DD").optional(),
+  startDate: optionalDateSchema,
+  endDate: optionalDateSchema,
   employeeCode: z.string().trim().optional(),
   employeeId: z.string().trim().optional(),
   branchId: z.string().trim().optional(),

@@ -3,6 +3,7 @@ import {
   safeStringSchema,
   objectIdSchema,
   dateSchema,
+  optionalDateSchema,
 } from "../../shared/validators/common.validator";
 
 export const ALLOWED_DOCUMENT_MIME_TYPES = [
@@ -43,7 +44,7 @@ export const AddDocumentDto = z.object({
   s3Key: safeStringSchema(1, 500),
   mimeType: safeStringSchema(1, 100),
   sizeBytes: z.number().min(1).max(MAX_DOCUMENT_SIZE_BYTES),
-  expiryDate: dateSchema.optional(),
+  expiryDate: optionalDateSchema,
 });
 
 export type AddDocumentInput = z.infer<typeof AddDocumentDto>;
