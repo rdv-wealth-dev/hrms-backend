@@ -7,7 +7,7 @@ import { OrganizationRepository } from "../organization/organization.repository"
 import { geocodingService } from "../../shared/services/geocoding.service";
 import { seedStatutoryNationalHolidays } from "../../database/seeds/holiday.seed";
 import { seedLeaveTypes } from "../../database/seeds/leave-type.seed";
-import { seedShifts } from "../../database/seeds/shift.seed";
+import { seedShifts, BranchWorkPolicyOverride } from "../../database/seeds/shift.seed";
 import { seedDepartments } from "../../database/seeds/department.seed";
 import { seedDesignations } from "../../database/seeds/designation.seed";
 import { DepartmentService } from "../department/department.service";
@@ -92,7 +92,15 @@ export class BranchService {
 
     const branchId = branch._id.toString();
     await seedLeaveTypes(context.tenantId, branchId);
-    await seedShifts(context.tenantId, branchId);
+
+    // Pass the branch's work policy so the General Shift is seeded with the
+    // admin-provided start/end times and working hours instead of hardcoded defaults.
+    const workPolicyOverride: BranchWorkPolicyOverride = {
+      shiftStartTime:    input.workPolicy?.shiftStartTime,
+      shiftEndTime:      input.workPolicy?.shiftEndTime,
+      workingHoursPerDay: input.workPolicy?.workingHoursPerDay,
+    };
+    await seedShifts(context.tenantId, branchId, workPolicyOverride);
 
     return branch;
   }
@@ -266,7 +274,15 @@ export class BranchService {
 
     const branchId = branch._id.toString();
     await seedLeaveTypes(context.tenantId, branchId);
-    await seedShifts(context.tenantId, branchId);
+
+    // Re-use the branch's stored workPolicy so the General Shift reflects
+    // this branch's actual hours even when seeding is triggered manually.
+    const workPolicyOverride: BranchWorkPolicyOverride = {
+      shiftStartTime:    branch.workPolicy?.shiftStartTime,
+      shiftEndTime:      branch.workPolicy?.shiftEndTime,
+      workingHoursPerDay: branch.workPolicy?.workingHoursPerDay,
+    };
+    await seedShifts(context.tenantId, branchId, workPolicyOverride);
     const deptMap = await seedDepartments(context.tenantId, branchId);
     await seedDesignations(context.tenantId, branchId, deptMap);
 
