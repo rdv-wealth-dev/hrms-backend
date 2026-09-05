@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { receiveRawBiometricWebhook } from "./device-webhook.controller";
+import { receiveRawBiometricWebhook, receiveBatchBiometricWebhook } from "./device-webhook.controller";
 import { BiometricLogController } from "./controllers/biometric-log.controller";
 import { authenticate } from "../../shared/middlewares/auth.middleware";
 import { checkPermission } from "../../shared/middlewares/rbac.middleware";
@@ -32,12 +32,19 @@ router.get(
   logCtrl.listLogs.bind(logCtrl)
 );
 
-// ── Hardware Webhook Endpoints (Public — called by Biometric Hardware / Middleware) ──
+// ── Batch Webhook (Reconciliation / Day-dump) ─────────────────────────────────
+// Accepts ALL punch logs for an entire day for ALL employees in one call.
+// 100% idempotent — safe to call multiple times with same data (no duplicates).
+// POST /api/v1/device/batch/:identifier
+// POST /api/v1/device/batch/:identifier/:provider
+router.post("/batch/:identifier/:provider", receiveBatchBiometricWebhook);
+router.post("/batch/:identifier",           receiveBatchBiometricWebhook);
 
-// Route 1 — identifier + provider in URL (e.g. /api/v1/device/:identifier/:provider)
+// ── Single Punch Webhook (Real-time live push — 1 punch per HTTP call) ────────
+// Called by biometric device in real-time on each punch event.
+// POST /api/v1/device/:identifier/:provider
+// POST /api/v1/device/:identifier
 router.post("/:identifier/:provider", receiveRawBiometricWebhook);
-
-// Route 2 — identifier only in URL (e.g. /api/v1/device/:identifier), provider from body/default
-router.post("/:identifier", receiveRawBiometricWebhook);
+router.post("/:identifier",           receiveRawBiometricWebhook);
 
 export default router;
