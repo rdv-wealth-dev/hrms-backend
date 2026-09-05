@@ -52,6 +52,11 @@ export interface OrganizationDocument extends Document {
     workingHoursPerDay: number;
     customWeekOffRules?: CustomWeekOffRule[];
   };
+  attendanceSettings?: {
+    autoCloseoutEnabled: boolean;
+    autoCloseoutTime: string; // "HH:mm" 24h format, default "23:59"
+    timezone?: string;
+  };
   subscription: {
     plan: string;
     status: string;
@@ -177,6 +182,13 @@ const OrganizationSchema = createPlatformSchema<OrganizationDocument>({
       dayOfWeek: { type: String, required: true },
       weeks: { type: [Number], required: true },
     }],
+  },
+
+  // Auto-closeout and attendance processing settings (customizable by HR)
+  attendanceSettings: {
+    autoCloseoutEnabled: { type: Boolean, default: true },
+    autoCloseoutTime: { type: String, default: "23:59" },
+    timezone: { type: String, default: "Asia/Kolkata" },
   },
 
   mandatoryDocumentTypes: {

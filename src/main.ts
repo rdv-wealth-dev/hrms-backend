@@ -5,6 +5,7 @@ import { connectDatabase } from "./config/database.config";
 import { seedPermissions } from "./database/seeds/permission.seed";
 import { startWorker } from "./modules/employee/jobs/import-queue";
 import { initializeCountryPlugins } from "./domain/localization/index";
+import { initAttendanceCron } from "./modules/attendance/jobs/attendance-cron.manager";
 
 const bootstrap = async (): Promise<void> => {
   await connectDatabase();
@@ -12,6 +13,9 @@ const bootstrap = async (): Promise<void> => {
 
   // Start background database job worker
   startWorker();
+
+  // Initialize customizable daily attendance cron
+  await initAttendanceCron();
 
   // Bind and listen immediately for instant startup
   app.listen(env.port, () => {

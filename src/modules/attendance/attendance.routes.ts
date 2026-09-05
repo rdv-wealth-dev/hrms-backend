@@ -15,6 +15,9 @@ import { CreateShiftRotationPlanDto, UpdateShiftRotationPlanDto, AssignRotationP
 import { buildSuccessResponse } from "../../shared/database/base.schema";
 import { AttendanceSummaryService } from "./services/attendance-summary.service";
 import { closeOutAttendanceForDate } from "./jobs/attendance-closeout.job";
+import { reconcileAttendanceForDate } from "./jobs/attendance-reconcile.service";
+import { rescheduleAttendanceCron, getAttendanceCronStatus } from "./jobs/attendance-cron.manager";
+import { OrganizationModel } from "../organization/organization.model";
 import { UserModel } from "../user/user.model";
 import { AppError } from "../../shared/errors/app.error";
 
@@ -111,16 +114,113 @@ router.get(
   }
 );
 
-// POST /api/v1/attendance/closeout  (admin-triggered, or wire to a real cron later)
+// ── Auto-Closeout Settings (Customizable by HR) ──────────────────────────────
+// GET /api/v1/attendance/settings/auto-closeout
+router.get(
+  "/settings/auto-closeout",
+  checkPermission("attendance.read"),
+  async (req: any, res, next) => {
+    try {
+      const org = await OrganizationModel.findById(req.context.tenantId)
+        .select("attendanceSettings")
+        .lean();
+
+      const settings = org?.attendanceSettings || {
+        autoCloseoutEnabled: true,
+        autoCloseoutTime: "23:59",
+        timezone: "Asia/Kolkata",
+      };
+
+      const runtimeStatus = getAttendanceCronStatus();
+
+      res.status(200).json(
+        buildSuccessResponse(
+          {
+            autoCloseoutEnabled: settings.autoCloseoutEnabled ?? true,
+            autoCloseoutTime: settings.autoCloseoutTime ?? "23:59",
+            timezone: settings.timezone ?? "Asia/Kolkata",
+            isRunning: runtimeStatus.isRunning,
+          },
+          "Auto-closeout settings retrieved successfully"
+        )
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// PATCH /api/v1/attendance/settings/auto-closeout
+router.patch(
+  "/settings/auto-closeout",
+  checkPermission("attendance.update"),
+  async (req: any, res, next) => {
+    try {
+      const { autoCloseoutEnabled, autoCloseoutTime } = req.body;
+
+      if (autoCloseoutTime !== undefined) {
+        if (typeof autoCloseoutTime !== "string" || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(autoCloseoutTime.trim())) {
+          throw new AppError("Invalid autoCloseoutTime format. Must be HH:mm in 24-hour format (e.g. '23:59', '21:30', '19:00')", 400);
+        }
+      }
+
+      const updateFields: any = {};
+      if (typeof autoCloseoutEnabled === "boolean") {
+        updateFields["attendanceSettings.autoCloseoutEnabled"] = autoCloseoutEnabled;
+      }
+      if (typeof autoCloseoutTime === "string") {
+        updateFields["attendanceSettings.autoCloseoutTime"] = autoCloseoutTime.trim();
+      }
+
+      const updatedOrg = await OrganizationModel.findByIdAndUpdate(
+        req.context.tenantId,
+        { $set: updateFields },
+        { new: true }
+      )
+        .select("attendanceSettings")
+        .lean();
+
+      const finalSettings = updatedOrg?.attendanceSettings || {
+        autoCloseoutEnabled: autoCloseoutEnabled ?? true,
+        autoCloseoutTime: autoCloseoutTime ?? "23:59",
+        timezone: "Asia/Kolkata",
+      };
+
+      // Reschedule cron dynamically in memory!
+      const rescheduleResult = rescheduleAttendanceCron(
+        finalSettings.autoCloseoutTime,
+        finalSettings.autoCloseoutEnabled
+      );
+
+      res.status(200).json(
+        buildSuccessResponse(
+          {
+            autoCloseoutEnabled: finalSettings.autoCloseoutEnabled,
+            autoCloseoutTime: finalSettings.autoCloseoutTime,
+            timezone: finalSettings.timezone || "Asia/Kolkata",
+            cronExpression: rescheduleResult.cronExpression,
+          },
+          "Auto-closeout schedule updated successfully"
+        )
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// POST /api/v1/attendance/closeout (Manual trigger: reconciles biometric punches + marks absentees)
 router.post(
   "/closeout",
   checkPermission("attendance.update"),
   async (req: any, res, next) => {
     try {
-      const date = req.body.date ? new Date(req.body.date) : new Date(Date.now() - 86400000);
-      const result = await closeOutAttendanceForDate(req.context.tenantId, date);
-      res.status(200).json(buildSuccessResponse(result, "Attendance closeout completed"));
-    } catch (error) { next(error); }
+      const date = req.body.date ? new Date(req.body.date) : new Date();
+      const result = await reconcileAttendanceForDate(req.context.tenantId, date);
+      res.status(200).json(buildSuccessResponse(result, "Attendance reconciliation and closeout completed"));
+    } catch (error) {
+      next(error);
+    }
   }
 );
 

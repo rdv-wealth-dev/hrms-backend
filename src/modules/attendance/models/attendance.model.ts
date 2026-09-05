@@ -16,7 +16,8 @@ export enum AttendanceStatus {
 export enum PunchSource {
     WEB = "WEB",
     MANUAL = "MANUAL",  // enter/edited by HR
-    MOBILE = "MOBILE"
+    MOBILE = "MOBILE",
+    BIOMETRIC = "BIOMETRIC",
 }
 
 export enum SessionType {
