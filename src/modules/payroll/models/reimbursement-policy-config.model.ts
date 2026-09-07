@@ -78,6 +78,10 @@ const CategoryLimitSchema = new mongoose.Schema<CategoryLimit>(
 
 const ReimbursementPolicyConfigSchema = createOrgLevelSchema<ReimbursementPolicyConfigDocument>(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+    },
     allowedCategories: {
       type: [String],
       enum: Object.values(ReimbursementCategory),

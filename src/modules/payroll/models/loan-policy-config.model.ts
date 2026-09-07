@@ -92,6 +92,10 @@ const LoanTypeLimitSchema = new mongoose.Schema<LoanTypeLimit>(
 
 const LoanPolicyConfigSchema = createOrgLevelSchema<LoanPolicyConfigDocument>(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+    },
     allowedLoanTypes: {
       type: [String],
       enum: Object.values(LoanType),

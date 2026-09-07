@@ -246,6 +246,10 @@ export interface PfEsiConfigDocument extends BaseDocument {
 
 const PfEsiConfigSchema = createBaseSchema<PfEsiConfigDocument>(
   {
+    tenantId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+    },
     isPfEnabled: { type: Boolean, default: true },
     pfWageCeiling: { type: Number, default: 15000 },
     restrictPfToWageCeiling: { type: Boolean, default: true },

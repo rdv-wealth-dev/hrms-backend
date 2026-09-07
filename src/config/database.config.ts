@@ -33,8 +33,8 @@ export const connectDatabase = async (): Promise<void> => {
   try {
     await mongoose.connect(env.connectionString, {
       dbName: env.connectionStringName,
-      maxPoolSize: 50,              // Up to 50 sockets for concurrent requests
-      minPoolSize: 10,              // Keep 10 warm sockets ready
+      maxPoolSize: env.nodeEnv === 'production' ? 50 : 20,
+      minPoolSize: env.nodeEnv === 'production' ? 10 : 2,
       serverSelectionTimeoutMS: 5000, // Fast fail (5s) if MongoDB cluster is unreachable
       socketTimeoutMS: 45000,       // Close idle sockets after 45s
       autoIndex: env.nodeEnv !== 'production', // Disable automatic index builds in production for performance
