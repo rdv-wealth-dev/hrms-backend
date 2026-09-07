@@ -44,6 +44,12 @@ router.patch(
 );
 
 router.delete(
+  "/cleanup/unused",
+  checkPermission("department.update"),
+  controller.cleanupUnused.bind(controller)
+);
+
+router.delete(
   "/branch/:branchId",
   checkPermission("department.update"),
   controller.deleteByBranch.bind(controller)

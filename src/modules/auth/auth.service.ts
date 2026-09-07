@@ -150,7 +150,7 @@ export class AuthService {
       employeeCountRange: normalizedRange,
       onboardingCompleted: false,
       onboardingStatus: "step1_completed",
-      industry: "Technology",
+      industry: input.industry || "Technology",
       locale: {
         countryCode: defaultCountry,
         timezone: defaultTimezone,
@@ -807,10 +807,10 @@ export class AuthService {
 
     // Seed master data for the head office branch
     const headOfficeId = headOffice._id.toString();
-    await seedLeaveTypes(tenantId, headOfficeId);
-    const deptMap = await seedDepartments(tenantId, headOfficeId);
+    await seedLeaveTypes(tenantId, headOfficeId, input.leavePolicy, input.selectedLeaves);
+    const deptMap = await seedDepartments(tenantId, headOfficeId, input.selectedDepartments, input.industry);
     await seedDesignations(tenantId, headOfficeId, deptMap);
-    await seedShifts(tenantId, headOfficeId);
+    await seedShifts(tenantId, headOfficeId, undefined, input.workingStyle);
     await seedStatutoryNationalHolidays(tenantId, input.countryCode || "IN", "system");
 
     // Save phone and associate the created Head Office branch to the admin user

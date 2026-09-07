@@ -114,16 +114,27 @@ function computeShiftMinutes(start: string, end: string): number {
 export async function seedShifts(
   tenantId: string,
   branchId: string,
-  workPolicy?: BranchWorkPolicyOverride
+  workPolicy?: BranchWorkPolicyOverride,
+  workingStyle: "regular" | "flexible" | "rotational" = "regular"
 ): Promise<Map<string, string>> {
   const shiftMap = new Map<string, string>();
   const tenantOId = new mongoose.Types.ObjectId(tenantId);
   const branchOId = new mongoose.Types.ObjectId(branchId);
   const now = new Date();
 
+  // Filter shifts based on company working style
+  let targetShifts = DEFAULT_SHIFTS;
+  if (workingStyle === "regular") {
+    // Only clean General Shift (9:00 AM - 6:00 PM)
+    targetShifts = DEFAULT_SHIFTS.filter((s) => s.code === "GEN");
+  } else if (workingStyle === "flexible") {
+    // General + Flexible Shift
+    targetShifts = DEFAULT_SHIFTS.filter((s) => s.code === "GEN" || s.code === "FLEX");
+  } // "rotational" seeds all shifts
+
   const collection = mongoose.connection.collection("shifts");
 
-  for (const shift of DEFAULT_SHIFTS) {
+  for (const shift of targetShifts) {
     let startTime = shift.startTime;
     let endTime   = shift.endTime;
     let fullDayMinutes = shift.fullDayMinutes;

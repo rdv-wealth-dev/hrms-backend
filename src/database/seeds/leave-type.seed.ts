@@ -167,7 +167,9 @@ const DEFAULT_LEAVE_TYPES: LeaveTypeSeed[] = [
 
 export async function seedLeaveTypes(
   tenantId: string,
-  branchId: string
+  branchId: string,
+  leavePolicy: "standard" | "all" | "minimal" = "standard",
+  selectedCodes?: string[]
 ): Promise<Map<string, string>> {
   const typeMap = new Map<string, string>();
   const tenantOId = new mongoose.Types.ObjectId(tenantId);
@@ -176,11 +178,26 @@ export async function seedLeaveTypes(
 
   const collection = mongoose.connection.collection("leave_types");
 
+  // Determine active leave codes based on policy
+  let activeCodes: string[] = [];
+  if (selectedCodes && selectedCodes.length > 0) {
+    activeCodes = selectedCodes.map((c) => c.toUpperCase());
+  } else if (leavePolicy === "all") {
+    activeCodes = DEFAULT_LEAVE_TYPES.map((lt) => lt.code);
+  } else if (leavePolicy === "minimal") {
+    activeCodes = ["AL", "LOP"];
+  } else {
+    // "standard": Core everyday leaves active; specialized leaves in template drawer (inactive)
+    activeCodes = ["CL", "SL", "AL", "LOP"];
+  }
+
   for (const lt of DEFAULT_LEAVE_TYPES) {
     const cycles = getCyclesPerYear(lt.accrualFrequency);
     const accrualAmountPerCycle = cycles > 0
       ? Number((lt.annualQuota / cycles).toFixed(4))
       : 0;
+
+    const isActive = activeCodes.includes(lt.code);
 
     const doc = {
       tenantId: tenantOId,
@@ -202,7 +219,7 @@ export async function seedLeaveTypes(
       allowNegativeBalance: lt.allowNegativeBalance,
       probationEligible: lt.probationEligible,
       applySandwichPolicy: lt.applySandwichPolicy,
-      isActive: true,
+      isActive,
       effectiveFrom: now,
       effectiveTo: null,
       supersedes: null,

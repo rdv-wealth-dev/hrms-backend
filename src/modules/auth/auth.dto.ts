@@ -30,6 +30,10 @@ export const RegisterDto = z.object({
   employeeCountRange: z.string().optional(),
   teamSize: z.string().optional(),
   companySize: z.string().optional(),
+  // Gracefully handle optional frontend fields if passed
+  industry: optionalString(safeStringSchema(2, 100)),
+  countryCode: optionalString(countryCodeSchema),
+  timezone: optionalString(z.string()),
 });
 
 export type RegisterInput = z.infer<typeof RegisterDto>;
@@ -102,6 +106,12 @@ export const OnboardingWizardDto = z.object({
     "September", "October", "November", "December"
   ]).default("April"),
   adminJobTitle: optionalString(z.string().min(1, "Job title cannot be empty")),
+
+  // Smart master data tailoring
+  selectedDepartments: z.array(z.string()).optional(),
+  workingStyle: z.enum(["regular", "flexible", "rotational"]).optional().default("regular"),
+  leavePolicy: z.enum(["standard", "all", "minimal"]).optional().default("standard"),
+  selectedLeaves: z.array(z.string()).optional(),
 });
 export type OnboardingWizardInput = z.infer<typeof OnboardingWizardDto>;
 

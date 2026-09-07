@@ -284,4 +284,69 @@ export class DepartmentService {
       departmentsSeeded: deptMap.size,
     };
   }
+
+  // Cleanup unused departments & designations (0 employees assigned)
+  async cleanupUnusedMasterData(context: RequestContext) {
+    const tenantObjectId = new mongoose.Types.ObjectId(context.tenantId);
+
+    // 1. Find all active employees to get used department and designation IDs
+    const employees = await EmployeeModel.find(
+      { tenantId: tenantObjectId, isDeleted: false },
+      { departmentId: 1, designationId: 1 }
+    ).lean();
+
+    const usedDepartmentIds = new Set(
+      employees.map((e) => e.departmentId?.toString()).filter(Boolean)
+    );
+    const usedDesignationIds = new Set(
+      employees.map((e) => e.designationId?.toString()).filter(Boolean)
+    );
+
+    const now = new Date();
+    const updatedBy = context.userId ? new mongoose.Types.ObjectId(context.userId) : undefined;
+
+    // 2. Soft-delete departments with 0 employees
+    const deptFilter: any = {
+      tenantId: tenantObjectId,
+      isDeleted: false,
+    };
+    if (usedDepartmentIds.size > 0) {
+      deptFilter._id = { $nin: Array.from(usedDepartmentIds).map((id) => new mongoose.Types.ObjectId(id)) };
+    }
+
+    const deptResult = await DepartmentModel.updateMany(deptFilter, {
+      $set: {
+        isDeleted: true,
+        isActive: false,
+        updatedBy,
+        updatedAt: now,
+      },
+    });
+
+    // 3. Soft-delete designations with 0 employees
+    const desigFilter: any = {
+      tenantId: tenantObjectId,
+      isDeleted: false,
+    };
+    if (usedDesignationIds.size > 0) {
+      desigFilter._id = { $nin: Array.from(usedDesignationIds).map((id) => new mongoose.Types.ObjectId(id)) };
+    }
+
+    const desigResult = await DesignationModel.updateMany(desigFilter, {
+      $set: {
+        isDeleted: true,
+        isActive: false,
+        updatedBy,
+        updatedAt: now,
+      },
+    });
+
+    return {
+      message: "Unused master data cleaned up successfully",
+      departmentsCleaned: deptResult.modifiedCount,
+      designationsCleaned: desigResult.modifiedCount,
+      activeDepartmentsInUse: usedDepartmentIds.size,
+      activeDesignationsInUse: usedDesignationIds.size,
+    };
+  }
 }

@@ -58,6 +58,11 @@ const DEFAULT_DEPARTMENTS: DepartmentSeed[] = [
     description: "Financial planning, budgeting, invoicing, and statutory compliance.",
   },
   {
+    name: "Operations",
+    code: "OPS",
+    description: "Company operations, process optimization, logistics, and facilities.",
+  },
+  {
     name: "Administration",
     code: "ADMIN",
     description: "Office management, facilities, vendor coordination, and general administration.",
@@ -66,16 +71,47 @@ const DEFAULT_DEPARTMENTS: DepartmentSeed[] = [
 
 export async function seedDepartments(
   tenantId: string,
-  branchId: string
+  branchId: string,
+  allowedCodes?: string[],
+  industry?: string
 ): Promise<Map<string, string>> {
   const deptMap = new Map<string, string>();
   const tenantOId = new mongoose.Types.ObjectId(tenantId);
   const branchOId = new mongoose.Types.ObjectId(branchId);
   const now = new Date();
 
+  // Determine which departments to seed
+  let targetDepartments: DepartmentSeed[] = [];
+
+  if (allowedCodes && allowedCodes.length > 0) {
+    const uppercaseCodes = allowedCodes.map((c) => c.toUpperCase());
+    targetDepartments = DEFAULT_DEPARTMENTS.filter((d) =>
+      uppercaseCodes.includes(d.code)
+    );
+  } else if (industry && /tech|software|it|saas|computer|digital/i.test(industry)) {
+    // Lean tech pack: Engineering, PM, Design, HR, Finance, Admin
+    const techCodes = ["ENG", "PM", "UIX", "HR", "FIN", "ADMIN"];
+    targetDepartments = DEFAULT_DEPARTMENTS.filter((d) =>
+      techCodes.includes(d.code)
+    );
+  } else {
+    // Clean universal starter pack: Admin, HR, Finance, Operations
+    const universalCodes = ["ADMIN", "HR", "FIN", "OPS"];
+    targetDepartments = DEFAULT_DEPARTMENTS.filter((d) =>
+      universalCodes.includes(d.code)
+    );
+  }
+
+  // Fallback if filter yielded empty
+  if (targetDepartments.length === 0) {
+    targetDepartments = DEFAULT_DEPARTMENTS.filter((d) =>
+      ["ADMIN", "HR", "FIN"].includes(d.code)
+    );
+  }
+
   const collection = mongoose.connection.collection("departments");
 
-  for (const dept of DEFAULT_DEPARTMENTS) {
+  for (const dept of targetDepartments) {
     const doc = {
       tenantId: tenantOId,
       branchId: branchOId,

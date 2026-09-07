@@ -100,6 +100,12 @@ const DEFAULT_DESIGNATIONS: DesignationSeed[] = [
   { name: "Administration Manager", code: "ADMM", departmentCode: "ADMIN", level: 4, description: "Manager handling administration and vendor coordination." },
   { name: "Chief Executive Officer", code: "CEO", departmentCode: "ADMIN", level: 8, description: "Chief Executive Officer — executive leadership of the entire enterprise." },
   { name: "Chief Operating Officer", code: "COO", departmentCode: "ADMIN", level: 8, description: "Chief Operating Officer — executive management of company operations." },
+
+  // ─── Operations 
+  { name: "Operations Executive", code: "OPSE", departmentCode: "OPS", level: 1, description: "Entry-level operations and process support." },
+  { name: "Operations Coordinator", code: "OPSC", departmentCode: "OPS", level: 2, description: "Mid-level operations coordination and reporting." },
+  { name: "Operations Manager", code: "OPSM", departmentCode: "OPS", level: 4, description: "Manager overseeing operational workflows and efficiency." },
+  { name: "Director of Operations", code: "DOPS", departmentCode: "OPS", level: 6, description: "Executive overseeing enterprise operational strategy." },
 ];
 
 export async function seedDesignations(

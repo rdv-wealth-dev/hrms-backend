@@ -146,4 +146,20 @@ export class DepartmentController {
       next(error);
     }
   }
+
+  // DELETE /api/v1/departments/cleanup/unused
+  async cleanupUnused(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await deptService.cleanupUnusedMasterData(req.context);
+      res.status(200).json(
+        buildSuccessResponse(result, result.message)
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
 }
