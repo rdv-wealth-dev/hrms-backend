@@ -503,7 +503,34 @@ export class AuthService {
       throw new AppError("User not found", 404);
     }
 
-    return user.toSafeObject();
+    const [org, headOffice] = await Promise.all([
+      user.tenantId ? this.orgRepo.findById(user.tenantId.toString()) : null,
+      user.tenantId ? this.branchRepo.findHeadOffice(user.tenantId.toString()) : null,
+    ]);
+
+    return {
+      ...user.toSafeObject(),
+      onboardingCompleted: org?.onboardingCompleted ?? true,
+      onboardingStatus: org?.onboardingStatus ?? "completed",
+      employeeCountRange: org?.employeeCountRange,
+      organization: org ? {
+        id: org._id,
+        companyName: org.companyName,
+        slug: org.slug,
+        workspaceSlug: org.workspaceSlug,
+        phone: org.phone || user.phone,
+        employeeCountRange: org.employeeCountRange,
+        locale: org.locale,
+        subscription: org.subscription,
+        modules: org.modules,
+        branding: org.branding,
+      } : null,
+      branch: headOffice ? {
+        id: headOffice._id,
+        name: headOffice.name,
+        code: headOffice.code,
+      } : null,
+    };
   }
 
   // Verify email
