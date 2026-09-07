@@ -21,6 +21,7 @@ import crypto from "crypto";
 import { emailService } from "../../shared/services/email.service";
 import { env } from "../../config/env.config";
 import { RegisterInput, LoginInput, RefreshTokenInput, ForgotPasswordInput, ResetPasswordInput, VerifyEmailInput, ActivateAccountInput, ResendVerificationEmailInput, OnboardingWizardInput, ChangePasswordInput } from "./auth.dto";
+import { EmployeeService } from "../employee/services/employee.service";
 import { AppError, InvalidCredentialsError, AccountInactiveError, RefreshInvalidError, } from "../../shared/errors/app.error";
 import { JwtPayload } from "../../shared/types/jwt-payload.interface";
 
@@ -845,6 +846,18 @@ export class AuthService {
       phone: input.phone,
       $addToSet: { branchIds: headOffice._id }
     });
+
+    // Ensure Org Admin has an Employee record created immediately
+    try {
+      const empService = new EmployeeService();
+      await empService.ensureOrgAdminEmployee({
+        tenantId,
+        userId,
+        adminJobTitle: input.adminJobTitle,
+      });
+    } catch {
+      // Non-blocking fallback
+    }
 
     // Mark onboarding done
     await this.orgRepo.markOnboardingComplete(tenantId);

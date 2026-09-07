@@ -1638,27 +1638,255 @@ export class EmployeeService {
     return [...importHistory, ...exportHistory].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
 
+  /**
+   * Ensures that any Org Admin user in the tenant has a corresponding Employee record,
+   * so they appear in the organizational hierarchy and can be assigned as a reporting manager.
+   */
+  async ensureOrgAdminEmployee(context: { tenantId: string; userId?: string; adminJobTitle?: string }): Promise<void> {
+    const tenantOId = new mongoose.Types.ObjectId(context.tenantId);
+
+    // Find all admin users for this tenant
+    const adminUsers = await UserModel.find({
+      tenantId: tenantOId,
+      $or: [{ isOrgAdmin: true }, { role: "ORG_ADMIN" }, { role: "SUPER_ADMIN" }],
+      isDeleted: false,
+    });
+
+    if (!adminUsers || adminUsers.length === 0) return;
+
+    // Find head office branch or any active branch
+    const branchDoc = await BranchModel.findOne({
+      tenantId: tenantOId,
+      isDeleted: false,
+    }).sort({ isHeadOffice: -1, createdAt: 1 });
+
+    if (!branchDoc) return;
+
+    // Find administration department or first department
+    let adminDept = await DepartmentModel.findOne({
+      tenantId: tenantOId,
+      code: "ADMIN",
+      isDeleted: false,
+    });
+    if (!adminDept) {
+      adminDept = await DepartmentModel.findOne({
+        tenantId: tenantOId,
+        isDeleted: false,
+      }).sort({ createdAt: 1 });
+    }
+    if (!adminDept) return;
+
+    // Determine executive designation based on adminJobTitle if provided
+    const requestedTitle = context.adminJobTitle?.trim();
+    let execDesig = null;
+
+    if (requestedTitle) {
+      execDesig = await DesignationModel.findOne({
+        tenantId: tenantOId,
+        departmentId: adminDept._id,
+        $or: [
+          { name: { $regex: new RegExp(`^${requestedTitle}$`, "i") } },
+          { code: { $regex: new RegExp(`^${requestedTitle}$`, "i") } },
+        ],
+        isDeleted: false,
+      });
+
+      if (!execDesig) {
+        // Create custom designation with this exact requested title
+        const cleanCode = requestedTitle.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6) || "EXEC";
+        execDesig = await DesignationModel.create({
+          tenantId: tenantOId,
+          departmentId: adminDept._id,
+          name: requestedTitle,
+          code: cleanCode,
+          level: 8,
+          description: "Executive leadership of the organization",
+          isActive: true,
+          isDeleted: false,
+        });
+      }
+    }
+
+    // Fallback: Find CEO / executive designation or highest level designation in department
+    if (!execDesig) {
+      execDesig = await DesignationModel.findOne({
+        tenantId: tenantOId,
+        departmentId: adminDept._id,
+        code: "CEO",
+        isDeleted: false,
+      });
+    }
+    if (!execDesig) {
+      execDesig = await DesignationModel.findOne({
+        tenantId: tenantOId,
+        departmentId: adminDept._id,
+        isDeleted: false,
+      }).sort({ level: -1 });
+    }
+    if (!execDesig) {
+      // Fallback: any highest level designation in tenant
+      execDesig = await DesignationModel.findOne({
+        tenantId: tenantOId,
+        isDeleted: false,
+      }).sort({ level: -1 });
+    }
+
+    // If still no designation, create default CEO
+    if (!execDesig) {
+      execDesig = await DesignationModel.create({
+        tenantId: tenantOId,
+        departmentId: adminDept._id,
+        name: "Chief Executive Officer",
+        code: "CEO",
+        level: 8,
+        description: "Executive leadership of the organization",
+        isActive: true,
+        isDeleted: false,
+      });
+    }
+
+    for (const adminUser of adminUsers) {
+      // Check if employeeId exists and points to a valid employee
+      if (adminUser.employeeId) {
+        const existingEmp = await EmployeeModel.findOne({
+          _id: adminUser.employeeId,
+          tenantId: tenantOId,
+          isDeleted: false,
+        });
+        if (existingEmp) continue;
+      }
+
+      // Check if an employee already exists with this admin's email
+      const existingEmpByEmail = await EmployeeModel.findOne({
+        tenantId: tenantOId,
+        email: adminUser.email.toLowerCase(),
+        isDeleted: false,
+      });
+
+      if (existingEmpByEmail) {
+        await UserModel.updateOne(
+          { _id: adminUser._id },
+          { $set: { employeeId: existingEmpByEmail._id } }
+        );
+        continue;
+      }
+
+      // Generate atomic employee code
+      const empCode = await getNextEmployeeCode(context.tenantId);
+
+      const createdEmp = await EmployeeModel.create({
+        tenantId: tenantOId,
+        branchId: branchDoc._id,
+        departmentId: adminDept._id,
+        designationId: execDesig._id,
+        employeeCode: empCode,
+        firstName: adminUser.firstName,
+        lastName: adminUser.lastName,
+        email: adminUser.email.toLowerCase(),
+        phone: adminUser.phone || "9999999999",
+        gender: "OTHER",
+        employeeType: "FULL_TIME",
+        status: "ACTIVE",
+        joiningDate: adminUser.createdAt || new Date(),
+        isActive: true,
+        isDeleted: false,
+      });
+
+      await UserModel.updateOne(
+        { _id: adminUser._id },
+        { $set: { employeeId: createdEmp._id } }
+      );
+    }
+  }
+
   // ── Eligible Managers Query for Dynamic Department & Seniority Selection ──
   async getEligibleManagers(context: RequestContext, query: EligibleManagersQuery) {
     const tenantIdObj = new mongoose.Types.ObjectId(context.tenantId);
 
-    const matchFilter: any = {
+    // 1. Ensure Org Admin has an Employee record so they appear in hierarchy
+    try {
+      await this.ensureOrgAdminEmployee(context);
+    } catch {
+      // Non-blocking fallback
+    }
+
+    // 2. Identify all Org Admin employees
+    const adminUsers = await UserModel.find({
+      tenantId: tenantIdObj,
+      $or: [{ isOrgAdmin: true }, { role: "ORG_ADMIN" }, { role: "SUPER_ADMIN" }],
+      isDeleted: false,
+      employeeId: { $ne: null },
+    }).select("employeeId").lean();
+    const adminEmployeeIds = adminUsers
+      .map((u) => u.employeeId?.toString())
+      .filter((id): id is string => Boolean(id));
+
+    // 3. Find upper-role designations (Level >= 6) across the organization
+    const upperRoleDesignations = await DesignationModel.find({
+      tenantId: tenantIdObj,
+      level: { $gte: 6 },
+      isDeleted: false,
+    }).select("_id").lean();
+    const upperRoleDesigIds = upperRoleDesignations.map((d) => d._id);
+
+    // 4. Load department details to identify the default Department Head
+    let departmentDoc = null;
+    if (query.departmentId) {
+      departmentDoc = await DepartmentModel.findOne({
+        _id: new mongoose.Types.ObjectId(query.departmentId),
+        tenantId: tenantIdObj,
+        isDeleted: false,
+      }).populate("headId", "_id firstName lastName employeeCode designationId").lean();
+    }
+
+    // 5. Build candidate query filter
+    const baseFilter: any = {
       tenantId: tenantIdObj,
       isActive: true,
       isDeleted: false,
     };
 
-    if (query.branchId) {
-      matchFilter.branchId = new mongoose.Types.ObjectId(query.branchId);
+    if (query.excludeEmployeeId) {
+      baseFilter._id = { $ne: new mongoose.Types.ObjectId(query.excludeEmployeeId) };
+    }
+
+    // Build OR conditions:
+    // a) Org Admin employees (always eligible company-wide)
+    // b) In-department employees (and branch if specified)
+    // c) Upper roles / Executive leadership across departments (Level >= 6)
+    const orConditions: any[] = [];
+
+    if (adminEmployeeIds.length > 0) {
+      orConditions.push({
+        _id: { $in: adminEmployeeIds.map((id) => new mongoose.Types.ObjectId(id)) },
+      });
     }
 
     if (query.departmentId) {
-      matchFilter.departmentId = new mongoose.Types.ObjectId(query.departmentId);
+      const deptCondition: any = { departmentId: new mongoose.Types.ObjectId(query.departmentId) };
+      if (query.branchId) {
+        deptCondition.branchId = new mongoose.Types.ObjectId(query.branchId);
+      }
+      orConditions.push(deptCondition);
+    } else if (query.branchId) {
+      orConditions.push({ branchId: new mongoose.Types.ObjectId(query.branchId) });
     }
 
-    if (query.excludeEmployeeId) {
-      matchFilter._id = { $ne: new mongoose.Types.ObjectId(query.excludeEmployeeId) };
+    if (upperRoleDesigIds.length > 0) {
+      orConditions.push({ designationId: { $in: upperRoleDesigIds } });
     }
+
+    if (orConditions.length > 0) {
+      baseFilter.$or = orConditions;
+    }
+
+    // 6. Fetch potential manager candidates
+    const employees = await EmployeeModel.find(baseFilter)
+      .populate("designationId", "name code level")
+      .populate("departmentId", "name code headId")
+      .select("_id employeeCode firstName lastName email avatarUrl branchId departmentId designationId isDepartmentHead")
+      .sort({ "designationId.level": -1, firstName: 1 })
+      .lean();
 
     // Determine target seniority level
     let targetMinLevel = query.minLevel;
@@ -1669,36 +1897,27 @@ export class EmployeeService {
       }
     }
 
-    // Load department details to identify the default Department Head
-    let departmentDoc = null;
-    if (query.departmentId) {
-      departmentDoc = await DepartmentModel.findOne({
-        _id: new mongoose.Types.ObjectId(query.departmentId),
-        tenantId: tenantIdObj,
-        isDeleted: false,
-      }).populate("headId", "_id firstName lastName employeeCode designationId").lean();
-    }
-
-    // Fetch potential manager candidates
-    const employees = await EmployeeModel.find(matchFilter)
-      .populate("designationId", "name code level")
-      .populate("departmentId", "name code headId")
-      .select("_id employeeCode firstName lastName email avatarUrl branchId departmentId designationId isDepartmentHead")
-      .sort({ "designationId.level": -1, firstName: 1 })
-      .lean();
-
+    // 7. Filter by seniority level, ensuring Org Admin and Department Head are always kept
     let filteredEmployees = employees;
     if (targetMinLevel !== undefined && targetMinLevel > 1) {
       const levelFiltered = employees.filter((emp: any) => {
+        const empIdStr = emp._id.toString();
+        const isOrgAdmin = adminEmployeeIds.includes(empIdStr);
+        if (isOrgAdmin) return true; // Org Admin is always eligible
+
+        const isHead = departmentDoc?.headId && (departmentDoc.headId as any)._id?.toString() === empIdStr;
+        if (isHead) return true; // Department Head is always eligible
+
         const desigLevel = emp.designationId?.level ?? 1;
-        const isHead = departmentDoc?.headId && (departmentDoc.headId as any)._id?.toString() === emp._id.toString();
-        return desigLevel >= targetMinLevel || isHead;
+        return desigLevel >= targetMinLevel;
       });
+
       if (levelFiltered.length > 0) {
         filteredEmployees = levelFiltered;
       }
     }
 
+    // 8. Search query filtering (if user typed in search box)
     if (query.search) {
       const term = query.search.toLowerCase();
       filteredEmployees = filteredEmployees.filter((emp: any) =>
@@ -1707,11 +1926,36 @@ export class EmployeeService {
       );
     }
 
+    // 9. Sort candidates: Org Admin first, then highest level, then name
+    filteredEmployees.sort((a: any, b: any) => {
+      const aIsAdmin = adminEmployeeIds.includes(a._id.toString()) ? 1 : 0;
+      const bIsAdmin = adminEmployeeIds.includes(b._id.toString()) ? 1 : 0;
+      if (aIsAdmin !== bIsAdmin) return bIsAdmin - aIsAdmin;
+
+      const aLevel = a.designationId?.level ?? 1;
+      const bLevel = b.designationId?.level ?? 1;
+      if (aLevel !== bLevel) return bLevel - aLevel;
+
+      return (a.firstName || "").localeCompare(b.firstName || "");
+    });
+
+    // 10. Default manager selection
     let defaultManagerId: string | null = null;
-    if (departmentDoc?.headId) {
+    const isHeadCandidate = departmentDoc?.headId && query.excludeEmployeeId &&
+      (departmentDoc.headId as any)._id?.toString() === query.excludeEmployeeId;
+
+    if (departmentDoc?.headId && !isHeadCandidate && (targetMinLevel === undefined || targetMinLevel < 6)) {
       defaultManagerId = (departmentDoc.headId as any)._id?.toString() ?? null;
-    } else if (filteredEmployees.length > 0) {
-      defaultManagerId = (filteredEmployees[0] as any)._id.toString();
+    } else {
+      // If hiring Department Head or Level >= 6, default manager is Org Admin (or first top manager)
+      const adminEmp = filteredEmployees.find((e: any) => adminEmployeeIds.includes(e._id.toString()));
+      if (adminEmp) {
+        defaultManagerId = adminEmp._id.toString();
+      } else if (departmentDoc?.headId) {
+        defaultManagerId = (departmentDoc.headId as any)._id?.toString() ?? null;
+      } else if (filteredEmployees.length > 0) {
+        defaultManagerId = (filteredEmployees[0] as any)._id.toString();
+      }
     }
 
     const managerList = filteredEmployees.map((emp: any) => ({
@@ -1729,6 +1973,7 @@ export class EmployeeService {
       designationTitle: emp.designationId?.name || "Member",
       level: emp.designationId?.level ?? 1,
       isDepartmentHead: departmentDoc?.headId && (departmentDoc.headId as any)._id?.toString() === emp._id.toString(),
+      isOrgAdmin: adminEmployeeIds.includes(emp._id.toString()),
     }));
 
     return {
