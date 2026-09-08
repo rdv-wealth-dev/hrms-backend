@@ -1181,7 +1181,7 @@ export async function parseImportFile(
       continue;
     }
 
-    // ── Branch resolution with fallback
+    // ── Branch resolution with smart auto-creation and fallback
     let branchId: mongoose.Types.ObjectId;
     const branchInput = row.branchName?.trim();
     if (branchInput) {
@@ -1192,8 +1192,41 @@ export async function parseImportFile(
           warnings.push({ rowNumber, email: emailClean, reason: `Branch "${branchInput}" matched to existing branch "${branchEntry.matchedName}"`, severity: "WARNING" });
         }
       } else if (headOfficeBranch) {
-        branchId = new mongoose.Types.ObjectId(headOfficeBranch._id);
-        warnings.push({ rowNumber, email: emailClean, reason: `Branch "${branchInput}" not found — auto-assigned to "${headOfficeBranch.name}" (head office). You can update later.`, severity: "WARNING" });
+        // If the tenant only has the generic default "Head Office" (code "HQ"), specialize it to this branch name
+        if (branches.length === 1 && headOfficeBranch.name === "Head Office" && headOfficeBranch.code === "HQ") {
+          const newCode = branchInput.toUpperCase().slice(0, 10).replace(/[^A-Z0-9]/g, "") || "HQ";
+          await BranchModel.findByIdAndUpdate(headOfficeBranch._id, {
+            $set: { name: branchInput, code: newCode }
+          });
+          headOfficeBranch.name = branchInput;
+          headOfficeBranch.code = newCode;
+          branchMap.set(normalize(branchInput), { id: headOfficeBranch._id.toString(), name: branchInput });
+          branchId = new mongoose.Types.ObjectId(headOfficeBranch._id);
+          warnings.push({ rowNumber, email: emailClean, reason: `Head Office automatically named "${branchInput}" from import data`, severity: "WARNING" });
+        } else {
+          // Dynamic auto-creation: create new branch so employees are organized accurately
+          const newCode = branchInput.toUpperCase().slice(0, 10).replace(/[^A-Z0-9]/g, "") || `BR-${branches.length + 1}`;
+          try {
+            const newBranch = await BranchModel.create({
+              tenantId: tenantIdObj,
+              name: branchInput,
+              code: newCode,
+              countryCode: (headOfficeBranch as any).countryCode || "IN",
+              currency: (headOfficeBranch as any).currency || "INR",
+              isHeadOffice: false,
+              isActive: true,
+              isDeleted: false,
+            });
+            const newBranchObj = newBranch.toObject();
+            branches.push(newBranchObj);
+            branchMap.set(normalize(branchInput), { id: newBranchObj._id.toString(), name: branchInput });
+            branchId = new mongoose.Types.ObjectId(newBranchObj._id);
+            warnings.push({ rowNumber, email: emailClean, reason: `Branch "${branchInput}" did not exist — automatically created`, severity: "WARNING" });
+          } catch {
+            branchId = new mongoose.Types.ObjectId(headOfficeBranch._id);
+            warnings.push({ rowNumber, email: emailClean, reason: `Branch "${branchInput}" not found — auto-assigned to "${headOfficeBranch.name}" (head office)`, severity: "WARNING" });
+          }
+        }
       } else {
         branchId = new mongoose.Types.ObjectId((headOfficeBranch as any)._id);
       }

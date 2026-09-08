@@ -112,6 +112,10 @@ export const OnboardingWizardDto = z.object({
   workingStyle: z.enum(["regular", "flexible", "rotational"]).optional().default("regular"),
   leavePolicy: z.enum(["standard", "all", "minimal"]).optional().default("standard"),
   selectedLeaves: z.array(z.string()).optional(),
+
+  // Optional customized Head Office branding
+  headOfficeName: optionalString(safeStringSchema(2, 100)),
+  headOfficeCode: optionalString(z.string().trim().toUpperCase().min(2).max(10)),
 });
 export type OnboardingWizardInput = z.infer<typeof OnboardingWizardDto>;
 

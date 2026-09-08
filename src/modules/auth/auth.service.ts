@@ -813,11 +813,14 @@ export class AuthService {
     }
 
     // Create Head Office branch using actual country and timezone
+    const resolvedBranchName = input.headOfficeName?.trim() || "Head Office";
+    const resolvedBranchCode = input.headOfficeCode?.trim() || "HQ";
+
     const headOffice = await this.branchRepo.create({
       tenantId: tenantObjectId as any,
       branchId: tenantObjectId as any,
-      name: "Head Office",
-      code: "HQ",
+      name: resolvedBranchName,
+      code: resolvedBranchCode,
       isHeadOffice: true,
       isActive: true,
       address: {

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { BranchRepository } from "./branch.repository";
+import { BranchModel } from "./branch.model";
 import { CreateBranchInput, UpdateBranchInput } from "./branch.dto";
 import { AppError } from "../../shared/errors/app.error";
 import { RequestContext } from "../../shared/types/request-context.interface";
@@ -62,11 +63,20 @@ export class BranchService {
       }
     }
 
+    const shouldBeHeadOffice = input.isHeadOffice === true || input.isHeadquarters === true || existingBranches.length === 0;
+    if (shouldBeHeadOffice && existingBranches.length > 0) {
+      await BranchModel.updateMany(
+        { tenantId: new mongoose.Types.ObjectId(context.tenantId) },
+        { $set: { isHeadOffice: false, isHeadquarters: false } }
+      );
+    }
+
     const branch = await this.branchRepo.create({
       tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
       name: input.name,
       code: input.code,
-      isHeadOffice: existingBranches.length === 0,
+      isHeadOffice: shouldBeHeadOffice,
+      isHeadquarters: shouldBeHeadOffice,
       isActive: true,
       parentBranchId: input.parentBranchId
         ? new mongoose.Types.ObjectId(input.parentBranchId) as any
@@ -199,6 +209,16 @@ export class BranchService {
     if (input.contact) updateData.contact = { ...branch.contact, ...input.contact };
     if (input.workPolicy) updateData.workPolicy = { ...branch.workPolicy, ...input.workPolicy };
     if (input.statutory) updateData.statutory = { ...branch.statutory, ...input.statutory };
+
+    if (input.isHeadOffice === true || input.isHeadquarters === true) {
+      // Transfer head office status: unset any existing head office on other branches
+      await BranchModel.updateMany(
+        { tenantId: new mongoose.Types.ObjectId(context.tenantId), _id: { $ne: branch._id } },
+        { $set: { isHeadOffice: false, isHeadquarters: false } }
+      );
+      updateData.isHeadOffice = true;
+      updateData.isHeadquarters = true;
+    }
 
     // Merge geo input first, then auto-geocode if address changed but no manual coords given
     let mergedGeo = { ...branch.geo, ...input.geo };
