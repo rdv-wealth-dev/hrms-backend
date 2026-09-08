@@ -690,6 +690,13 @@ When HR adds a new active employee via the manual form (`POST /api/v1/employees`
    - No duplicate key errors.
    - No sequence jumping.
 
+3. **Alien / Unrelated Sheet Codes Policy (e.g. `jjh0024` vs Org Prefix `RVG`):**  
+   If the Org Admin has configured an employee code prefix (e.g. `RVG-001` is Org Admin), and an imported spreadsheet has completely unrelated legacy codes from a previous vendor (e.g. `jjh0024`, `abc99`):
+   - **System forgets the alien sheet code** for official numbering.
+   - System assigns the clean sequential code one-by-one according to Org Admin's pattern: **`RVG-002`**, **`RVG-003`**, **`RVG-004`**...
+   - **Old legacy code is not lost:** The original sheet code (`jjh0024`) is automatically saved in `customFields.legacyEmployeeCode` for historical reference and audit.
+
+
 ---
 
 ## 📑 13. Sub-Documents & Auto-Extracted Data (Profile View)
