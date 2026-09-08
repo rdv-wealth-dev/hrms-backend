@@ -1305,8 +1305,8 @@ export class EmployeeService {
         }
       }
 
-      // Create user account only for active employees with an email
-      if (!isActive || !emp.email) continue;
+      // Create user account only for active employees with a real email
+      if (!isActive || !emp.email || emp.email.endsWith("@archive.local")) continue;
 
       try {
         const userAccount = new UserModel({
@@ -1558,14 +1558,17 @@ export class EmployeeService {
     const { maxEmployees: parsedBulkMax } = parseEmployeeCountRange(org.employeeCountRange);
     const maxEmployees = Math.max(parsedBulkMax, org.subscription?.maxEmployees || 10);
 
-    const currentCount = await EmployeeModel.countDocuments({
+    const activeValidRecords = validRecords.filter((r: any) => r.__isActiveEmployee !== false);
+
+    const currentActiveCount = await EmployeeModel.countDocuments({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       isDeleted: false,
+      isActive: true,
     });
 
-    if (currentCount + validRecords.length > maxEmployees) {
+    if (currentActiveCount + activeValidRecords.length > maxEmployees) {
       throw new AppError(
-        `Bulk import exceeds your workspace team size limit (Range: ${org.employeeCountRange || "1-10"}, Current: ${currentCount}, Trying to add: ${validRecords.length}, Max allowed: ${maxEmployees} users). Please upgrade your workspace tier.`,
+        `Bulk import exceeds your workspace team size limit (Range: ${org.employeeCountRange || "1-10"}, Current Active: ${currentActiveCount}, Trying to add Active: ${activeValidRecords.length}, Max allowed: ${maxEmployees} users). Please upgrade your workspace tier.`,
         403
       );
     }
@@ -1607,8 +1610,8 @@ export class EmployeeService {
         }
       }
 
-      // Only create user accounts for active employees with an email
-      if (!isActive || !emp.email) continue;
+      // Only create user accounts for active employees with a real email
+      if (!isActive || !emp.email || emp.email.endsWith("@archive.local")) continue;
 
       try {
         const userAccount = new UserModel({

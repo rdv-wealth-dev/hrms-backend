@@ -75,11 +75,11 @@ export async function syncEmployeeCodeCounter(
     for (const item of list) {
       if (!item) continue;
       const trimmed = String(item).trim().toUpperCase();
-      // Extract alphabetic prefix (e.g. "RVG" from "RVG001", "EMP" from "EMP-102")
-      const match = trimmed.match(/^([A-Z]+)[-_]?\d+$/i);
+      // Extract alphabetic prefix (e.g. "RVG-EX" from "RVG-EX-001", "RVG" from "RVG001", "EMP" from "EMP-102")
+      const match = trimmed.match(/^([A-Z]+(?:-[A-Z]+)*)[-_]?0*(\d+)$/i);
       if (match && match[1]) {
         prefixesToSync.add(match[1].toUpperCase());
-      } else if (/^[A-Z]+$/i.test(trimmed)) {
+      } else if (/^[A-Z]+(?:-[A-Z]+)*$/i.test(trimmed)) {
         prefixesToSync.add(trimmed);
       }
     }
@@ -107,6 +107,7 @@ export async function syncEmployeeCodeCounter(
  * - New org with PUG (2 digits, no separator) -> PUG01, PUG02, ...
  * - Existing org with RVG (up to RVG011) -> RVG012, RVG013, ...
  * - Default EMP (4 digits, separator "-") -> EMP-0001, EMP-0002, ...
+ * - Inactive archive code (e.g. RVG-EX) -> RVG-EX-001, RVG-EX-002, ...
  */
 export async function getNextEmployeeCode(
   tenantId: string,
@@ -114,9 +115,11 @@ export async function getNextEmployeeCode(
 ): Promise<string> {
   const org = await OrganizationModel.findById(tenantId).select("employeeCodeConfig").lean();
 
-  const prefix = (overridePrefix || org?.employeeCodeConfig?.prefix || "EMP").trim().toUpperCase();
-  const digits = org?.employeeCodeConfig?.digits ?? (prefix === "EMP" ? 4 : 2);
-  const separator = org?.employeeCodeConfig?.separator ?? (prefix === "EMP" ? "-" : "");
+  const basePrefix = (org?.employeeCodeConfig?.prefix || "EMP").trim().toUpperCase();
+  const prefix = (overridePrefix || basePrefix).trim().toUpperCase();
+  const isExPrefix = prefix.endsWith("-EX") || prefix === "EX";
+  const digits = isExPrefix ? 3 : (org?.employeeCodeConfig?.digits ?? (prefix === "EMP" ? 4 : 2));
+  const separator = isExPrefix ? "-" : (org?.employeeCodeConfig?.separator ?? (prefix === "EMP" ? "-" : ""));
   const startSeqNumber = org?.employeeCodeConfig?.startSequenceNumber ?? 1;
 
   const sequenceKey = `empCode_${prefix}`;

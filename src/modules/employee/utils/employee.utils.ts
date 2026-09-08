@@ -7,6 +7,7 @@ import { EmployeeModel, EmployeeStatus, EmployeeType, Gender, BloodGroup, Marita
 import { DepartmentModel } from "../../department/department.model";
 import { DesignationModel } from "../../designation/designation.model";
 import { BranchModel } from "../../branch/branch.model";
+import { OrganizationModel } from "../../organization/organization.model";
 import { CustomFieldModel } from "../../custom-field/custom-field.model";
 import { getNextEmployeeCode } from "./employee-counter.util";
 import { getCountryModule } from "../../../domain/localization/country.registry";
@@ -1080,6 +1081,11 @@ export async function parseImportFile(
   // Find head office / first branch as fallback
   const headOfficeBranch = branches.find((b: any) => b.isHeadOffice) || branches[0] || null;
 
+  // Org prefix configuration for employee codes (active = RVG, inactive = RVG-EX)
+  const orgDoc = await OrganizationModel.findById(tenantIdObj).select("employeeCodeConfig").lean();
+  const orgPrefix = (orgDoc?.employeeCodeConfig?.prefix || "RVG").trim().toUpperCase();
+  const exPrefix = `${orgPrefix}-EX`;
+
   const errors: ImportError[] = [];
   const warnings: ImportError[] = [];
   const validRecords: any[] = [];
@@ -1093,23 +1099,35 @@ export async function parseImportFile(
     const mapped = applyHeaderMapping(rawRow, headerMap);
     const row = normalizeRow(mapped);
 
-    const emailClean = row.email?.trim().toLowerCase() || "";
+    // ── Resolve normalized status & employee type first
+    const importedStatus = normalizeEmployeeStatus(row.importedStatus);
+    const isActiveEmployee = [EmployeeStatus.ACTIVE, EmployeeStatus.ON_LEAVE].includes(importedStatus as any);
+    const employeeType = normalizeEmployeeType(mapped.employeeType);
 
-    // ── Email handling — required unless we have an existing employee code
-    if (!emailClean) {
+    const emailClean = row.email?.trim().toLowerCase() || "";
+    let finalEmail = emailClean;
+
+    // ── Email handling — required for active unless we have an existing employee code
+    if (!finalEmail) {
       if (row.preservedEmployeeCode && existingEmpCodes.has(row.preservedEmployeeCode)) {
         errors.push({ rowNumber, reason: `Employee code "${row.preservedEmployeeCode}" already exists in the system`, severity: "ERROR" });
         continue;
       }
       if (!row.preservedEmployeeCode) {
-        errors.push({ rowNumber, reason: "Email is required (no email or employee code found in this row)", severity: "ERROR" });
-        continue;
+        if (isActiveEmployee) {
+          errors.push({ rowNumber, reason: "Email is required for active employee (no email or employee code found)", severity: "ERROR" });
+          continue;
+        } else {
+          // Inactive employee without code or email: auto-assign archive synthetic email for DB schema requirement
+          warnings.push({ rowNumber, reason: `No email found for inactive employee — imported as historical archive record without user login`, severity: "WARNING" });
+        }
+      } else {
+        // Has a code but no email — import without user account (warn)
+        warnings.push({ rowNumber, reason: `No email found — employee will be imported without a user login account. Email can be added later by HR.`, severity: "WARNING" });
       }
-      // Has a code but no email — import without user account (warn)
-      warnings.push({ rowNumber, reason: `No email found — employee will be imported without a user login account. Email can be added later by HR.`, severity: "WARNING" });
     } else {
-      if (existingEmails.has(emailClean)) {
-        errors.push({ rowNumber, email: emailClean, reason: `Employee with email "${emailClean}" already exists`, severity: "ERROR" });
+      if (existingEmails.has(finalEmail)) {
+        errors.push({ rowNumber, email: finalEmail, reason: `Employee with email "${finalEmail}" already exists`, severity: "ERROR" });
         continue;
       }
     }
@@ -1218,21 +1236,23 @@ export async function parseImportFile(
     if (row.preservedEmployeeCode) {
       if (existingEmpCodes.has(row.preservedEmployeeCode)) {
         warnings.push({ rowNumber, email: emailClean, reason: `Employee code "${row.preservedEmployeeCode}" already exists — a new code will be auto-generated`, severity: "WARNING" });
-        employeeCode = await getNextEmployeeCode(context.tenantId);
+        employeeCode = isActiveEmployee
+          ? await getNextEmployeeCode(context.tenantId)
+          : await getNextEmployeeCode(context.tenantId, exPrefix);
       } else {
         employeeCode = row.preservedEmployeeCode;
         existingEmpCodes.add(employeeCode); // prevent duplicate within same import
       }
     } else {
-      employeeCode = await getNextEmployeeCode(context.tenantId);
+      // Active employees get org prefix (e.g. RVG001). Inactive get archive prefix (e.g. RVG-EX-001) so active sequence is never burned!
+      employeeCode = isActiveEmployee
+        ? await getNextEmployeeCode(context.tenantId)
+        : await getNextEmployeeCode(context.tenantId, exPrefix);
     }
 
-    // ── Resolve normalized status
-    const importedStatus = normalizeEmployeeStatus(row.importedStatus);
-    const isActiveEmployee = [EmployeeStatus.ACTIVE, EmployeeStatus.ON_LEAVE].includes(importedStatus as any);
-
-    // ── Resolve employee type
-    const employeeType = normalizeEmployeeType(mapped.employeeType);
+    if (!finalEmail) {
+      finalEmail = `${employeeCode.toLowerCase().replace(/[^a-z0-9]/g, "")}@archive.local`;
+    }
 
     // ── Custom fields — resolve against registered custom field keys
     const resolvedCustomFields: Record<string, any> = {};
@@ -1263,7 +1283,7 @@ export async function parseImportFile(
       employeeCode,
       firstName: row.firstName.trim(),
       lastName: (row.lastName || "").trim(),
-      email: emailClean || undefined,
+      email: finalEmail,
       phone: row.phone,
       joiningDate: finalJoiningDate,
       employeeType,
@@ -1306,7 +1326,7 @@ export async function parseImportFile(
     };
 
     validRecords.push(employeeDoc);
-    if (emailClean) existingEmails.add(emailClean);
+    if (finalEmail) existingEmails.add(finalEmail);
     existingEmpCodes.add(employeeCode);
   }
 
