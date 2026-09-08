@@ -85,6 +85,7 @@ export async function seedDepartments(
 
   if (allowedCodes && allowedCodes.length > 0) {
     const uppercaseCodes = allowedCodes.map((c) => c.toUpperCase());
+    if (!uppercaseCodes.includes("ADMIN")) uppercaseCodes.push("ADMIN");
     targetDepartments = DEFAULT_DEPARTMENTS.filter((d) =>
       uppercaseCodes.includes(d.code)
     );

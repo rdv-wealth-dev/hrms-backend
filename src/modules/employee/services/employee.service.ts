@@ -194,15 +194,85 @@ export class EmployeeService {
       resolvedTeamId = teamDoc._id;
     }
 
+    // Role validation and C-Suite permission check
+    const assignedRole = input.role ? input.role.toUpperCase() : "EMPLOYEE";
+    const C_SUITE_ROLES = ["ORG_ADMIN", "SUPER_ADMIN", "CEO", "CTO", "CFO", "COO", "CHRO", "LEADERSHIP"];
+    const isMasterAdmin = ["ORG_ADMIN", "SUPER_ADMIN"].includes(context.role);
+    if (!isMasterAdmin && C_SUITE_ROLES.includes(assignedRole)) {
+      throw new AppError("Access denied: Only Org Admin can assign C-Suite or Executive roles", 403);
+    }
+
+    // ── Smart Auto-Placement for CEO / Leadership ──
+    let resolvedDeptId = input.departmentId;
+    let resolvedDesigId = input.designationId;
+    let resolvedManagerId = input.managerId;
+
+    if (assignedRole === "CEO") {
+      // 1. CEO never reports to any employee (reports to Board / self)
+      resolvedManagerId = undefined;
+
+      // 2. Auto-resolve Administration department if missing
+      if (!resolvedDeptId) {
+        let adminDept = await DepartmentModel.findOne({
+          tenantId: new mongoose.Types.ObjectId(context.tenantId),
+          $or: [{ code: "ADMIN" }, { name: { $regex: /^administration$/i } }],
+          isDeleted: false,
+        });
+        if (!adminDept) {
+          adminDept = await DepartmentModel.create({
+            tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            branchId: new mongoose.Types.ObjectId(branchId),
+            name: "Administration",
+            code: "ADMIN",
+            description: "Executive leadership and office administration",
+            isActive: true,
+            isDeleted: false,
+          });
+        }
+        resolvedDeptId = adminDept._id.toString();
+      }
+
+      // 3. Auto-resolve CEO designation if missing
+      if (!resolvedDesigId) {
+        let ceoDesig = await DesignationModel.findOne({
+          tenantId: new mongoose.Types.ObjectId(context.tenantId),
+          departmentId: new mongoose.Types.ObjectId(resolvedDeptId),
+          $or: [{ code: "CEO" }, { name: { $regex: /^chief executive officer$/i } }],
+          isDeleted: false,
+        });
+        if (!ceoDesig) {
+          ceoDesig = await DesignationModel.create({
+            tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            branchId: new mongoose.Types.ObjectId(branchId),
+            departmentId: new mongoose.Types.ObjectId(resolvedDeptId),
+            name: "Chief Executive Officer",
+            code: "CEO",
+            level: 8,
+            description: "Chief Executive Officer — executive leadership of the entire enterprise",
+            isActive: true,
+            isDeleted: false,
+          });
+        }
+        resolvedDesigId = ceoDesig._id.toString();
+      }
+    } else {
+      if (!resolvedDeptId) {
+        throw new AppError("Department is required", 400);
+      }
+      if (!resolvedDesigId) {
+        throw new AppError("Designation is required", 400);
+      }
+    }
+
     const employee = await this.empRepo.create(context, {
       tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
       branchId: new mongoose.Types.ObjectId(branchId) as any,
-      departmentId: new mongoose.Types.ObjectId(input.departmentId) as any,
-      designationId: new mongoose.Types.ObjectId(input.designationId) as any,
+      departmentId: new mongoose.Types.ObjectId(resolvedDeptId) as any,
+      designationId: new mongoose.Types.ObjectId(resolvedDesigId) as any,
       teamId: resolvedTeamId as any,
       shiftId: resolvedShiftId ? new mongoose.Types.ObjectId(resolvedShiftId) as any : undefined,
-      managerId: input.managerId
-        ? new mongoose.Types.ObjectId(input.managerId) as any
+      managerId: resolvedManagerId
+        ? new mongoose.Types.ObjectId(resolvedManagerId) as any
         : undefined,
       secondaryManagerIds: input.secondaryManagerIds && input.secondaryManagerIds.length > 0
         ? input.secondaryManagerIds.map((mId) => new mongoose.Types.ObjectId(mId)) as any
@@ -262,13 +332,6 @@ export class EmployeeService {
       .digest("hex");
 
     // Create user account for this employee with selected role (default: EMPLOYEE)
-    const assignedRole = input.role ? input.role.toUpperCase() : "EMPLOYEE";
-    const C_SUITE_ROLES = ["ORG_ADMIN", "SUPER_ADMIN", "CEO", "CTO", "CFO", "COO", "CHRO", "LEADERSHIP"];
-    const isMasterAdmin = ["ORG_ADMIN", "SUPER_ADMIN"].includes(context.role);
-    if (!isMasterAdmin && C_SUITE_ROLES.includes(assignedRole)) {
-      throw new AppError("Access denied: Only Org Admin can assign C-Suite or Executive roles", 403);
-    }
-
     const userAccount = new UserModel({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       email: input.email.toLowerCase(),
@@ -280,7 +343,7 @@ export class EmployeeService {
       isOrgAdmin: assignedRole === "ORG_ADMIN" || assignedRole === "SUPER_ADMIN",
       isActive: false,
       isEmailVerified: false,
-      branchIds: [new mongoose.Types.ObjectId(input.branchId)],
+      branchIds: [new mongoose.Types.ObjectId(branchId)],
       employeeId: employee._id,
 
 

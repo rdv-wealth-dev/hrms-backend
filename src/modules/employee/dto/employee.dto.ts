@@ -69,8 +69,14 @@ export const CreateEmployeeDto = withPhoneValidation(
       (val) => (val === "" ? undefined : val),
       objectIdSchema.optional()
     ),
-    departmentId: objectIdSchema,
-    designationId: objectIdSchema,
+    departmentId: z.preprocess(
+      (val) => (val === "" || val === null ? undefined : val),
+      objectIdSchema.optional()
+    ),
+    designationId: z.preprocess(
+      (val) => (val === "" || val === null ? undefined : val),
+      objectIdSchema.optional()
+    ),
     teamId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),
     managerId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),
     secondaryManagerIds: z.preprocess(
