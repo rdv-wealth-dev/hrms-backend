@@ -3,7 +3,13 @@ import { OrganizationController } from "./organization.controller";
 import { authenticate } from "../../shared/middlewares/auth.middleware";
 import { checkPermission } from "../../shared/middlewares/rbac.middleware";
 import { validateBody }  from "../../shared/validators/validate.middleware";
-import {UpdateOrganizationDto, UpdateModulesDto, UpdateStatutoryDto, UpdateMandatoryDocsDto,} from "./organization.dto";
+import {
+  UpdateOrganizationDto,
+  UpdateModulesDto,
+  UpdateStatutoryDto,
+  UpdateMandatoryDocsDto,
+  UpdateEmployeeCodeConfigDto,
+} from "./organization.dto";
 
 const router = Router();
 const controller = new OrganizationController();
@@ -54,6 +60,7 @@ router.patch(
 router.patch(
   "/me/employee-code-config",
   checkPermission("settings.update"),
+  validateBody(UpdateEmployeeCodeConfigDto),
   controller.updateEmployeeCodeConfig.bind(controller)
 );
 
