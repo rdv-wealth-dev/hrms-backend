@@ -9,6 +9,7 @@ import { DesignationModel } from "../../designation/designation.model";
 import { BranchModel } from "../../branch/branch.model";
 import { OrganizationModel } from "../../organization/organization.model";
 import { CustomFieldModel } from "../../custom-field/custom-field.model";
+import { UserModel } from "../../user/user.model";
 import { getNextEmployeeCode } from "./employee-counter.util";
 import { getCountryModule } from "../../../domain/localization/country.registry";
 
@@ -154,9 +155,12 @@ const HEADER_SYNONYM_MAP: Record<string, string> = {
   // ── Branch / Office
   "branch": "branchName", "branch name": "branchName", "branchname": "branchName",
   "location": "branchName", "office": "branchName", "office location": "branchName",
-  "org name": "branchName", "orgname": "branchName", "organization": "branchName",
   "work location": "branchName", "site": "branchName",
   "plant": "branchName", "unit": "branchName",
+
+  // ── Organization (company name, not branch)
+  "org name": "organizationName", "orgname": "organizationName", "organization": "organizationName",
+  "company": "organizationName", "company name": "organizationName",
 
   // ── Department
   "department": "departmentName", "dept": "departmentName",
@@ -1078,8 +1082,31 @@ export async function parseImportFile(
     customFieldMap.set(normalize(cf.fieldKey), cf.fieldKey);
   }
 
-  // Find head office / first branch as fallback
-  const headOfficeBranch = branches.find((b: any) => b.isHeadOffice) || branches[0] || null;
+  // Find head office / first branch as fallback, or auto-create if tenant has no branches
+  let headOfficeBranch = branches.find((b: any) => b.isHeadOffice) || branches[0] || null;
+  if (!headOfficeBranch) {
+    const orgDocForBranch = await OrganizationModel.findById(tenantIdObj).lean();
+    const createdHeadOffice = await BranchModel.create({
+      tenantId: tenantIdObj,
+      name: "Head Office",
+      code: "HQ",
+      countryCode: orgDocForBranch?.locale?.countryCode || "IN",
+      currency: orgDocForBranch?.locale?.currencyCode || "INR",
+      isHeadquarters: true,
+      isHeadOffice: true,
+      isActive: true,
+      isDeleted: false,
+    });
+    headOfficeBranch = createdHeadOffice.toObject();
+    branches.push(headOfficeBranch);
+    branchMap.set(normalize("Head Office"), { id: headOfficeBranch._id, name: "Head Office" });
+    branchMap.set(normalize("HQ"), { id: headOfficeBranch._id, name: "Head Office" });
+    await UserModel.findByIdAndUpdate(userIdObj, {
+      $addToSet: { branchIds: headOfficeBranch._id },
+    });
+    const { invalidateMasterDataCache } = require("./master-data-cache");
+    invalidateMasterDataCache(context.tenantId);
+  }
 
   // Org prefix configuration for employee codes (dynamic: active = LOP, inactive = LOP-EX)
   const orgDoc = await OrganizationModel.findById(tenantIdObj).select("employeeCodeConfig").lean();
@@ -1168,16 +1195,12 @@ export async function parseImportFile(
         branchId = new mongoose.Types.ObjectId(headOfficeBranch._id);
         warnings.push({ rowNumber, email: emailClean, reason: `Branch "${branchInput}" not found — auto-assigned to "${headOfficeBranch.name}" (head office). You can update later.`, severity: "WARNING" });
       } else {
-        errors.push({ rowNumber, email: emailClean, reason: `Branch "${branchInput}" not found and no branches exist in the system. Please create branches first.`, severity: "ERROR" });
-        continue;
+        branchId = new mongoose.Types.ObjectId((headOfficeBranch as any)._id);
       }
-    } else if (headOfficeBranch) {
-      // No branch column in sheet at all — use head office
-      branchId = new mongoose.Types.ObjectId(headOfficeBranch._id);
-      warnings.push({ rowNumber, email: emailClean, reason: `No branch specified — auto-assigned to "${headOfficeBranch.name}" (head office)`, severity: "WARNING" });
     } else {
-      errors.push({ rowNumber, email: emailClean, reason: "No branch column found and no branches exist in the system. Please create a branch first.", severity: "ERROR" });
-      continue;
+      // No branch column in sheet at all — use head office
+      branchId = new mongoose.Types.ObjectId((headOfficeBranch as any)._id);
+      warnings.push({ rowNumber, email: emailClean, reason: `No branch specified — auto-assigned to "${(headOfficeBranch as any).name}" (head office)`, severity: "WARNING" });
     }
 
     // ── Joining date
