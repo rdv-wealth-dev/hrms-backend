@@ -340,10 +340,11 @@ export class EmployeeController {
       if (!req.file) {
         throw new AppError("No import file uploaded", 400);
       }
+      // sendWelcomeEmail=false by default — no email blast on bulk import
+      const sendWelcomeEmail = req.body?.sendWelcomeEmail === true || req.query?.sendWelcomeEmail === "true";
+      const defaultPassword = req.body?.defaultPassword || undefined;
 
-      // Controller -> Service
-      const result = await empService.importEmployees(req.context, req.file);
-
+      const result = await empService.importEmployees(req.context, req.file, sendWelcomeEmail, defaultPassword);
       res.status(200).json(
         buildSuccessResponse(result, "Bulk import processed successfully")
       );
@@ -440,7 +441,11 @@ export class EmployeeController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const result = await empService.commitImport(req.context, req.params.sessionId);
+      // Optional: allow HR to turn on emails or override default password at commit time
+      const sendWelcomeEmail = req.body?.sendWelcomeEmail === true;
+      const defaultPassword = req.body?.defaultPassword || undefined;
+
+      const result = await empService.commitImport(req.context, req.params.sessionId, sendWelcomeEmail, defaultPassword);
       res.status(200).json(
         buildSuccessResponse(result, "Employees imported successfully")
       );

@@ -39,6 +39,11 @@ import { v4 as uuidv4 } from "uuid";
 import { validatePAN, validateAadhaar } from "../../../domain/localization/IN/validators";
 import { ImportSessionModel } from "../models/import-session.model";
 import { ExportSessionModel } from "../models/export-session.model";
+import { EmployeeBankAccountModel } from "../models/employee-bank-account.model";
+import bcrypt from "bcrypt";
+
+const BCRYPT_SALT_ROUNDS = 12;
+const DEFAULT_IMPORT_PASSWORD = `Welcome@${new Date().getFullYear()}`;
 
 // Helper — mask account number showing only last 4 digits
 function maskAccountNumber(acc: string): string {
@@ -1237,9 +1242,15 @@ export class EmployeeService {
 
 
   /**
-   * Import Employees: Parses file -> Validates records -> Calls Repository
+   * Import Employees (Direct): Parses file -> Validates -> Inserts -> Creates user accounts silently
+   * No emails are sent. Active employees get a default password with forced reset on first login.
    */
-  async importEmployees(context: RequestContext, file: Express.Multer.File) {
+  async importEmployees(
+    context: RequestContext,
+    file: Express.Multer.File,
+    sendWelcomeEmail = false,
+    defaultPassword = DEFAULT_IMPORT_PASSWORD
+  ) {
     if (!file || !file.buffer) {
       throw new AppError("Import file buffer is missing", 400);
     }
@@ -1254,64 +1265,82 @@ export class EmployeeService {
       );
     }
 
+    // Strip internal-only fields before DB insert
+    const cleanRecords = parsedData.validRecords.map(r => {
+      const { __bankAccount, __isActiveEmployee, ...clean } = r;
+      return clean;
+    });
+
     // Bulk insert employee records
-    const dbResult = await this.empRepo.bulkCreate(context, parsedData.validRecords);
+    const dbResult = await this.empRepo.bulkCreate(context, cleanRecords);
 
-    // For each inserted employee — create user account + send activation email
-    // Done after bulkCreate so we have the _id for each record
-    for (const emp of dbResult.records) {
+    // Post-insert: create user accounts + save bank accounts
+    const passwordHash = await bcrypt.hash(defaultPassword, BCRYPT_SALT_ROUNDS);
+
+    for (let i = 0; i < dbResult.records.length; i++) {
+      const emp = dbResult.records[i];
+      const originalRecord = parsedData.validRecords[i];
+      const isActive = originalRecord.__isActiveEmployee !== false;
+      const bankAccount = originalRecord.__bankAccount;
+
+      // Save bank account if extracted
+      if (bankAccount?.accountNumber && bankAccount?.ifscCode && isActive) {
+        try {
+          await new EmployeeBankAccountModel({
+            tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            employeeId: emp._id,
+            bankName: bankAccount.bankName || "Unknown Bank",
+            accountNumber: bankAccount.accountNumber,
+            ifscCode: bankAccount.ifscCode,
+            accountType: bankAccount.accountType || "SALARY",
+            isPrimary: true,
+            isActive: true,
+          }).save();
+        } catch (bankErr) {
+          console.error(`Bank account save failed for ${emp.email || emp.employeeCode}:`, bankErr);
+        }
+      }
+
+      // Create user account only for active employees with an email
+      if (!isActive || !emp.email) continue;
+
       try {
-        const rawToken = crypto.randomBytes(32).toString("hex");
-        const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
-
         const userAccount = new UserModel({
           tenantId: new mongoose.Types.ObjectId(context.tenantId),
           email: emp.email.toLowerCase(),
-          passwordHash: null,
+          passwordHash,                          // default password, hashed
           firstName: emp.firstName,
           lastName: emp.lastName,
           role: "EMPLOYEE",
           isOrgAdmin: false,
-          isActive: false,
-          isEmailVerified: false,
+          isActive: true,                        // immediately active — no email needed
+          isEmailVerified: true,
+          requiresPasswordReset: true,           // forced change on first login
           branchIds: [emp.branchId],
           employeeId: emp._id,
-          accountActivationToken: hashedToken,
-          accountActivationExpires: new Date(Date.now() + 72 * 60 * 60 * 1000),
         });
-
         await userAccount.save();
 
-        // Send activation email — fire and forget, don't block import
-        const activationUrl = `${env.frontendUrl}/activate-account?token=${rawToken}`;
-        emailService.sendEmail(
-          emp.email,
-          `${emp.firstName} ${emp.lastName}`,
-          `Welcome to HRMS — Activate your account`,
-          `
-          <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-            <h2>Welcome to the team, ${emp.firstName}!</h2>
-            <p>Your HRMS account has been created. Click below to set your password.</p>
-            <a href="${activationUrl}"
-               style="display:inline-block; padding:12px 28px; background:#2886CE;
-                      color:white; text-decoration:none; border-radius:4px; font-weight:bold;">
-              Activate My Account
-            </a>
-            <p style="color:#888; font-size:12px; margin-top:24px;">
-              This link expires in 72 hours.
-            </p>
-          </div>
-          `
-        ).catch(() => { }); // never fail the import because of email
-
+        // Send welcome email only if explicitly requested
+        if (sendWelcomeEmail) {
+          emailService.sendEmail(
+            emp.email,
+            `${emp.firstName} ${emp.lastName}`,
+            `Welcome to HRMS — Your account is ready`,
+            `<div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
+              <h2>Welcome to the team, ${emp.firstName}!</h2>
+              <p>Your HRMS account has been created.</p>
+              <p>Login with your email and the temporary password shared by your HR team.</p>
+              <p>You will be asked to set a new password on first login.</p>
+            </div>`
+          ).catch(() => {});
+        }
       } catch (userError) {
-        // User account creation failure must not fail the whole import
-        // Employee record exists — HR can manually trigger activation later
         console.error(`Failed to create user account for ${emp.email}:`, userError);
       }
 
       // Recalculate profile completion async
-      recalculateProfileCompletion(context.tenantId, emp._id.toString()).catch(() => { });
+      recalculateProfileCompletion(context.tenantId, emp._id.toString()).catch(() => {});
     }
 
     return {
@@ -1319,8 +1348,9 @@ export class EmployeeService {
       insertedCount: dbResult.insertedCount,
       failedCount: parsedData.errors.length,
       errors: parsedData.errors,
-      warnings: parsedData.warnings,   // ← ADD
-      created: parsedData.created,    // ← ADD
+      warnings: parsedData.warnings,
+      created: parsedData.created,
+      defaultPassword: sendWelcomeEmail ? undefined : defaultPassword,  // return to HR so they can communicate it internally
     };
   }
 
@@ -1493,7 +1523,7 @@ export class EmployeeService {
     };
   }
 
-  async commitImport(context: RequestContext, sessionId: string) {
+  async commitImport(context: RequestContext, sessionId: string, sendWelcomeEmail = false, defaultPassword = DEFAULT_IMPORT_PASSWORD) {
     const session = await ImportSessionModel.findOne({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       sessionId,
@@ -1535,60 +1565,78 @@ export class EmployeeService {
         403
       );
     }
+    const cleanValidRecords = validRecords.map((r: any) => {
+      const { __bankAccount, __isActiveEmployee, ...clean } = r;
+      return clean;
+    });
 
-    const dbResult = await this.empRepo.bulkCreate(context, validRecords);
+    const dbResult = await this.empRepo.bulkCreate(context, cleanValidRecords);
 
-    // Create user accounts + send welcome emails
-    for (const emp of dbResult.records) {
+    // Post-insert: create user accounts (silent — no emails) + save bank accounts
+    const passwordHash = await bcrypt.hash(defaultPassword, BCRYPT_SALT_ROUNDS);
+
+    for (let i = 0; i < dbResult.records.length; i++) {
+      const emp = dbResult.records[i];
+      const originalRecord = validRecords[i] as any;
+      const isActive = originalRecord.__isActiveEmployee !== false;
+      const bankAccount = originalRecord.__bankAccount;
+
+      // Save bank account if extracted from sheet
+      if (bankAccount?.accountNumber && bankAccount?.ifscCode && isActive) {
+        try {
+          await new EmployeeBankAccountModel({
+            tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            employeeId: emp._id,
+            bankName: bankAccount.bankName || "Unknown Bank",
+            accountNumber: bankAccount.accountNumber,
+            ifscCode: bankAccount.ifscCode,
+            accountType: bankAccount.accountType || "SALARY",
+            isPrimary: true,
+            isActive: true,
+          }).save();
+        } catch (bankErr) {
+          console.error(`Bank account save failed for ${emp.email || emp.employeeCode}:`, bankErr);
+        }
+      }
+
+      // Only create user accounts for active employees with an email
+      if (!isActive || !emp.email) continue;
+
       try {
-        const rawToken = crypto.randomBytes(32).toString("hex");
-        const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
-
         const userAccount = new UserModel({
           tenantId: new mongoose.Types.ObjectId(context.tenantId),
           email: emp.email.toLowerCase(),
-          passwordHash: null,
+          passwordHash,
           firstName: emp.firstName,
           lastName: emp.lastName,
           role: "EMPLOYEE",
           isOrgAdmin: false,
-          isActive: false,
-          isEmailVerified: false,
+          isActive: true,
+          isEmailVerified: true,
+          requiresPasswordReset: true,   // forced password change on first login
           branchIds: [emp.branchId],
           employeeId: emp._id,
-          accountActivationToken: hashedToken,
-          accountActivationExpires: new Date(Date.now() + 72 * 60 * 60 * 1000),
         });
-
         await userAccount.save();
 
-        const activationUrl = `${env.frontendUrl}/activate-account?token=${rawToken}`;
-        emailService.sendEmail(
-          emp.email,
-          `${emp.firstName} ${emp.lastName}`,
-          `Welcome to HRMS — Activate your account`,
-          `
-          <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-            <h2>Welcome to the team, ${emp.firstName}!</h2>
-            <p>Your HRMS account has been created. Click below to set your password.</p>
-            <a href="${activationUrl}"
-               style="display:inline-block; padding:12px 28px; background:#2886CE;
-                      color:white; text-decoration:none; border-radius:4px; font-weight:bold;">
-              Activate My Account
-            </a>
-            <p style="color:#888; font-size:12px; margin-top:24px;">
-              This link expires in 72 hours.
-            </p>
-          </div>
-          `
-        ).catch(() => { });
-
+        if (sendWelcomeEmail) {
+          emailService.sendEmail(
+            emp.email,
+            `${emp.firstName} ${emp.lastName}`,
+            `Welcome to HRMS — Your account is ready`,
+            `<div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
+              <h2>Welcome, ${emp.firstName}!</h2>
+              <p>Your HRMS account has been created.</p>
+              <p>Login with your official email and the temporary password shared by your HR team.</p>
+              <p>You will be prompted to set a new password on first login.</p>
+            </div>`
+          ).catch(() => {});
+        }
       } catch (userError) {
         console.error(`Failed to create user account for ${emp.email}:`, userError);
       }
 
-      // Recalculate profile completion async
-      recalculateProfileCompletion(context.tenantId, emp._id.toString()).catch(() => { });
+      recalculateProfileCompletion(context.tenantId, emp._id.toString()).catch(() => {});
     }
 
     session.status = 'committed';
@@ -1599,6 +1647,7 @@ export class EmployeeService {
       status: session.status,
       totalRows: session.rows.length,
       insertedCount: dbResult.insertedCount,
+      defaultPassword: sendWelcomeEmail ? undefined : defaultPassword,
     };
   }
 
