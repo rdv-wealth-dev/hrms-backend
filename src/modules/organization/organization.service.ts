@@ -1,5 +1,11 @@
 import { OrganizationRepository } from "./organization.repository";
-import { UpdateOrganizationInput, UpdateModulesInput, UpdateStatutoryInput, UpdateMandatoryDocsInput } from "./organization.dto";
+import {
+  UpdateOrganizationInput,
+  UpdateModulesInput,
+  UpdateStatutoryInput,
+  UpdateMandatoryDocsInput,
+  UpdateEmployeeCodeConfigInput,
+} from "./organization.dto";
 import { RequestContext } from "../../shared/types/request-context.interface";
 import { AppError } from "../../shared/errors/app.error";
 import { parseEmployeeCountRange } from "./utils/team-size.util";
@@ -91,7 +97,7 @@ export class OrganizationService {
   // Update employee code prefix & sequence configuration
   async updateEmployeeCodeConfig(
     context: RequestContext,
-    input: { prefix: string; digits?: number; separator?: string; startSequenceNumber?: number }
+    input: UpdateEmployeeCodeConfigInput
   ) {
     const org = await this.orgRepo.findById(context.tenantId);
     if (!org) {
