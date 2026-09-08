@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { EmployeeRepository } from "../repositories/employee.repository";
-import { getNextEmployeeCode } from "../utils/employee-counter.util";
+import { getNextEmployeeCode, syncEmployeeCodeCounter } from "../utils/employee-counter.util";
 import {
   CreateEmployeeInput,
   UpdateEmployeeInput,
@@ -1274,6 +1274,10 @@ export class EmployeeService {
     // Bulk insert employee records
     const dbResult = await this.empRepo.bulkCreate(context, cleanRecords);
 
+    // Sync employee code counter so subsequent manual employee creations don't collide with imported codes
+    const importedCodes = dbResult.records.map((e: any) => e.employeeCode).filter(Boolean);
+    await syncEmployeeCodeCounter(context.tenantId, importedCodes);
+
     // Post-insert: create user accounts + save bank accounts
     const passwordHash = await bcrypt.hash(defaultPassword, BCRYPT_SALT_ROUNDS);
 
@@ -1571,6 +1575,10 @@ export class EmployeeService {
     });
 
     const dbResult = await this.empRepo.bulkCreate(context, cleanValidRecords);
+
+    // Sync employee code counter so subsequent manual employee creations don't collide with imported codes
+    const importedCodes = dbResult.records.map((e: any) => e.employeeCode).filter(Boolean);
+    await syncEmployeeCodeCounter(context.tenantId, importedCodes);
 
     // Post-insert: create user accounts (silent — no emails) + save bank accounts
     const passwordHash = await bcrypt.hash(defaultPassword, BCRYPT_SALT_ROUNDS);

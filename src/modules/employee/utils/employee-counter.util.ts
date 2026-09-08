@@ -27,7 +27,7 @@ export const CounterModel = mongoose.model("Counter", CounterSchema);
  * Extracts the highest numeric suffix from existing employee codes matching a prefix.
  * e.g. If DB contains "RVG011", "RVG009", "RVG10", returns 11.
  */
-async function findMaxExistingSequenceForPrefix(
+export async function findMaxExistingSequenceForPrefix(
   tenantId: string,
   prefix: string
 ): Promise<number> {
@@ -54,6 +54,51 @@ async function findMaxExistingSequenceForPrefix(
   }
 
   return maxSeq;
+}
+
+/**
+ * Synchronizes the sequence counter for one or more prefixes with the highest
+ * existing employee code numbers in the database.
+ * Call this after bulk imports or when preserved employee codes are saved.
+ */
+export async function syncEmployeeCodeCounter(
+  tenantId: string,
+  prefixesOrCodes?: string | string[]
+): Promise<void> {
+  const org = await OrganizationModel.findById(tenantId).select("employeeCodeConfig").lean();
+  const defaultPrefix = (org?.employeeCodeConfig?.prefix || "EMP").trim().toUpperCase();
+
+  const prefixesToSync = new Set<string>([defaultPrefix]);
+
+  if (prefixesOrCodes) {
+    const list = Array.isArray(prefixesOrCodes) ? prefixesOrCodes : [prefixesOrCodes];
+    for (const item of list) {
+      if (!item) continue;
+      const trimmed = String(item).trim().toUpperCase();
+      // Extract alphabetic prefix (e.g. "RVG" from "RVG001", "EMP" from "EMP-102")
+      const match = trimmed.match(/^([A-Z]+)[-_]?\d+$/i);
+      if (match && match[1]) {
+        prefixesToSync.add(match[1].toUpperCase());
+      } else if (/^[A-Z]+$/i.test(trimmed)) {
+        prefixesToSync.add(trimmed);
+      }
+    }
+  }
+
+  for (const prefix of prefixesToSync) {
+    const maxExisting = await findMaxExistingSequenceForPrefix(tenantId, prefix);
+    if (maxExisting > 0) {
+      const sequenceKey = `empCode_${prefix}`;
+      await CounterModel.findOneAndUpdate(
+        {
+          tenantId: new mongoose.Types.ObjectId(tenantId),
+          sequenceName: sequenceKey,
+        },
+        { $max: { seq: maxExisting } },
+        { upsert: true }
+      );
+    }
+  }
 }
 
 /**
@@ -127,6 +172,20 @@ export async function getNextEmployeeCode(
 
     if (!codeExists) {
       return candidateCode;
+    }
+
+    // Self-healing: if collision detected on first attempt, immediately sync counter to current DB max
+    if (attempts === 1) {
+      const maxExisting = await findMaxExistingSequenceForPrefix(tenantId, prefix);
+      if (maxExisting >= seq) {
+        await CounterModel.updateOne(
+          {
+            tenantId: new mongoose.Types.ObjectId(tenantId),
+            sequenceName: sequenceKey,
+          },
+          { $max: { seq: maxExisting } }
+        );
+      }
     }
   }
 
