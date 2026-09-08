@@ -715,13 +715,202 @@ Populated from `Highest Education` column (e.g. `BE`, `B.Com`, `MBA`).
 
 ---
 
-## 🏁 Summary Checklist for Frontend Developer
+## 📧 14. Email Notification Control & Zero-Spam Strategy (UI Implementation)
 
-- [ ] Connect Import Dialog to `POST /api/v1/employees/bulk-import` (or Wizard endpoints).
-- [ ] Show temporary password copy banner (`Welcome@2026`) when import completes with `sendWelcomeEmail=false`.
-- [ ] Handle `requiresPasswordReset: true` in Login handler ➔ redirect to `/auth/change-password`.
-- [ ] Wire `/auth/change-password` form to `POST /api/v1/auth/change-password`.
-- [ ] In Employee Directory, separate **Active Workforce** and **Ex-Employees / Resigned** using `?status=ACTIVE` and `?status=RESIGNED`.
-- [ ] Hide/disable "Send Login Credentials", "Attendance", and "Payroll" actions for Ex-Employees.
-- [ ] If email is `@archive.local`, display `—` (dash) instead of showing the synthetic email.
+A common fear of HR admins during bulk import is:  
+> *"If I upload a sheet with 200 employees right now, will the system suddenly spam 200 welcome emails into everyone's inbox before we are even ready?"*
+
+The answer is **NO**. By default, the system imports **100% silently with ZERO emails**. Here is how the frontend developer must implement this control.
+
+---
+
+### 🎛️ 1. UI Checkbox Design
+In the Bulk Import modal or wizard commit screen, provide a checkbox that is **UNCHECKED by default**:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  Import Options                                                        │
+│                                                                        │
+│  [ ] Send welcome emails with login credentials                        │
+│      ℹ️ Leave unchecked (recommended) to import silently. Active       │
+│         employees can log in using default password "Welcome@2026"     │
+│         and will be prompted to set their own password on first login. │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 📤 2. How Frontend Sends the Parameter
+
+#### A. In Direct Import (`POST /api/v1/employees/bulk-import` — `multipart/form-data`):
+```typescript
+const formData = new FormData();
+formData.append("file", selectedFile);
+// Explicitly pass boolean (or omit to let backend default to false)
+formData.append("sendWelcomeEmail", String(sendWelcomeEmail)); // "false" or "true"
+```
+
+#### B. In Wizard Commit (`POST /api/v1/employees/import/:sessionId/commit` — `application/json`):
+```json
+{
+  "sendWelcomeEmail": false,
+  "defaultPassword": "Welcome@2026"
+}
+```
+
+---
+
+### 🔄 3. Backend Response Behavior Based on Checkbox
+
+The backend adjusts its response based on `sendWelcomeEmail`:
+
+| Scenario | `sendWelcomeEmail` | Emails Sent | Returned `defaultPassword` | What Frontend Must Show |
+|---|---|---|---|---|
+| **Default (Recommended)** | `false` | **0 Emails** (Silent) | `"Welcome@2026"` | Show green success banner with **Copy Password button** so HR can share it internally via Slack/WhatsApp/memo. |
+| **Explicit Opt-in** | `true` | **Emails Sent** to active employees | `undefined` | Show message: *"Welcome emails with account setup instructions have been sent to all active employees."* |
+
+#### Sample Response when `sendWelcomeEmail = false` (Default):
+```json
+{
+  "success": true,
+  "message": "Bulk import processed successfully",
+  "data": {
+    "totalProcessed": 150,
+    "insertedCount": 148,
+    "failedCount": 2,
+    "defaultPassword": "Welcome@2026"
+  }
+}
+```
+👉 Notice `defaultPassword: "Welcome@2026"` is present.
+
+#### Sample Response when `sendWelcomeEmail = true`:
+```json
+{
+  "success": true,
+  "message": "Bulk import processed successfully",
+  "data": {
+    "totalProcessed": 150,
+    "insertedCount": 148,
+    "failedCount": 2,
+    "defaultPassword": null
+  }
+}
+```
+👉 Notice `defaultPassword` is omitted because users got their email directly.
+
+---
+
+### 🚫 4. Ex-Employees / Inactive Records: Always ZERO Emails
+Regardless of whether the HR admin checks the box or leaves it unchecked:
+- **Ex-employees / Resigned employees NEVER receive any email.**
+- The backend completely skips account creation and email sending for inactive records:
+  ```typescript
+  if (!isActive || !emp.email || emp.email.endsWith("@archive.local")) continue;
+  ```
+- Ex-employees are preserved safely in the database without any risk of getting unwanted emails.
+
+---
+
+### 💻 5. Complete React Component Example
+
+```tsx
+import React, { useState } from "react";
+import axios from "axios";
+
+export function BulkImportModal({ onClose, onSuccess }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [sendWelcomeEmail, setSendWelcomeEmail] = useState<boolean>(false); // DEFAULT FALSE!
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [result, setResult] = useState<any>(null);
+
+  const handleUpload = async () => {
+    if (!file) return;
+    setIsLoading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("sendWelcomeEmail", String(sendWelcomeEmail));
+
+    try {
+      const res = await axios.post("/api/v1/employees/bulk-import", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setResult(res.data.data);
+      if (onSuccess) onSuccess(res.data.data);
+    } catch (err) {
+      alert(err.response?.data?.message || "Import failed");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-container">
+      <h3>Bulk Import Employees</h3>
+
+      {!result ? (
+        <>
+          <input 
+            type="file" 
+            accept=".xlsx,.csv" 
+            onChange={(e) => setFile(e.target.files?.[0] || null)} 
+          />
+
+          {/* EMAIL CONTROL CHECKBOX - DEFAULT FALSE */}
+          <div className="checkbox-group" style={{ margin: "16px 0" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={sendWelcomeEmail}
+                onChange={(e) => setSendWelcomeEmail(e.target.checked)}
+              />
+              <span style={{ fontWeight: 500 }}>Send welcome emails with login credentials</span>
+            </label>
+            <p style={{ fontSize: "12px", color: "#666", margin: "4px 0 0 24px" }}>
+              Leave unchecked to import silently without emailing employees. Active employees can log in with temporary password "Welcome@2026" and will be forced to change it on first login.
+            </p>
+          </div>
+
+          <button onClick={handleUpload} disabled={!file || isLoading}>
+            {isLoading ? "Importing..." : "Upload & Import"}
+          </button>
+        </>
+      ) : (
+        <div className="success-banner">
+          <h4>✅ {result.insertedCount} Employees Imported</h4>
+          
+          {/* If silent import, show temporary password to HR */}
+          {result.defaultPassword && (
+            <div style={{ background: "#f0fdf4", padding: "12px", borderRadius: "6px", margin: "12px 0" }}>
+              <p style={{ margin: 0, fontSize: "14px", color: "#166534" }}>
+                Temporary Password for Active Users: <strong>{result.defaultPassword}</strong>
+              </p>
+              <button onClick={() => navigator.clipboard.writeText(result.defaultPassword)}>
+                Copy Password
+              </button>
+            </div>
+          )}
+
+          <button onClick={onClose}>Done</button>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## 🏁 15. Summary Checklist for Frontend Developer
+
+- [ ] **Import Modal:** Add file uploader supporting `.xlsx` and `.csv`.
+- [ ] **Email Checkbox:** Add `[ ] Send welcome emails` checkbox (**default: unchecked / false**).
+- [ ] **Success Banner:** When `result.defaultPassword` is returned, show copyable password banner (`Welcome@2026`).
+- [ ] **Login Interceptor:** If login response has `requiresPasswordReset: true`, redirect immediately to `/auth/change-password`.
+- [ ] **Change Password Form:** Wire to `POST /api/v1/auth/change-password` with standard 8+ char regex validation.
+- [ ] **Directory Tabs:** Filter Active (`?status=ACTIVE`) vs Resigned (`?status=RESIGNED`).
+- [ ] **Ex-Employee Actions:** Hide/disable "Send Credentials", "Mark Attendance", and "Monthly Payroll" for inactive/resigned staff.
+- [ ] **Archive Email:** If email ends with `@archive.local`, render `—` (dash) instead of showing the synthetic address.
+- [ ] **Sub-Documents:** Display auto-extracted bank account, emergency contacts, addresses, and education in the employee profile tabs.
 

@@ -1231,29 +1231,6 @@ export async function parseImportFile(
     }
     if (!statutoryValid) continue;
 
-    // ── Employee code: preserve from sheet or auto-generate
-    let employeeCode: string;
-    if (row.preservedEmployeeCode) {
-      if (existingEmpCodes.has(row.preservedEmployeeCode)) {
-        warnings.push({ rowNumber, email: emailClean, reason: `Employee code "${row.preservedEmployeeCode}" already exists — a new code will be auto-generated`, severity: "WARNING" });
-        employeeCode = isActiveEmployee
-          ? await getNextEmployeeCode(context.tenantId)
-          : await getNextEmployeeCode(context.tenantId, exPrefix);
-      } else {
-        employeeCode = row.preservedEmployeeCode;
-        existingEmpCodes.add(employeeCode); // prevent duplicate within same import
-      }
-    } else {
-      // Active employees get org prefix (e.g. RVG001). Inactive get archive prefix (e.g. RVG-EX-001) so active sequence is never burned!
-      employeeCode = isActiveEmployee
-        ? await getNextEmployeeCode(context.tenantId)
-        : await getNextEmployeeCode(context.tenantId, exPrefix);
-    }
-
-    if (!finalEmail) {
-      finalEmail = `${employeeCode.toLowerCase().replace(/[^a-z0-9]/g, "")}@archive.local`;
-    }
-
     // ── Custom fields — resolve against registered custom field keys
     const resolvedCustomFields: Record<string, any> = {};
     if (row.customFields) {
@@ -1269,6 +1246,43 @@ export async function parseImportFile(
           resolvedCustomFields[matchedKey || rawKey] = rawVal;
         }
       }
+    }
+
+    // ── Employee code: preserve only if matching Org Admin's prefix, else generate sequentially
+    let employeeCode: string;
+    const sheetCode = row.preservedEmployeeCode ? String(row.preservedEmployeeCode).trim().toUpperCase() : "";
+    const matchesOrgPrefix = sheetCode && sheetCode.startsWith(orgPrefix);
+
+    if (sheetCode && matchesOrgPrefix) {
+      if (existingEmpCodes.has(sheetCode)) {
+        warnings.push({ rowNumber, email: emailClean, reason: `Employee code "${sheetCode}" already exists — a new code will be auto-generated`, severity: "WARNING" });
+        employeeCode = isActiveEmployee
+          ? await getNextEmployeeCode(context.tenantId)
+          : await getNextEmployeeCode(context.tenantId, exPrefix);
+      } else {
+        employeeCode = sheetCode;
+        existingEmpCodes.add(employeeCode); // prevent duplicate within same import
+      }
+    } else {
+      // Either no code in sheet, or sheet code does NOT match Org Admin's configured prefix (e.g. "jjh0024" vs "RVG")
+      // System auto-generates sequentially one-by-one according to Org Admin's configuration!
+      employeeCode = isActiveEmployee
+        ? await getNextEmployeeCode(context.tenantId)
+        : await getNextEmployeeCode(context.tenantId, exPrefix);
+
+      if (sheetCode && !matchesOrgPrefix) {
+        warnings.push({
+          rowNumber,
+          email: emailClean,
+          reason: `Sheet code "${sheetCode}" does not match organization prefix "${orgPrefix}" — replaced with official sequence code "${employeeCode}" (legacy code preserved as reference)`,
+          severity: "WARNING"
+        });
+        resolvedCustomFields["legacyEmployeeCode"] = sheetCode;
+      }
+    }
+
+    if (!finalEmail) {
+      finalEmail = `${employeeCode.toLowerCase().replace(/[^a-z0-9]/g, "")}@archive.local`;
     }
 
     // ── Build employee document
