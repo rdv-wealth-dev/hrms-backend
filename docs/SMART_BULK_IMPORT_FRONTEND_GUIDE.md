@@ -408,3 +408,138 @@ Users do not need to follow strict column names! Any of the following synonyms a
 | `400 Bad Request` | Zero valid rows found | Display modal with the list of validation errors from `response.data.errors`. |
 | `403 Forbidden` | Workspace team size limit exceeded | Show Upgrade Plan modal: *"Bulk import exceeds your active user limit (max allowed: X). Please upgrade your subscription tier."* |
 | `401 Unauthorized`| Expired / invalid JWT token | Redirect user to Login. |
+
+---
+
+## 🔐 10. First-Time Login & Forced Password Change Flow (Frontend Implementation)
+
+Here is the exact step-by-step logic and API contracts for how newly imported employees log in for the first time and set their own password.
+
+### 🔄 Flow Diagram
+```
+Import Finished
+   ↓
+HR shares: "Welcome@2026" (or internal memo)
+   ↓
+Employee goes to Login Screen
+   ↓
+POST /api/v1/auth/login { email, password: "Welcome@2026" }
+   ↓
+Backend Response: requiresPasswordReset = true
+   ↓
+Frontend checks: if (data.requiresPasswordReset)
+   ├── Store accessToken & refreshToken
+   └── Redirect immediately to: /change-password (Force Screen)
+   ↓
+Employee enters:
+   - Current Password: "Welcome@2026"
+   - New Password: "MySecretPassword@2026"
+   - Confirm Password: "MySecretPassword@2026"
+   ↓
+POST /api/v1/auth/change-password
+   ↓
+Backend sets: user.requiresPasswordReset = false
+   ↓
+Frontend redirects to: /dashboard (Full Access Granted 🎉)
+```
+
+---
+
+### Step A: Employee Logs In
+#### `POST /api/v1/auth/login`
+#### Request Payload
+```json
+{
+  "email": "faiz@redvisiontech.com",
+  "password": "Welcome@2026"
+}
+```
+
+#### Response (`200 OK`)
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+    "requiresPasswordReset": true,
+    "onboardingCompleted": true,
+    "user": {
+      "id": "66dd8f72a420658428d0001",
+      "email": "faiz@redvisiontech.com",
+      "firstName": "Faiz",
+      "lastName": "Ahmad Khan",
+      "role": "EMPLOYEE"
+    }
+  }
+}
+```
+
+---
+
+### Step B: Frontend Auth State / Router Guard Example
+```typescript
+// Login Handler in React / Next.js
+async function handleLogin(credentials) {
+  const res = await axios.post("/api/v1/auth/login", credentials);
+  const { accessToken, refreshToken, requiresPasswordReset } = res.data.data;
+
+  // 1. Store tokens
+  localStorage.setItem("accessToken", accessToken);
+  localStorage.setItem("refreshToken", refreshToken);
+
+  // 2. Intercept forced password reset
+  if (requiresPasswordReset) {
+    // Redirect to forced password change screen (block dashboard access)
+    navigate("/auth/change-password?firstTime=true");
+    return;
+  }
+
+  // 3. Normal login -> proceed to dashboard
+  navigate("/dashboard");
+}
+```
+
+---
+
+### Step C: Employee Sets Their Own Password
+#### `POST /api/v1/auth/change-password`
+
+#### Headers
+```http
+Authorization: Bearer <accessToken>
+Content-Type: application/json
+```
+
+#### Request Payload
+```json
+{
+  "currentPassword": "Welcome@2026",
+  "newPassword": "NewPassword@123",
+  "confirmPassword": "NewPassword@123"
+}
+```
+
+#### Validation Rules for `newPassword`:
+- Minimum **8 characters**
+- Must contain at least 1 uppercase letter (`A-Z`)
+- Must contain at least 1 lowercase letter (`a-z`)
+- Must contain at least 1 number (`0-9`)
+- Must contain at least 1 special character (e.g. `@$!%*?&#`)
+- `confirmPassword` must match `newPassword`
+
+#### Success Response (`200 OK`)
+```json
+{
+  "success": true,
+  "message": "Password changed successfully",
+  "data": {
+    "message": "Password changed successfully"
+  }
+}
+```
+
+> [!TIP]
+> After this request succeeds, backend automatically updates `user.requiresPasswordReset = false`. Frontend should show a toast: *"Password updated successfully! Welcome to HRMS."* and navigate to `/dashboard`.
+
