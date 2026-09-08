@@ -68,6 +68,15 @@ export const OnboardingStep1Dto = z.object({
     countryCode: z.string().length(2).toUpperCase(),
     zip: z.string().trim().min(4).max(10),
   }).optional(),
+  permanentAddress: z.object({
+    addressLine1: safeStringSchema(1, 200),
+    addressLine2: safeStringSchema(0, 200).optional(),
+    city: safeStringSchema(1, 100),
+    state: safeStringSchema(1, 100),
+    countryCode: z.string().length(2).toUpperCase(),
+    zip: z.string().trim().min(4).max(10),
+  }).optional(),
+  sameAsCurrentAddress: z.boolean().optional().default(false),
   emergencyContact: z.array(z.object({
     name: safeStringSchema(2, 100),
     relationship: safeStringSchema(2, 50),

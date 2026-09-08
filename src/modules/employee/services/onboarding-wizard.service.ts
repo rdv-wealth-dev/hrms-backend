@@ -42,17 +42,26 @@ export class OnboardingWizardService {
     return employee;
   }
 
-  // Guards every step — you cannot skip ahead. Re-doing an already-completed
-  // step is allowed (e.g. correcting a typo in step 1 after already on step 3).
+  // Guards every step — you cannot skip ahead without completing prior steps.
+  // Re-doing an already-completed step or navigating backwards is freely allowed.
   private assertStepAllowed(employee: any, requestedStep: number) {
     if (employee.onboardingComplete) {
       throw new AppError("Onboarding is already complete", 400);
     }
-    if (requestedStep > employee.onboardingStep) {
-      throw new AppError(
-        `You must complete step ${employee.onboardingStep} before accessing step ${requestedStep}`,
-        403
-      );
+    if (requestedStep === 1) return;
+
+    const steps = employee.onboardingStepsCompleted || {};
+    if (requestedStep === 2 && !steps.personalDetails) {
+      throw new AppError("You must complete Step 1 (Personal Details) before accessing Step 2", 403);
+    }
+    if (requestedStep === 3 && (!steps.personalDetails || !steps.familyDetails)) {
+      throw new AppError("You must complete Step 1 and Step 2 before accessing Step 3", 403);
+    }
+    if (requestedStep === 4 && (!steps.personalDetails || !steps.familyDetails || !steps.bankDetails)) {
+      throw new AppError("You must complete Steps 1, 2, and 3 before accessing Step 4", 403);
+    }
+    if (requestedStep === 5 && (!steps.personalDetails || !steps.familyDetails || !steps.bankDetails || !steps.documents)) {
+      throw new AppError("You must complete all 4 steps before accessing Step 5 (Final Review)", 403);
     }
   }
 
@@ -265,17 +274,32 @@ export class OnboardingWizardService {
     const employee = await this.resolveOwnEmployee(context);
     const current = stepToSkip || employee.onboardingStep || 1;
 
+    if (current === 1) {
+      throw new AppError("Step 1 (Personal Details) is required and cannot be skipped.", 400);
+    }
     if (current >= 5) {
       throw new AppError("Step 5 (Final Review) cannot be skipped. Complete all steps to finish onboarding.", 400);
     }
 
+    if (!employee.onboardingStepsCompleted) {
+      employee.onboardingStepsCompleted = {
+        personalDetails: false,
+        familyDetails: false,
+        bankDetails: false,
+        documents: false,
+        reviewed: false,
+      };
+    }
+
     if (current === 2) {
       employee.onboardingStepsCompleted.familyDetails = true;
+    } else if (current === 3) {
+      employee.onboardingStepsCompleted.bankDetails = true;
     } else if (current === 4) {
       employee.onboardingStepsCompleted.documents = true;
     }
 
-    const nextStep = Math.min(current + 1, 4);
+    const nextStep = Math.min(current + 1, 5);
     employee.onboardingStep = nextStep;
     await employee.save();
 
@@ -297,16 +321,7 @@ export class OnboardingWizardService {
       throw new AppError("Invalid wizard step. Must be between 1 and 5.", 400);
     }
 
-    if (targetStep === 5) {
-      const steps = employee.onboardingStepsCompleted;
-      const allDone = !!(steps?.personalDetails && steps?.familyDetails && steps?.bankDetails && steps?.documents);
-      if (!allDone) {
-        throw new AppError(
-          "Cannot access Step 5 (Final Review). Please complete all previous 4 steps first.",
-          403
-        );
-      }
-    }
+    this.assertStepAllowed(employee, targetStep);
 
     employee.onboardingStep = targetStep;
     await employee.save();
@@ -406,6 +421,10 @@ export class OnboardingWizardService {
     if (religion !== undefined) employee.religion = religion as any;
     employee.phone = phone;
     employee.currentAddress = currentAddress as any;
+    const permanentAddress = input.sameAsCurrentAddress
+      ? currentAddress
+      : (input.permanentAddress ?? employee.permanentAddress);
+    if (permanentAddress !== undefined) employee.permanentAddress = permanentAddress as any;
     employee.emergencyContacts = emergencyContacts as any;
 
     // Save optional document numbers, parents & previous employment details
@@ -434,6 +453,9 @@ export class OnboardingWizardService {
     }
 
     employee.onboardingStepsCompleted.personalDetails = true;
+    if (employee.onboardingStep === 1) {
+      employee.onboardingStep = 2;
+    }
     await employee.save();
 
     // Recalculate wizard step dynamically based on completed sections
@@ -469,6 +491,9 @@ export class OnboardingWizardService {
     }
 
     employee.onboardingStepsCompleted.familyDetails = true;
+    if (employee.onboardingStep === 2) {
+      employee.onboardingStep = 3;
+    }
     await employee.save();
 
     // Recalculate wizard step dynamically
@@ -527,6 +552,9 @@ export class OnboardingWizardService {
     });
 
     employee.onboardingStepsCompleted.bankDetails = true;
+    if (employee.onboardingStep === 3) {
+      employee.onboardingStep = 4;
+    }
     await employee.save();
 
     // Recalculate wizard step dynamically
@@ -637,6 +665,7 @@ export class OnboardingWizardService {
     employee.onboardingStepsCompleted.reviewed = true;
     employee.onboardingComplete = true;
     employee.isProfileComplete = true; // ties into the existing dashboard gate
+    employee.onboardingStep = 5;
 
     await employee.save();
     return {

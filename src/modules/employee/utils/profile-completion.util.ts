@@ -76,28 +76,29 @@ export async function recalculateProfileCompletion(
   employee.profileCompletion = { personalDetails, address, emergencyContact, bankDetails, mandatoryDocs };
   employee.isProfileComplete = isProfileComplete;
 
-  // Onboarding step flags (keep in sync with legacy)
-  employee.onboardingStepsCompleted = {
-    personalDetails,
-    familyDetails,
-    bankDetails,
-    documents: mandatoryDocs,
-    reviewed: employee.onboardingStepsCompleted?.reviewed ?? false, // set by HR
-  };
-
-  // Auto-resolve onboarding step based on first incomplete step
-  if (!employee.onboardingComplete) {
-    const steps = employee.onboardingStepsCompleted;
-    if (!steps.personalDetails) {
+  // Preserve actual wizard progress — do NOT overwrite wizard steps from raw DB counts!
+  if (employee.onboardingComplete) {
+    employee.onboardingStepsCompleted = {
+      personalDetails: true,
+      familyDetails: true,
+      bankDetails: true,
+      documents: true,
+      reviewed: true,
+    };
+    employee.onboardingStep = 5;
+  } else {
+    if (!employee.onboardingStepsCompleted) {
+      employee.onboardingStepsCompleted = {
+        personalDetails: false,
+        familyDetails: false,
+        bankDetails: false,
+        documents: false,
+        reviewed: false,
+      };
+    }
+    // Ensure onboardingStep defaults to 1 and stays within 1-5
+    if (!employee.onboardingStep || employee.onboardingStep < 1 || employee.onboardingStep > 5) {
       employee.onboardingStep = 1;
-    } else if (!steps.familyDetails) {
-      employee.onboardingStep = 2;
-    } else if (!steps.bankDetails) {
-      employee.onboardingStep = 3;
-    } else if (!steps.documents) {
-      employee.onboardingStep = 4;
-    } else {
-      employee.onboardingStep = 5;
     }
   }
 
