@@ -543,3 +543,185 @@ Content-Type: application/json
 > [!TIP]
 > After this request succeeds, backend automatically updates `user.requiresPasswordReset = false`. Frontend should show a toast: *"Password updated successfully! Welcome to HRMS."* and navigate to `/dashboard`.
 
+---
+
+## 👥 11. Ex-Employees & Inactive Records — Complete Frontend UX Guide
+
+When HR imports an existing company sheet, it usually contains **both current active staff and past ex-employees** (resigned, terminated, contract ended). Here is exactly how the frontend must handle them to ensure a clean, professional user experience.
+
+### 🗂️ 1. Directory Tabs Recommendation
+Do **not** mix active and inactive employees in one table by default. Provide clear tab filters in the Employee Directory:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  [ Active Workforce (142) ]   [ Ex-Employees / Resigned (68) ]   [ All ]│
+├────────────────────────────────────────────────────────────────────────┤
+│  🔍 Search by name, code, dept...     Filter: [ Department ▼ ] [ Branch ▼ ] │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+#### API Calls for Tabs:
+- **Active Workforce Tab:**
+  ```http
+  GET /api/v1/employees?status=ACTIVE&pageNumber=1&pageSize=20
+  ```
+- **Ex-Employees / Resigned Tab:**
+  ```http
+  GET /api/v1/employees?status=RESIGNED&pageNumber=1&pageSize=20
+  ```
+  *(Or filter by `status=INACTIVE` / `status=TERMINATED` via a sub-dropdown)*
+- **All Records Tab:**
+  ```http
+  GET /api/v1/employees?pageNumber=1&pageSize=20
+  ```
+
+---
+
+### 🏷️ 2. Status Badges & Color Scheme
+Use distinct visual badges in your table and profile headers:
+
+| Status Value | Meaning | Recommended Badge Style |
+|---|---|---|
+| `ACTIVE` | Currently working | 🟢 `bg-emerald-50 text-emerald-700 border-emerald-200` |
+| `ON_LEAVE` | Active, on extended leave | 🟡 `bg-amber-50 text-amber-700 border-amber-200` |
+| `RESIGNED` | Left company voluntarily | ⚪ `bg-slate-100 text-slate-700 border-slate-300` |
+| `TERMINATED` | Relieved / terminated | 🔴 `bg-rose-50 text-rose-700 border-rose-200` |
+| `INACTIVE` | Other inactive status | ⚪ `bg-gray-100 text-gray-600 border-gray-200` |
+
+---
+
+### 🆔 3. Employee Code Display for Ex-Employees
+There are two kinds of employee codes for ex-employees:
+1. **Preserved Historical Codes:** If the Excel sheet had a code (e.g. `20120813F10001` or `OLD-104`), the backend preserves it as-is. Show a secondary tag:  
+   `20120813F10001` <span style="font-size:10px; color:#888;">(Historical)</span>
+2. **Auto-Generated Archive Codes:** If the Excel sheet had **no code**, the backend assigns:  
+   **`RVG-EX-001`**, **`RVG-EX-002`**, etc. Show this code clearly so HR can identify it as an archived entry.
+
+---
+
+### 📧 4. Archive Email Handling in UI
+If an inactive employee had no email in the spreadsheet, the backend assigns a synthetic identifier:  
+`rvg-ex-001@archive.local` (needed solely for internal database integrity).
+
+> [!IMPORTANT]
+> **Frontend Rule for Emails:**  
+> If `employee.email` ends with `@archive.local`, **do not display this fake email to the user**.  
+> Display: `—` (dash) or a badge: *"No Email on File"*.
+
+```typescript
+function formatEmployeeEmail(email?: string): string {
+  if (!email || email.endsWith("@archive.local")) {
+    return "—";
+  }
+  return email;
+}
+```
+
+---
+
+### 🚫 5. Disabled / Hidden Actions for Ex-Employees
+In the employee table action menu (the `...` three-dots menu) and profile page:
+
+| Action | Active Employee | Ex-Employee (`RESIGNED` / `INACTIVE`) |
+|---|---|---|
+| **View Full Profile** | ✅ Allowed | ✅ Allowed (View historical records) |
+| **Download Relieving / Experience Letter** | ❌ (Usually for ex) | ✅ Allowed |
+| **Full & Final Settlement (FnF)** | ❌ | ✅ Allowed |
+| **Send Login Credentials / Reset Email** | ✅ Allowed | 🚫 **HIDE / DISABLE** (No login account exists!) |
+| **Mark Daily Attendance** | ✅ Allowed | 🚫 **HIDE / DISABLE** |
+| **Include in Monthly Payroll Cycle** | ✅ Allowed | 🚫 **HIDE / DISABLE** |
+| **Edit Role / Assign Reporting Manager** | ✅ Allowed | 🚫 **HIDE / DISABLE** |
+
+---
+
+### 📄 6. Sample Ex-Employee Record Returned by API
+When fetching an ex-employee (`GET /api/v1/employees/:id` or `GET /api/v1/employees?status=RESIGNED`):
+
+```json
+{
+  "_id": "66dd8f72a420658428d0005",
+  "employeeCode": "RVG-EX-001",
+  "firstName": "Arpit",
+  "lastName": "Jain",
+  "email": "arpit@redvisiontech.com",
+  "phone": "9993140310",
+  "status": "RESIGNED",
+  "isActive": false,
+  "joiningDate": "2012-08-13T00:00:00.000Z",
+  "exitDate": "2024-05-31T00:00:00.000Z",
+  "exitReason": "For better Opportunity",
+  "department": { "name": "Sales" },
+  "designation": { "name": "Team Leader - Sales" },
+  "branch": { "name": "Indore Head Office" },
+  "gender": "MALE",
+  "bloodGroup": "O+",
+  "maritalStatus": "MARRIED",
+  "pan": "APIPJ5886N",
+  "aadhaar": "666000000000",
+  "emergencyContacts": [
+    {
+      "name": "Shri Rajkumar Jain",
+      "relationship": "Father",
+      "phone": "9993663646"
+    }
+  ],
+  "bankAccounts": [
+    {
+      "bankName": "HDFC Bank",
+      "accountNumber": "50100012345678",
+      "ifscCode": "HDFC0000036",
+      "accountType": "SALARY"
+    }
+  ]
+}
+```
+
+---
+
+## ➕ 12. Manual Employee Creation & Counter Guarantee ("+ Add Employee")
+
+When HR adds a new active employee via the manual form (`POST /api/v1/employees`):
+
+1. **Frontend does NOT need to supply an employee code.**  
+   The backend automatically calculates the next sequential code (`getNextEmployeeCode`).
+2. **Guaranteed Gap-Free & Collision-Free:**  
+   Because the bulk import synced the counter to the highest active imported code (e.g. `RVG150`), and inactive employees without codes were routed to `RVG-EX-001`:
+   - The very next employee added via UI is guaranteed to receive: **`RVG151`**.
+   - No duplicate key errors.
+   - No sequence jumping.
+
+---
+
+## 📑 13. Sub-Documents & Auto-Extracted Data (Profile View)
+
+When viewing an imported employee's profile, the frontend can display data that was previously ignored by older imports:
+
+### 1. Bank Details (`GET /api/v1/employees/:id/bank-accounts`)
+Automatically populated from sheet columns (`Account Number`, `IFSC Code`, `Bank Name`).
+- Display in the **"Banking & Payroll"** tab of the profile.
+- Shows primary salary bank account with masked account number (e.g. `••••••••5678`).
+
+### 2. Emergency Contacts (`employee.emergencyContacts`)
+Automatically populated from sheet columns:
+- `Father's Name` + `Father Contact` ➔ `{ name, relationship: "Father", phone }`
+- `Mother Name` + `Mother Contact` ➔ `{ name, relationship: "Mother", phone }`
+- `Spouse Name` + `Spouse Contact` ➔ `{ name, relationship: "Spouse", phone }`
+
+### 3. Addresses (`employee.currentAddress`, `employee.permanentAddress`)
+Extracted from `Current Address` and `Permanent Address` columns.
+
+### 4. Education (`employee.educationDetails`)
+Populated from `Highest Education` column (e.g. `BE`, `B.Com`, `MBA`).
+
+---
+
+## 🏁 Summary Checklist for Frontend Developer
+
+- [ ] Connect Import Dialog to `POST /api/v1/employees/bulk-import` (or Wizard endpoints).
+- [ ] Show temporary password copy banner (`Welcome@2026`) when import completes with `sendWelcomeEmail=false`.
+- [ ] Handle `requiresPasswordReset: true` in Login handler ➔ redirect to `/auth/change-password`.
+- [ ] Wire `/auth/change-password` form to `POST /api/v1/auth/change-password`.
+- [ ] In Employee Directory, separate **Active Workforce** and **Ex-Employees / Resigned** using `?status=ACTIVE` and `?status=RESIGNED`.
+- [ ] Hide/disable "Send Login Credentials", "Attendance", and "Payroll" actions for Ex-Employees.
+- [ ] If email is `@archive.local`, display `—` (dash) instead of showing the synthetic email.
+
