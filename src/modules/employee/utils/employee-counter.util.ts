@@ -115,8 +115,8 @@ export async function getNextEmployeeCode(
 ): Promise<string> {
   const org = await OrganizationModel.findById(tenantId).select("employeeCodeConfig").lean();
 
-  const basePrefix = (org?.employeeCodeConfig?.prefix || "EMP").trim().toUpperCase();
-  const prefix = (overridePrefix || basePrefix).trim().toUpperCase();
+  const basePrefix = (org?.employeeCodeConfig?.prefix || "EMP").trim().replace(/[-_]+$/, "").toUpperCase();
+  const prefix = (overridePrefix || basePrefix).trim().replace(/[-_]+$/, "").toUpperCase();
   const isExPrefix = prefix.endsWith("-EX") || prefix === "EX";
   const digits = isExPrefix ? 3 : (org?.employeeCodeConfig?.digits ?? (prefix === "EMP" ? 4 : 2));
   const separator = isExPrefix ? "-" : (org?.employeeCodeConfig?.separator ?? (prefix === "EMP" ? "-" : ""));

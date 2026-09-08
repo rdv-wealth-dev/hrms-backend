@@ -1081,9 +1081,9 @@ export async function parseImportFile(
   // Find head office / first branch as fallback
   const headOfficeBranch = branches.find((b: any) => b.isHeadOffice) || branches[0] || null;
 
-  // Org prefix configuration for employee codes (active = RVG, inactive = RVG-EX)
+  // Org prefix configuration for employee codes (dynamic: active = LOP, inactive = LOP-EX)
   const orgDoc = await OrganizationModel.findById(tenantIdObj).select("employeeCodeConfig").lean();
-  const orgPrefix = (orgDoc?.employeeCodeConfig?.prefix || "RVG").trim().toUpperCase();
+  const orgPrefix = (orgDoc?.employeeCodeConfig?.prefix || "EMP").trim().replace(/[-_]+$/, "").toUpperCase();
   const exPrefix = `${orgPrefix}-EX`;
 
   const errors: ImportError[] = [];
