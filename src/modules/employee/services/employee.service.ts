@@ -1323,10 +1323,23 @@ export class EmployeeService {
     const parsedData = await parseImportFile(context, file.buffer, fileType);
 
     if (!parsedData.validRecords.length) {
-      throw ValidationFailedError(
-        "No valid employee records found in file",
-        parsedData.errors
-      );
+      if (parsedData.errors.length > 0) {
+        throw ValidationFailedError(
+          "No valid employee records found in file",
+          parsedData.errors
+        );
+      }
+      return {
+        totalProcessed: parsedData.totalRows,
+        insertedCount: 0,
+        failedCount: 0,
+        skippedCount: parsedData.warnings.filter(w => w.reason.includes("already exists in the organization")).length || parsedData.totalRows,
+        errors: [],
+        warnings: parsedData.warnings,
+        created: parsedData.created,
+        defaultPassword: undefined,
+        message: "All employees in this file already exist in the organization. No new records to import.",
+      };
     }
 
     // Strip internal-only fields before DB insert
@@ -1480,6 +1493,7 @@ export class EmployeeService {
       totalProcessed: parsedData.totalRows,
       insertedCount: dbResult.insertedCount,
       failedCount: parsedData.errors.length,
+      skippedCount: parsedData.warnings.filter(w => w.reason.includes("already exists in the organization")).length,
       errors: parsedData.errors,
       warnings: parsedData.warnings,
       created: parsedData.created,
@@ -1614,6 +1628,21 @@ export class EmployeeService {
         status: 'error',
         action: 'skip',
         messages: [err.reason],
+      });
+    }
+
+    // Handle rows that were skipped because they already exist in the organization
+    const skippedExistingWarnings = parsedData.warnings.filter(
+      w => w.reason.includes("already exists in the organization") && !sessionRows.some(r => r.rowNumber === w.rowNumber)
+    );
+    for (const warn of skippedExistingWarnings) {
+      sessionRows.push({
+        rowNumber: warn.rowNumber,
+        rawData: {},
+        mappedData: {},
+        status: 'warning',
+        action: 'skip',
+        messages: [warn.reason],
       });
     }
 

@@ -990,10 +990,10 @@ function normalizeRow(mapped: Record<string, any>): BulkImportRow {
   // Passport
   const passportNo = mapped.passportNo ? String(mapped.passportNo).trim().toUpperCase() : undefined;
 
-  // Employee code from sheet
-  const preservedEmployeeCode = mapped.employeeCode
-    ? String(mapped.employeeCode).trim().toUpperCase()
-    : undefined;
+  // Employee code from sheet: filter out dummy placeholders like "NA", "N/A", "-", "--", "NULL", "NONE"
+  const rawCode = mapped.employeeCode ? String(mapped.employeeCode).trim().toUpperCase() : undefined;
+  const isDummyCode = !rawCode || ["NA", "N/A", "-", "--", "N.A.", "NULL", "NONE", "NOT APPLICABLE"].includes(rawCode);
+  const preservedEmployeeCode = isDummyCode ? undefined : rawCode;
 
   // Sub-documents (Layer 3)
   const bankAccount = extractBankAccount(mapped);
@@ -1236,6 +1236,14 @@ export async function parseImportFile(
   const existingEmails = new Set(existingEmployees.map(e => e.email.toLowerCase()));
   const existingEmpCodes = new Set(existingEmployees.map(e => e.employeeCode?.toUpperCase()).filter(Boolean));
 
+  // Also include any registered users in this tenant to prevent duplicate conflicts
+  const existingUsers = await UserModel
+    .find({ tenantId: tenantIdObj, isDeleted: false })
+    .select("email").lean();
+  for (const u of existingUsers) {
+    if (u.email) existingEmails.add(u.email.toLowerCase());
+  }
+
   // Custom fields map
   const activeCustomFields = await CustomFieldModel.find({
     tenantId: tenantIdObj, isDeleted: false, isActive: true,
@@ -1326,12 +1334,13 @@ export async function parseImportFile(
       });
       continue;
     }
+    // Smart Duplicate Prevention: If employee already exists in the organization, skip gracefully
     if (existingEmails.has(finalEmail)) {
-      errors.push({
+      warnings.push({
         rowNumber,
         email: finalEmail,
-        reason: `Employee with email "${finalEmail}" already exists in the system`,
-        severity: "ERROR",
+        reason: `Employee with email "${finalEmail}" already exists in the organization — skipped`,
+        severity: "WARNING",
       });
       continue;
     }
@@ -1407,11 +1416,11 @@ export async function parseImportFile(
 
     // 9. Employee Code Duplicate Check (if provided in sheet)
     if (row.preservedEmployeeCode && existingEmpCodes.has(row.preservedEmployeeCode.toUpperCase())) {
-      errors.push({
+      warnings.push({
         rowNumber,
         email: finalEmail,
-        reason: `Employee code "${row.preservedEmployeeCode}" already exists in the workspace`,
-        severity: "ERROR",
+        reason: `Employee code "${row.preservedEmployeeCode}" already exists in the organization — skipped`,
+        severity: "WARNING",
       });
       continue;
     }
