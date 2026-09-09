@@ -125,6 +125,19 @@ export const DEFAULT_ROLES = [
     ],
   },
   {
+    name: "Product Manager",
+    slug: "PRODUCT_MANAGER",
+    description: "Manages product team attendance and leave approvals",
+    isSystemRole: true,
+    permissions: [
+      "employee.read",
+      "attendance.read", "attendance.approve",
+      "leave.read", "leave.approve",
+      "department.read", "designation.read",
+      "team.read",
+    ],
+  },
+  {
     name: "Team Leader",
     slug: "TEAM_LEADER",
     description: "Leads a team — can view team members, track attendance, and approve leave",
