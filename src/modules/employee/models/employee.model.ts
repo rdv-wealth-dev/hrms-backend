@@ -120,6 +120,8 @@ export interface EmployeeDocument extends BaseDocument {
   fatherPhone?: string;
   motherName?: string;
   motherPhone?: string;
+  spouseName?: string;
+  spousePhone?: string;
   highestQualification?: QualificationLevel;
   educationDetails?: EmployeeEducation[];
   previousEmployerName?: string;
@@ -260,6 +262,8 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
     fatherPhone: { type: String, trim: true, default: null },
     motherName: { type: String, trim: true, default: null },
     motherPhone: { type: String, trim: true, default: null },
+    spouseName: { type: String, trim: true, default: null },
+    spousePhone: { type: String, trim: true, default: null },
     highestQualification: {
       type: String,
       enum: Object.values(QualificationLevel),

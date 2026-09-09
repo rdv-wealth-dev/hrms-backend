@@ -814,21 +814,53 @@ function extractBankAccount(mapped: Record<string, any>): BulkImportRow["bankAcc
 }
 
 function extractCurrentAddress(mapped: Record<string, any>): BulkImportRow["currentAddress"] | undefined {
-  const line1 = String(mapped.currentAddressLine1 ?? "").trim();
-  const city = String(mapped.currentCity ?? "").trim();
-  const state = String(mapped.currentState ?? "").trim();
-  const zip = String(mapped.currentZip ?? "").trim();
+  const line1 = String(mapped.currentAddressLine1 ?? mapped.currentAddress ?? mapped.address ?? "").trim();
+  let city = String(mapped.currentCity ?? mapped.city ?? "").trim();
+  let state = String(mapped.currentState ?? mapped.state ?? "").trim();
+  let zip = String(mapped.currentZip ?? mapped.zip ?? "").trim();
   if (!line1 && !city && !state) return undefined;
-  return { addressLine1: line1 || undefined, city: city || undefined, state: state || undefined, zip: zip || undefined };
+
+  if (line1 && (!city || !zip)) {
+    const pinMatch = line1.match(/\b(\d{6})\b/);
+    if (pinMatch && !zip) zip = pinMatch[1];
+    if (!city) {
+      const parts = line1.split(",").map(s => s.trim()).filter(Boolean);
+      city = parts.length > 1 ? parts[parts.length - (pinMatch ? 2 : 1)].replace(/\d+/g, "").trim() : "Indore";
+    }
+  }
+
+  return {
+    addressLine1: line1 || city || "Indore",
+    city: city || "Indore",
+    state: state || "Madhya Pradesh",
+    zip: zip || "452001",
+    countryCode: "IN",
+  };
 }
 
 function extractPermanentAddress(mapped: Record<string, any>): BulkImportRow["permanentAddress"] | undefined {
-  const line1 = String(mapped.permanentAddressLine1 ?? "").trim();
-  const city = String(mapped.permanentCity ?? "").trim();
-  const state = String(mapped.permanentState ?? "").trim();
-  const zip = String(mapped.permanentZip ?? "").trim();
+  const line1 = String(mapped.permanentAddressLine1 ?? mapped.permanentAddress ?? "").trim();
+  let city = String(mapped.permanentCity ?? mapped.city ?? "").trim();
+  let state = String(mapped.permanentState ?? mapped.state ?? "").trim();
+  let zip = String(mapped.permanentZip ?? mapped.zip ?? "").trim();
   if (!line1 && !city && !state) return undefined;
-  return { addressLine1: line1 || undefined, city: city || undefined, state: state || undefined, zip: zip || undefined };
+
+  if (line1 && (!city || !zip)) {
+    const pinMatch = line1.match(/\b(\d{6})\b/);
+    if (pinMatch && !zip) zip = pinMatch[1];
+    if (!city) {
+      const parts = line1.split(",").map(s => s.trim()).filter(Boolean);
+      city = parts.length > 1 ? parts[parts.length - (pinMatch ? 2 : 1)].replace(/\d+/g, "").trim() : "Indore";
+    }
+  }
+
+  return {
+    addressLine1: line1 || city || "Indore",
+    city: city || "Indore",
+    state: state || "Madhya Pradesh",
+    zip: zip || "452001",
+    countryCode: "IN",
+  };
 }
 
 function extractEmergencyContacts(mapped: Record<string, any>): BulkImportRow["emergencyContacts"] {
@@ -863,10 +895,12 @@ function extractEmergencyContacts(mapped: Record<string, any>): BulkImportRow["e
 function extractEducationDetails(mapped: Record<string, any>): BulkImportRow["educationDetails"] {
   const qual = normalizeQualification(mapped.highestQualification);
   if (!qual) return undefined;
+  const deg = String(mapped.degree ?? mapped.highestQualification ?? "").trim() || qual;
+  const inst = String(mapped.institutionName ?? mapped.previousEmployerName ?? "Not Specified").trim() || "Not Specified";
   return [{
     qualificationLevel: qual,
-    degree: String(mapped.degree ?? mapped.highestQualification ?? "").trim() || qual,
-    institutionName: String(mapped.institutionName ?? "").trim() || undefined as any,
+    degree: deg,
+    institutionName: inst,
   }] as any;
 }
 
@@ -958,6 +992,7 @@ function normalizeRow(mapped: Record<string, any>): BulkImportRow {
     motherName: String(mapped.motherName ?? "").trim() || undefined,
     motherPhone: cleanPhone(mapped.motherPhone) || undefined,
     spouseName: String(mapped.spouseName ?? "").trim() || undefined,
+    spousePhone: cleanPhone(mapped.spousePhone) || undefined,
     highestQualification: normalizeQualification(mapped.highestQualification),
     previousEmployerName: String(mapped.previousEmployerName ?? "").trim() || undefined,
     nationality: String(mapped.nationality ?? "").trim() || undefined,
@@ -1392,6 +1427,12 @@ export async function parseImportFile(
     // ── Build employee document
     const newEmpId = new mongoose.Types.ObjectId();
 
+    // Pre-calculate onboarding step completion so bulk imported employees don't have to re-fill wizard
+    const hasPersonal = !!(row.firstName && (row.phone || row.dateOfBirth || row.currentAddress?.addressLine1));
+    const hasFamily = !!(row.fatherName || row.motherName || row.spouseName);
+    const hasBank = !!(row.bankAccount?.accountNumber && row.bankAccount?.ifscCode);
+    const hasDocs = !!(row.pan || row.aadhaar);
+
     const employeeDoc: any = {
       _id: newEmpId,
       tenantId: tenantIdObj,
@@ -1419,6 +1460,8 @@ export async function parseImportFile(
       fatherPhone: row.fatherPhone,
       motherName: row.motherName,
       motherPhone: row.motherPhone,
+      spouseName: row.spouseName,
+      spousePhone: row.spousePhone,
       highestQualification: row.highestQualification,
       previousEmployerName: row.previousEmployerName,
       customFields: resolvedCustomFields,
@@ -1433,14 +1476,27 @@ export async function parseImportFile(
       emergencyContacts: row.emergencyContacts || [],
       // Education
       educationDetails: row.educationDetails || [],
-      onboardingStep: 1,
-      onboardingComplete: false,
-      isProfileComplete: false,
+      // Smart wizard progress mapping: auto-mark completed steps so employees don't re-fill
+      onboardingStep: (hasPersonal && hasFamily && hasBank && hasDocs) ? 5 : (hasPersonal && hasFamily && hasBank) ? 4 : (hasPersonal && hasFamily) ? 3 : hasPersonal ? 2 : 1,
+      onboardingComplete: hasPersonal && hasFamily && hasBank && hasDocs,
+      isProfileComplete: hasPersonal && hasFamily && hasBank && hasDocs,
+      onboardingStepsCompleted: {
+        personalDetails: hasPersonal,
+        familyDetails: hasFamily,
+        bankDetails: hasBank,
+        documents: hasDocs,
+        reviewed: hasPersonal && hasFamily && hasBank && hasDocs,
+      },
       createdBy: userIdObj,
       updatedBy: userIdObj,
-      // Carry bank account for post-insert processing in service
+      // Carry bank account and family members for post-insert processing in service
       __bankAccount: row.bankAccount,
       __isActiveEmployee: isActiveEmployee,
+      __familyMembers: [
+        row.fatherName ? { fullName: row.fatherName, relationship: "FATHER", phone: row.fatherPhone } : null,
+        row.motherName ? { fullName: row.motherName, relationship: "MOTHER", phone: row.motherPhone } : null,
+        row.spouseName ? { fullName: row.spouseName, relationship: "SPOUSE", phone: row.spousePhone } : null,
+      ].filter(Boolean),
     };
 
     validRecords.push(employeeDoc);

@@ -40,6 +40,7 @@ import { validatePAN, validateAadhaar } from "../../../domain/localization/IN/va
 import { ImportSessionModel } from "../models/import-session.model";
 import { ExportSessionModel } from "../models/export-session.model";
 import { EmployeeBankAccountModel } from "../models/employee-bank-account.model";
+import { EmployeeFamilyModel } from "../models/employee-family.model";
 import bcrypt from "bcrypt";
 
 const BCRYPT_SALT_ROUNDS = 12;
@@ -1330,7 +1331,7 @@ export class EmployeeService {
 
     // Strip internal-only fields before DB insert
     const cleanRecords = parsedData.validRecords.map(r => {
-      const { __bankAccount, __isActiveEmployee, ...clean } = r;
+      const { __bankAccount, __isActiveEmployee, __familyMembers, ...clean } = r;
       return clean;
     });
 
@@ -1346,6 +1347,7 @@ export class EmployeeService {
 
     const bankAccountDocs: any[] = [];
     const userAccountDocs: any[] = [];
+    const familyDocs: any[] = [];
     const welcomeEmailsToSend: { email: string; firstName: string; lastName: string }[] = [];
 
     for (let i = 0; i < dbResult.records.length; i++) {
@@ -1366,6 +1368,21 @@ export class EmployeeService {
           isPrimary: true,
           isActive: true,
         });
+      }
+
+      // Collect family members if extracted from sheet
+      if (originalRecord.__familyMembers && originalRecord.__familyMembers.length > 0) {
+        for (const fam of originalRecord.__familyMembers) {
+          familyDocs.push({
+            tenantId: new mongoose.Types.ObjectId(context.tenantId),
+            employeeId: emp._id,
+            fullName: fam.fullName,
+            relationship: fam.relationship,
+            phone: fam.phone || undefined,
+            isDependent: true,
+            isNominee: fam.relationship === "SPOUSE",
+          });
+        }
       }
 
       // Create user account only for active employees with a real email
@@ -1401,6 +1418,15 @@ export class EmployeeService {
         await EmployeeBankAccountModel.insertMany(bankAccountDocs, { ordered: false });
       } catch (bankErr: any) {
         console.warn("Some bank accounts could not be bulk inserted:", bankErr?.message || bankErr);
+      }
+    }
+
+    // Bulk insert family members (non-blocking on partial duplicates)
+    if (familyDocs.length > 0) {
+      try {
+        await EmployeeFamilyModel.insertMany(familyDocs, { ordered: false });
+      } catch (famErr: any) {
+        console.warn("Some family members could not be bulk inserted:", famErr?.message || famErr);
       }
     }
 
