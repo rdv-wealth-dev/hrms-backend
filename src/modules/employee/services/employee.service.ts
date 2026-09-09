@@ -1341,8 +1341,12 @@ export class EmployeeService {
     const importedCodes = dbResult.records.map((e: any) => e.employeeCode).filter(Boolean);
     await syncEmployeeCodeCounter(context.tenantId, importedCodes);
 
-    // Post-insert: create user accounts + save bank accounts
+    // Post-insert: create user accounts + save bank accounts in batch
     const passwordHash = await bcrypt.hash(defaultPassword, BCRYPT_SALT_ROUNDS);
+
+    const bankAccountDocs: any[] = [];
+    const userAccountDocs: any[] = [];
+    const welcomeEmailsToSend: { email: string; firstName: string; lastName: string }[] = [];
 
     for (let i = 0; i < dbResult.records.length; i++) {
       const emp = dbResult.records[i];
@@ -1350,65 +1354,94 @@ export class EmployeeService {
       const isActive = originalRecord.__isActiveEmployee !== false;
       const bankAccount = originalRecord.__bankAccount;
 
-      // Save bank account if extracted
+      // Collect bank account if extracted
       if (bankAccount?.accountNumber && bankAccount?.ifscCode && isActive) {
-        try {
-          await new EmployeeBankAccountModel({
-            tenantId: new mongoose.Types.ObjectId(context.tenantId),
-            employeeId: emp._id,
-            bankName: bankAccount.bankName || "Unknown Bank",
-            accountNumber: bankAccount.accountNumber,
-            ifscCode: bankAccount.ifscCode,
-            accountType: bankAccount.accountType || "SALARY",
-            isPrimary: true,
-            isActive: true,
-          }).save();
-        } catch (bankErr) {
-          console.error(`Bank account save failed for ${emp.email || emp.employeeCode}:`, bankErr);
-        }
+        bankAccountDocs.push({
+          tenantId: new mongoose.Types.ObjectId(context.tenantId),
+          employeeId: emp._id,
+          bankName: bankAccount.bankName || "Unknown Bank",
+          accountNumber: bankAccount.accountNumber,
+          ifscCode: bankAccount.ifscCode,
+          accountType: bankAccount.accountType || "SALARY",
+          isPrimary: true,
+          isActive: true,
+        });
       }
 
       // Create user account only for active employees with a real email
       if (!isActive || !emp.email || emp.email.endsWith("@archive.local")) continue;
 
-      try {
-        const userAccount = new UserModel({
-          tenantId: new mongoose.Types.ObjectId(context.tenantId),
-          email: emp.email.toLowerCase(),
-          passwordHash,                          // default password, hashed
+      userAccountDocs.push({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        email: emp.email.toLowerCase(),
+        passwordHash,                          // default password, hashed
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        role: "EMPLOYEE",
+        isOrgAdmin: false,
+        isActive: true,                        // immediately active — no email needed
+        isEmailVerified: true,
+        requiresPasswordReset: true,           // forced change on first login
+        branchIds: [emp.branchId],
+        employeeId: emp._id,
+      });
+
+      if (sendWelcomeEmail) {
+        welcomeEmailsToSend.push({
+          email: emp.email,
           firstName: emp.firstName,
           lastName: emp.lastName,
-          role: "EMPLOYEE",
-          isOrgAdmin: false,
-          isActive: true,                        // immediately active — no email needed
-          isEmailVerified: true,
-          requiresPasswordReset: true,           // forced change on first login
-          branchIds: [emp.branchId],
-          employeeId: emp._id,
         });
-        await userAccount.save();
-
-        // Send welcome email only if explicitly requested
-        if (sendWelcomeEmail) {
-          emailService.sendEmail(
-            emp.email,
-            `${emp.firstName} ${emp.lastName}`,
-            `Welcome to HRMS — Your account is ready`,
-            `<div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
-              <h2>Welcome to the team, ${emp.firstName}!</h2>
-              <p>Your HRMS account has been created.</p>
-              <p>Login with your email and the temporary password shared by your HR team.</p>
-              <p>You will be asked to set a new password on first login.</p>
-            </div>`
-          ).catch(() => {});
-        }
-      } catch (userError) {
-        console.error(`Failed to create user account for ${emp.email}:`, userError);
       }
-
-      // Recalculate profile completion async
-      recalculateProfileCompletion(context.tenantId, emp._id.toString()).catch(() => {});
     }
+
+    // Bulk insert bank accounts (non-blocking on partial duplicates)
+    if (bankAccountDocs.length > 0) {
+      try {
+        await EmployeeBankAccountModel.insertMany(bankAccountDocs, { ordered: false });
+      } catch (bankErr: any) {
+        console.warn("Some bank accounts could not be bulk inserted:", bankErr?.message || bankErr);
+      }
+    }
+
+    // Bulk insert user accounts (ordered: false allows inserting non-duplicate users even if some emails exist)
+    if (userAccountDocs.length > 0) {
+      try {
+        await UserModel.insertMany(userAccountDocs, { ordered: false });
+      } catch (userErr: any) {
+        console.warn("Some user accounts could not be bulk inserted (likely duplicate email):", userErr?.message || userErr);
+      }
+    }
+
+    // Send welcome emails asynchronously in background without blocking response
+    if (welcomeEmailsToSend.length > 0) {
+      (async () => {
+        for (const item of welcomeEmailsToSend) {
+          try {
+            await emailService.sendEmail(
+              item.email,
+              `${item.firstName} ${item.lastName}`,
+              `Welcome to HRMS — Your account is ready`,
+              `<div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto;">
+                <h2>Welcome to the team, ${item.firstName}!</h2>
+                <p>Your HRMS account has been created.</p>
+                <p>Login with your email and the temporary password shared by your HR team.</p>
+                <p>You will be asked to set a new password on first login.</p>
+              </div>`
+            );
+          } catch {}
+        }
+      })().catch(() => {});
+    }
+
+    // Recalculate profile completion asynchronously in background
+    (async () => {
+      for (const emp of dbResult.records) {
+        try {
+          await recalculateProfileCompletion(context.tenantId, emp._id.toString());
+        } catch {}
+      }
+    })().catch(() => {});
 
     return {
       totalProcessed: parsedData.totalRows,

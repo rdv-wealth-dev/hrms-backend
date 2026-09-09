@@ -10,12 +10,10 @@ import { BranchModel } from "../../branch/branch.model";
 import { OrganizationModel } from "../../organization/organization.model";
 import { CustomFieldModel } from "../../custom-field/custom-field.model";
 import { UserModel } from "../../user/user.model";
-import { getNextEmployeeCode } from "./employee-counter.util";
+import { getNextEmployeeCode, getNextBatchEmployeeCodes } from "./employee-counter.util";
 import { getCountryModule } from "../../../domain/localization/country.registry";
 
-// ─────────────────────────────────────────────────────────────────
 // TYPES
-// ─────────────────────────────────────────────────────────────────
 
 export interface BulkImportRow {
   firstName: string;
@@ -104,11 +102,9 @@ export interface ParsedImportData {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────
 // LAYER 1: SMART HEADER MAP
 // Maps every possible human-written column header → canonical key
 // Handles: case differences, spaces, abbreviations, Hindi-English mix, typos
-// ─────────────────────────────────────────────────────────────────
 
 const HEADER_SYNONYM_MAP: Record<string, string> = {
   // ── Name
@@ -1020,6 +1016,36 @@ async function parseExcel(buffer: Buffer): Promise<{ rawRows: Record<string, any
 }
 
 // ─────────────────────────────────────────────────────────────────
+// BATCH EMPLOYEE CODE ALLOCATOR (High Performance In-Memory Buffer)
+// ─────────────────────────────────────────────────────────────────
+
+class EmployeeCodeAllocator {
+  private activeCodes: string[] = [];
+  private exCodes: string[] = [];
+
+  constructor(
+    private tenantId: string,
+    private exPrefix: string
+  ) { }
+
+  async getCode(isActive: boolean, remainingRows: number): Promise<string> {
+    if (isActive) {
+      if (this.activeCodes.length === 0) {
+        const batchSize = Math.min(50, Math.max(1, remainingRows));
+        this.activeCodes = await getNextBatchEmployeeCodes(this.tenantId, batchSize);
+      }
+      return this.activeCodes.shift()!;
+    } else {
+      if (this.exCodes.length === 0) {
+        const batchSize = Math.min(50, Math.max(1, remainingRows));
+        this.exCodes = await getNextBatchEmployeeCodes(this.tenantId, batchSize, this.exPrefix);
+      }
+      return this.exCodes.shift()!;
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
 // MAIN PARSE FUNCTION
 // ─────────────────────────────────────────────────────────────────
 
@@ -1114,6 +1140,8 @@ export async function parseImportFile(
   const orgDoc = await OrganizationModel.findById(tenantIdObj).select("employeeCodeConfig").lean();
   const orgPrefix = (orgDoc?.employeeCodeConfig?.prefix || "EMP").trim().replace(/[-_]+$/, "").toUpperCase();
   const exPrefix = `${orgPrefix}-EX`;
+
+  const codeAllocator = new EmployeeCodeAllocator(context.tenantId, exPrefix);
 
   const errors: ImportError[] = [];
   const warnings: ImportError[] = [];
@@ -1316,13 +1344,13 @@ export async function parseImportFile(
     let employeeCode: string;
     const sheetCode = row.preservedEmployeeCode ? String(row.preservedEmployeeCode).trim().toUpperCase() : "";
     const matchesOrgPrefix = sheetCode && sheetCode.startsWith(orgPrefix);
+    const remainingRows = rawRows.length - idx;
 
     if (sheetCode && matchesOrgPrefix) {
       if (existingEmpCodes.has(sheetCode)) {
         warnings.push({ rowNumber, email: emailClean, reason: `Employee code "${sheetCode}" already exists — a new code will be auto-generated`, severity: "WARNING" });
-        employeeCode = isActiveEmployee
-          ? await getNextEmployeeCode(context.tenantId)
-          : await getNextEmployeeCode(context.tenantId, exPrefix);
+        employeeCode = await codeAllocator.getCode(isActiveEmployee, remainingRows);
+        existingEmpCodes.add(employeeCode);
       } else {
         employeeCode = sheetCode;
         existingEmpCodes.add(employeeCode); // prevent duplicate within same import
@@ -1330,9 +1358,8 @@ export async function parseImportFile(
     } else {
       // Either no code in sheet, or sheet code does NOT match Org Admin's configured prefix (e.g. "jjh0024" vs "RVG")
       // System auto-generates sequentially one-by-one according to Org Admin's configuration!
-      employeeCode = isActiveEmployee
-        ? await getNextEmployeeCode(context.tenantId)
-        : await getNextEmployeeCode(context.tenantId, exPrefix);
+      employeeCode = await codeAllocator.getCode(isActiveEmployee, remainingRows);
+      existingEmpCodes.add(employeeCode);
 
       if (sheetCode && !matchesOrgPrefix) {
         warnings.push({

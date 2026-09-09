@@ -102,17 +102,16 @@ export async function syncEmployeeCodeCounter(
 }
 
 /**
- * Returns the next employee code for a tenant atomically.
- * Format examples:
- * - New org with PUG (2 digits, no separator) -> PUG01, PUG02, ...
- * - Existing org with RVG (up to RVG011) -> RVG012, RVG013, ...
- * - Default EMP (4 digits, separator "-") -> EMP-0001, EMP-0002, ...
- * - Inactive archive code (e.g. RVG-EX) -> RVG-EX-001, RVG-EX-002, ...
+ * Returns a batch of sequential unique employee codes for a tenant.
+ * Atomically increments the sequence counter by `count` in a single DB operation.
  */
-export async function getNextEmployeeCode(
+export async function getNextBatchEmployeeCodes(
   tenantId: string,
+  count: number,
   overridePrefix?: string
-): Promise<string> {
+): Promise<string[]> {
+  if (count <= 0) return [];
+
   const org = await OrganizationModel.findById(tenantId).select("employeeCodeConfig").lean();
 
   const basePrefix = (org?.employeeCodeConfig?.prefix || "EMP").trim().replace(/[-_]+$/, "").toUpperCase();
@@ -143,56 +142,57 @@ export async function getNextEmployeeCode(
       { $setOnInsert: { seq: initialSeq } },
       { upsert: true }
     );
+  } else {
+    // Sync to max existing in DB if higher than counter
+    const maxExisting = await findMaxExistingSequenceForPrefix(tenantId, prefix);
+    if (maxExisting > existingCounter.seq) {
+      await CounterModel.updateOne(
+        {
+          tenantId: new mongoose.Types.ObjectId(tenantId),
+          sequenceName: sequenceKey,
+        },
+        { $max: { seq: maxExisting } }
+      );
+    }
   }
 
-  // Atomically increment counter
-  let attempts = 0;
-  while (attempts < 10) {
-    attempts++;
-    const counter = await CounterModel.findOneAndUpdate(
-      {
-        tenantId: new mongoose.Types.ObjectId(tenantId),
-        sequenceName: sequenceKey,
-      },
-      { $inc: { seq: 1 } },
-      {
-        new: true,
-        upsert: true,
-      }
-    );
-
-    const seq = counter!.seq;
-    const padded = seq.toString().padStart(digits, "0");
-    const candidateCode = `${prefix}${separator}${padded}`;
-
-    // Ensure uniqueness in EmployeeModel
-    const codeExists = await EmployeeModel.findOne({
+  // Atomically increment counter by count in a single update
+  const counter = await CounterModel.findOneAndUpdate(
+    {
       tenantId: new mongoose.Types.ObjectId(tenantId),
-      employeeCode: candidateCode,
-    })
-      .select("_id")
-      .lean();
-
-    if (!codeExists) {
-      return candidateCode;
+      sequenceName: sequenceKey,
+    },
+    { $inc: { seq: count } },
+    {
+      new: true,
+      upsert: true,
     }
+  );
 
-    // Self-healing: if collision detected on first attempt, immediately sync counter to current DB max
-    if (attempts === 1) {
-      const maxExisting = await findMaxExistingSequenceForPrefix(tenantId, prefix);
-      if (maxExisting >= seq) {
-        await CounterModel.updateOne(
-          {
-            tenantId: new mongoose.Types.ObjectId(tenantId),
-            sequenceName: sequenceKey,
-          },
-          { $max: { seq: maxExisting } }
-        );
-      }
-    }
+  const endSeq = counter?.seq ?? count;
+  const startSeq = Math.max(1, endSeq - count + 1);
+
+  const codes: string[] = [];
+  for (let s = startSeq; s <= endSeq; s++) {
+    const padded = s.toString().padStart(digits, "0");
+    codes.push(`${prefix}${separator}${padded}`);
   }
 
-  // Fallback if loop exceeded
-  const fallbackSeq = Date.now().toString().slice(-4);
-  return `${prefix}${separator}${fallbackSeq}`;
+  return codes;
+}
+
+/**
+ * Returns the next employee code for a tenant atomically.
+ * Format examples:
+ * - New org with PUG (2 digits, no separator) -> PUG01, PUG02, ...
+ * - Existing org with RVG (up to RVG011) -> RVG012, RVG013, ...
+ * - Default EMP (4 digits, separator "-") -> EMP-0001, EMP-0002, ...
+ * - Inactive archive code (e.g. RVG-EX) -> RVG-EX-001, RVG-EX-002, ...
+ */
+export async function getNextEmployeeCode(
+  tenantId: string,
+  overridePrefix?: string
+): Promise<string> {
+  const codes = await getNextBatchEmployeeCodes(tenantId, 1, overridePrefix);
+  return codes[0];
 }
