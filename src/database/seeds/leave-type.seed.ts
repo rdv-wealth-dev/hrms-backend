@@ -44,7 +44,7 @@ const DEFAULT_LEAVE_TYPES: LeaveTypeSeed[] = [
     accrualFrequency: LeaveAccrualFrequency.MONTHLY,
     maxConsecutiveDays: 3,
     advanceNoticeDays: 0,
-    requiresApproval: false,
+    requiresApproval: true,
     approvalLevels: 1,
     allowNegativeBalance: false,
     probationEligible: true,
@@ -234,6 +234,10 @@ export async function seedLeaveTypes(
       typeMap.set(lt.code, result.insertedId.toString());
     } catch (err: any) {
       if (err.code === 11000) {
+        await collection.updateOne(
+          { tenantId: tenantOId, code: lt.code },
+          { $set: { requiresApproval: lt.requiresApproval } }
+        );
         const existing = await collection.findOne({ tenantId: tenantOId, code: lt.code });
         if (existing) {
           typeMap.set(lt.code, existing._id.toString());
