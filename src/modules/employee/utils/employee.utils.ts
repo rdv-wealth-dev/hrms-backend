@@ -860,6 +860,10 @@ function normalizeRow(mapped: Record<string, any>): BulkImportRow {
     const split = splitFullName(String(mapped.fullName));
     firstName = split.firstName;
     lastName = split.lastName;
+  } else if (firstName && !lastName && firstName.includes(" ")) {
+    const split = splitFullName(firstName);
+    firstName = split.firstName;
+    lastName = split.lastName;
   }
 
   // Email: priority cascade

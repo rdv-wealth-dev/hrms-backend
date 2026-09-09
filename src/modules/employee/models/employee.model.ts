@@ -225,7 +225,8 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
     },
     lastName: {
       type: String,
-      required: true,
+      required: false,
+      default: "",
       trim: true,
       maxlength: 100,
     },

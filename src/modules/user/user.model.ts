@@ -85,7 +85,8 @@ const UserSchema = createOrgLevelSchema<UserDocument>({
   },
   lastName: {
     type: String,
-    required: true,
+    required: false,
+    default: "",
     trim: true,
     maxlength: 100,
   },
