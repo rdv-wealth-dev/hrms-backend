@@ -1319,51 +1319,130 @@ export async function parseImportFile(
     const emailClean = row.email?.trim().toLowerCase() || "";
     let finalEmail = emailClean;
 
-    // ── Email handling — required for active unless we have an existing employee code
-    if (!finalEmail) {
-      if (row.preservedEmployeeCode && existingEmpCodes.has(row.preservedEmployeeCode)) {
-        errors.push({ rowNumber, reason: `Employee code "${row.preservedEmployeeCode}" already exists in the system`, severity: "ERROR" });
-        continue;
-      }
-      if (!row.preservedEmployeeCode) {
-        if (isActiveEmployee) {
-          errors.push({ rowNumber, reason: "Email is required for active employee (no email or employee code found)", severity: "ERROR" });
-          continue;
-        } else {
-          // Inactive employee without code or email: auto-assign archive synthetic email for DB schema requirement
-          warnings.push({ rowNumber, reason: `No email found for inactive employee — imported as historical archive record without user login`, severity: "WARNING" });
-        }
-      } else {
-        // Has a code but no email — import without user account (warn)
-        warnings.push({ rowNumber, reason: `No email found — employee will be imported without a user login account. Email can be added later by HR.`, severity: "WARNING" });
-      }
-    } else {
-      if (existingEmails.has(finalEmail)) {
-        errors.push({ rowNumber, email: finalEmail, reason: `Employee with email "${finalEmail}" already exists`, severity: "ERROR" });
-        continue;
-      }
-    }
+    // ─────────────────────────────────────────────────────────────
+    // MANDATORY FIELD CHECKS (Must be present for every employee)
+    // ─────────────────────────────────────────────────────────────
 
-    // ── Name check
+    // 1. Employee Name (First Name / Full Name)
     if (!row.firstName?.trim()) {
-      errors.push({ rowNumber, email: emailClean, reason: "Employee name (First Name) is missing — could not find name column in this row", severity: "ERROR" });
+      errors.push({
+        rowNumber,
+        email: emailClean,
+        reason: "Employee Name is mandatory and cannot be empty",
+        severity: "ERROR",
+      });
       continue;
     }
-    // If no lastName, just warn — we can proceed with empty last name
-    if (!row.lastName?.trim()) {
-      warnings.push({ rowNumber, email: emailClean, reason: `Last name missing for "${row.firstName}" — will be imported with first name only`, severity: "WARNING" });
+
+    // 2. Email Address
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!finalEmail || !EMAIL_REGEX.test(finalEmail)) {
+      errors.push({
+        rowNumber,
+        email: emailClean,
+        reason: `Email ID is mandatory and must be a valid email address (found: "${finalEmail || "missing"}")`,
+        severity: "ERROR",
+      });
+      continue;
+    }
+    if (existingEmails.has(finalEmail)) {
+      errors.push({
+        rowNumber,
+        email: finalEmail,
+        reason: `Employee with email "${finalEmail}" already exists in the system`,
+        severity: "ERROR",
+      });
+      continue;
     }
 
-    // ── Department
+    // 3. Contact Number (Phone)
+    if (!row.phone || row.phone.length < 10) {
+      errors.push({
+        rowNumber,
+        email: finalEmail,
+        reason: `Contact Number (Mobile) is mandatory and must be at least 10 digits (found: "${row.phone || "missing"}")`,
+        severity: "ERROR",
+      });
+      continue;
+    }
+
+    // 4. Department
     if (!row.departmentName?.trim()) {
-      errors.push({ rowNumber, email: emailClean, reason: "Department name is required", severity: "ERROR" });
+      errors.push({
+        rowNumber,
+        email: finalEmail,
+        reason: "Department is mandatory and cannot be empty",
+        severity: "ERROR",
+      });
       continue;
     }
 
-    // ── Designation
+    // 5. Designation
     if (!row.designationName?.trim()) {
-      errors.push({ rowNumber, email: emailClean, reason: "Designation name is required", severity: "ERROR" });
+      errors.push({
+        rowNumber,
+        email: finalEmail,
+        reason: "Designation is mandatory and cannot be empty",
+        severity: "ERROR",
+      });
       continue;
+    }
+
+    // 6. Gender
+    if (!row.gender) {
+      errors.push({
+        rowNumber,
+        email: finalEmail,
+        reason: "Gender is mandatory (must be MALE, FEMALE, or OTHER)",
+        severity: "ERROR",
+      });
+      continue;
+    }
+
+    // 7. Date of Birth (DOB)
+    const dobDate = row.dateOfBirth ? new Date(row.dateOfBirth) : null;
+    if (!row.dateOfBirth || !dobDate || isNaN(dobDate.getTime())) {
+      errors.push({
+        rowNumber,
+        email: finalEmail,
+        reason: "Date of Birth (DOB) is mandatory and must be a valid date",
+        severity: "ERROR",
+      });
+      continue;
+    }
+
+    // 8. Date of Joining (DOJ)
+    const joiningDate = parseAnyDate(row.joiningDate) || (row.joiningDate ? new Date(row.joiningDate) : null);
+    if (!row.joiningDate || !joiningDate || isNaN(joiningDate.getTime())) {
+      errors.push({
+        rowNumber,
+        email: finalEmail,
+        reason: `Date of Joining (DOJ) is mandatory and must be a valid date (found: "${row.joiningDate || "missing"}")`,
+        severity: "ERROR",
+      });
+      continue;
+    }
+    const finalJoiningDate = joiningDate;
+
+    // 9. Employee Code Duplicate Check (if provided in sheet)
+    if (row.preservedEmployeeCode && existingEmpCodes.has(row.preservedEmployeeCode.toUpperCase())) {
+      errors.push({
+        rowNumber,
+        email: finalEmail,
+        reason: `Employee code "${row.preservedEmployeeCode}" already exists in the workspace`,
+        severity: "ERROR",
+      });
+      continue;
+    }
+
+    // If no lastName, warn
+    if (!row.lastName?.trim()) {
+      warnings.push({
+        rowNumber,
+        email: finalEmail,
+        reason: `Last name missing for "${row.firstName}" — will be imported with first name only`,
+        severity: "WARNING",
+      });
     }
 
     // ── Branch resolution with smart auto-creation and fallback
@@ -1420,14 +1499,6 @@ export async function parseImportFile(
       branchId = new mongoose.Types.ObjectId((headOfficeBranch as any)._id);
       warnings.push({ rowNumber, email: emailClean, reason: `No branch specified — auto-assigned to "${(headOfficeBranch as any).name}" (head office)`, severity: "WARNING" });
     }
-
-    // ── Joining date
-    const joiningDate = parseAnyDate(row.joiningDate) || (row.joiningDate ? new Date(row.joiningDate) : null);
-    if (!joiningDate || isNaN(joiningDate.getTime())) {
-      // If no joining date, use today with a warning
-      warnings.push({ rowNumber, email: emailClean, reason: `Joining date "${row.joiningDate || "missing"}" could not be parsed — defaulting to today's date`, severity: "WARNING" });
-    }
-    const finalJoiningDate = (joiningDate && !isNaN(joiningDate.getTime())) ? joiningDate : new Date();
 
     // ── Department — fuzzy match or auto-create
     const deptResult = await findOrCreateDepartment(
