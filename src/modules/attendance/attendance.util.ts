@@ -179,12 +179,9 @@ export function calculateAttendanceStatus(
   // Trim guards against accidental empty-string values stored in DB.
   const baselineTimeStr = (shift.checkInWindowEnd?.trim()) || shift.startTime;
   const [shiftHour, shiftMin] = baselineTimeStr.split(":").map(Number);
-  const shiftStart = new Date(firstCheckIn);
-  shiftStart.setHours(shiftHour, shiftMin, 0, 0);
-
-  // Use integer minutes (Math.floor) to eliminate sub-minute clock-skew false positives.
-  // e.g. a punch at 10:00:03 vs shiftStart 10:00:00 = 0 minutes late, NOT 0.05 minutes late.
-  const minutesLate = Math.floor(Math.max(0, (firstCheckIn.getTime() - shiftStart.getTime()) / 60000));
+  const shiftStartMins = shiftHour * 60 + shiftMin;
+  const checkInMins = getLocalMinuteOfDay(firstCheckIn);
+  const minutesLate = Math.max(0, checkInMins - shiftStartMins);
 
   // ── 1. Arrival-based ABSENT: arrived after absent threshold (e.g. 255 mins = ~2:15 PM) 
   const absentThresholdMins = shift.absentThresholdMinutes ?? 255;
@@ -226,7 +223,7 @@ export function calculateAttendanceStatus(
     // Validate against secondHalfCutoffMinutes: did they work at least until 1:30 PM?
     const secondHalfCutoffMins = shift.secondHalfCutoffMinutes ?? 210;
     const elapsedFromShiftStart = lastCheckOut
-      ? Math.max(0, (lastCheckOut.getTime() - shiftStart.getTime()) / 60000)
+      ? Math.max(0, getLocalMinuteOfDay(lastCheckOut) - shiftStartMins)
       : workedMinutes;
 
     if (elapsedFromShiftStart >= secondHalfCutoffMins) {
@@ -265,65 +262,81 @@ export function normalizeToMidnight(date: Date): Date {
   return d;
 }
 
+/**
+ * Returns the minute-of-day (0 to 1439) in the given timezone.
+ * Safe across any server/OS timezone (e.g. UTC server running IST shifts).
+ */
+export function getLocalMinuteOfDay(date: Date, timezone: string = "Asia/Kolkata"): number {
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const hour = parseInt(parts.find(p => p.type === "hour")?.value || "0", 10);
+  const minute = parseInt(parts.find(p => p.type === "minute")?.value || "0", 10);
+  return hour * 60 + minute;
+}
+
 export function isCheckInLate(
   shift: any,
   firstCheckIn: Date | null,
   graceUsed?: number,
-  graceLimit?: number
+  graceLimit?: number,
+  timezone: string = "Asia/Kolkata"
 ): boolean {
   if (!firstCheckIn) return false;
 
-  // Must use the same baseline as calculateAttendanceStatus:
-  // checkInWindowEnd is the "no-late-before" deadline; fall back to startTime.
-  // Trim guards against accidental empty-string values stored in DB.
   const baselineTimeStr = (shift.checkInWindowEnd?.trim()) || shift.startTime;
   const [shiftHour, shiftMin] = baselineTimeStr.split(":").map(Number);
-  const shiftStart = new Date(firstCheckIn);
-  shiftStart.setHours(shiftHour, shiftMin, 0, 0);
+  const shiftStartMins = shiftHour * 60 + shiftMin;
 
-  // Integer minutes — eliminates sub-minute clock-skew false positives.
-  // Employee punching at 10:00:03 with shift at 10:00 = 0 minutes late.
-  const minutesLate = Math.floor(
-    Math.max(0, (firstCheckIn.getTime() - shiftStart.getTime()) / 60000)
-  );
+  const checkInMins = getLocalMinuteOfDay(firstCheckIn, timezone);
+  const minutesLate = Math.max(0, checkInMins - shiftStartMins);
 
   const hasGraceLeft = !graceLimit || (graceUsed ?? 0) < graceLimit;
-  // ?? 15: gracePeriodMinutes has a schema default of 15, but guard against
-  // undefined in case the shift document was created before the field existed.
   const effectiveGraceMinutes = hasGraceLeft ? (shift.gracePeriodMinutes ?? 15) : 0;
 
   return minutesLate > effectiveGraceMinutes;
 }
 
 // Returns two flags:
-//   isEarly             : checkout happened before shift endTime
+//   isEarly             : checkout happened before shift endTime (with 60-sec clock buffer)
 //   isAllowedEarlyLeave : checkout was within the earlyLeaveStartTime→endTime window
 //                         (no status penalty — tracked only for quota reporting)
 //
 // Zone diagram for shift 10:00–19:30, earlyLeaveStartTime=18:00:
 //   before 18:00 → isEarly=true,  isAllowedEarlyLeave=false  (penalized)
-//   18:00–19:29  → isEarly=true,  isAllowedEarlyLeave=true   (allowed, quota-tracked)
-//   19:30+       → isEarly=false, isAllowedEarlyLeave=false  (full day)
+//   18:00–19:28  → isEarly=true,  isAllowedEarlyLeave=true   (allowed, quota-tracked)
+//   19:29+       → isEarly=false, isAllowedEarlyLeave=false  (full day, buffer applied)
 
 export function checkIfCheckOutEarly(
   shift: any,
   lastCheckOut: Date | null,
-  attendanceDate: Date
+  attendanceDate?: Date,
+  timezone: string = "Asia/Kolkata"
 ): { isEarly: boolean; isAllowedEarlyLeave: boolean } {
   if (!lastCheckOut) return { isEarly: false, isAllowedEarlyLeave: false };
 
   const [startHour, startMin] = shift.startTime.split(":").map(Number);
   const [endHour, endMin] = shift.endTime.split(":").map(Number);
 
-  // Build shift end anchored to attendanceDate
-  const shiftEnd = new Date(attendanceDate);
-  shiftEnd.setHours(endHour, endMin, 0, 0);
-  // Handle overnight shifts (e.g. endTime < startTime)
-  if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
-    shiftEnd.setDate(shiftEnd.getDate() + 1);
+  const shiftStartMins = startHour * 60 + startMin;
+  let shiftEndMins = endHour * 60 + endMin;
+  const isOvernight = shiftEndMins < shiftStartMins;
+  if (isOvernight) shiftEndMins += 1440; // 24 hours rollover
+
+  let checkOutMins = getLocalMinuteOfDay(lastCheckOut, timezone);
+  if (isOvernight && checkOutMins < shiftStartMins) {
+    checkOutMins += 1440;
   }
 
-  const isEarly = lastCheckOut < shiftEnd;
+  // 60-Second Buffer: Checking out within 1 minute before shift end (e.g. 07:29:15 PM vs 07:30:00 PM)
+  // is recognized as on-time to absorb network latency and device clock sync skew.
+  const earlyBufferMinutes = 1;
+  const isEarly = checkOutMins < (shiftEndMins - earlyBufferMinutes);
+
   if (!isEarly) return { isEarly: false, isAllowedEarlyLeave: false };
 
   // Determine if this early checkout is within the allowed early-leave window.
@@ -332,14 +345,11 @@ export function checkIfCheckOutEarly(
   if (!rawEarlyLeaveTime) return { isEarly: true, isAllowedEarlyLeave: false };
 
   const [elHour, elMin] = rawEarlyLeaveTime.split(":").map(Number);
-  const earlyLeaveStart = new Date(attendanceDate);
-  earlyLeaveStart.setHours(elHour, elMin, 0, 0);
-  // Handle overnight cross (same adjustment as shiftEnd)
-  if (endHour < startHour || (endHour === startHour && endMin < startMin)) {
-    earlyLeaveStart.setDate(earlyLeaveStart.getDate() + 1);
+  let earlyLeaveStartMins = elHour * 60 + elMin;
+  if (isOvernight && earlyLeaveStartMins < shiftStartMins) {
+    earlyLeaveStartMins += 1440;
   }
 
-  // isAllowedEarlyLeave = checkout >= earlyLeaveStart AND < shiftEnd
-  const isAllowedEarlyLeave = lastCheckOut >= earlyLeaveStart;
+  const isAllowedEarlyLeave = checkOutMins >= earlyLeaveStartMins;
   return { isEarly: true, isAllowedEarlyLeave };
 }
