@@ -3,7 +3,7 @@ import csvParser from "csv-parser";
 import ExcelJS from "exceljs";
 import { Readable } from "stream";
 import { RequestContext } from "../../../shared/types/request-context.interface";
-import { EmployeeModel, EmployeeStatus, EmployeeType, Gender, BloodGroup, MaritalStatus, QualificationLevel } from "../models/employee.model";
+import { EmployeeModel, EmployeeStatus, EmployeeType, Gender, BloodGroup, MaritalStatus, QualificationLevel, Religion } from "../models/employee.model";
 import { DepartmentModel } from "../../department/department.model";
 import { DesignationModel } from "../../designation/designation.model";
 import { BranchModel } from "../../branch/branch.model";
@@ -34,6 +34,7 @@ export interface BulkImportRow {
   // Extended fields
   bloodGroup?: string;
   maritalStatus?: string;
+  religion?: string;
   fatherName?: string;
   fatherPhone?: string;
   motherName?: string;
@@ -295,6 +296,43 @@ const HEADER_SYNONYM_MAP: Record<string, string> = {
   "reason of resignation": "exitReason",
   "termination reason": "exitReason",
   "resignation type": "resignationType", "resignation type(vol/invol)": "resignationType",
+
+  // ── Work Mode & Skype
+  "wfh/office": "workMode", "wfh office": "workMode", "wfo/wfh": "workMode",
+  "work mode": "workMode", "wfh": "workMode", "wfo": "workMode",
+  "skype id": "skypeId", "skype": "skypeId",
+
+  // ── CTC / Compensation
+  "ctc (pa)": "ctcPa", "ctc pa": "ctcPa", "ctc annual": "ctcPa", "annual ctc": "ctcPa",
+  "ctc (pm)": "ctcPm", "ctc pm": "ctcPm", "ctc monthly": "ctcPm", "monthly ctc": "ctcPm",
+
+  // ── Actual DOB & Religion & Anniversary
+  "dob(actual)": "dobActual", "dob actual": "dobActual", "actual dob": "dobActual",
+  "religion": "religion",
+  "date of anniversary": "anniversaryDate", "anniversary date": "anniversaryDate", "anniversary": "anniversaryDate",
+  "children": "children", "child": "children", "no of children": "children",
+
+  // ── Alternate Phone & Secondary Bank
+  "alternate contact no.": "alternatePhone", "alternate contact no": "alternatePhone",
+  "alternate contact": "alternatePhone", "alternate phone": "alternatePhone",
+  "alternate mobile": "alternatePhone", "alt phone": "alternatePhone",
+  "icici account number": "secondaryAccountNumber", "secondary account number": "secondaryAccountNumber",
+  "secondary account": "secondaryAccountNumber", "secondary ifsc code": "secondaryIfscCode",
+  "secondary ifsc": "secondaryIfscCode",
+
+  // ── Statutory
+  "uan no.": "uanNo", "uan no": "uanNo", "uan number": "uanNo", "uan": "uanNo",
+  "esic no.": "esicNo", "esic no": "esicNo", "esic number": "esicNo", "esic": "esicNo",
+
+  // ── Organization & Hiring Details
+  "sub department": "subDepartment", "sub dept": "subDepartment", "subdepartment": "subDepartment",
+  "source/reference of hiring": "hiringSource", "source of hiring": "hiringSource",
+  "reference of hiring": "hiringSource", "hiring source": "hiringSource",
+  "source/reference name": "hiringReferrer", "reference name": "hiringReferrer", "referrer name": "hiringReferrer",
+  "documentation done (yes/no)": "documentationDone", "documentation done": "documentationDone",
+
+  // ── Remarks
+  "remarks": "remarks", "remark": "remarks",
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -766,6 +804,23 @@ function normalizeMaritalStatus(val: any): string | undefined {
 }
 
 /**
+ * Normalizes religion
+ */
+function normalizeReligion(val: any): string | undefined {
+  if (!val) return undefined;
+  const s = normalize(String(val));
+  if (s.includes("hindu")) return Religion.HINDUISM;
+  if (s.includes("islam") || s.includes("muslim") || s.includes("bohra")) return Religion.ISLAM;
+  if (s.includes("christian")) return Religion.CHRISTIANITY;
+  if (s.includes("sikh") || s.includes("punjabi")) return Religion.SIKHISM;
+  if (s.includes("buddh")) return Religion.BUDDHISM;
+  if (s.includes("jain")) return Religion.JAINISM;
+  const upper = String(val).trim().toUpperCase();
+  if (Object.values(Religion).includes(upper as any)) return upper;
+  return Religion.OTHER;
+}
+
+/**
  * Normalizes highest qualification
  */
 function normalizeQualification(val: any): string | undefined {
@@ -976,6 +1031,36 @@ function normalizeRow(mapped: Record<string, any>): BulkImportRow {
     }
   }
 
+  // Pack specific master sheet columns into customFields
+  const extraFields: Record<string, any> = {
+    workMode: mapped.workMode,
+    skypeId: mapped.skypeId,
+    personalEmail: mapped.email3,
+    ctcPa: mapped.ctcPa,
+    ctcPm: mapped.ctcPm,
+    dobActual: mapped.dobActual,
+    anniversaryDate: mapped.anniversaryDate,
+    children: mapped.children,
+    alternatePhone: cleanPhone(mapped.alternatePhone),
+    secondaryAccountNumber: cleanScientificNumber(mapped.secondaryAccountNumber, 18),
+    secondaryIfscCode: mapped.secondaryIfscCode,
+    uanNo: cleanScientificNumber(mapped.uanNo, 12),
+    esicNo: cleanScientificNumber(mapped.esicNo, 17),
+    subDepartment: mapped.subDepartment,
+    hiringSource: mapped.hiringSource,
+    hiringReferrer: mapped.hiringReferrer,
+    documentationDone: mapped.documentationDone,
+    resignationDate: mapped.resignationDate,
+    resignationType: mapped.resignationType,
+    remarks: mapped.remarks,
+  };
+
+  for (const [k, v] of Object.entries(extraFields)) {
+    if (v !== undefined && v !== null && String(v).trim() !== "") {
+      customFields[k] = v;
+    }
+  }
+
   return {
     firstName,
     lastName,
@@ -995,6 +1080,7 @@ function normalizeRow(mapped: Record<string, any>): BulkImportRow {
     preservedEmployeeCode,
     bloodGroup: normalizeBloodGroup(mapped.bloodGroup),
     maritalStatus: normalizeMaritalStatus(mapped.maritalStatus),
+    religion: normalizeReligion(mapped.religion),
     fatherName: String(mapped.fatherName ?? "").trim() || undefined,
     fatherPhone: cleanPhone(mapped.fatherPhone) || undefined,
     motherName: String(mapped.motherName ?? "").trim() || undefined,
@@ -1464,6 +1550,7 @@ export async function parseImportFile(
       countryCode,
       bloodGroup: row.bloodGroup,
       maritalStatus: row.maritalStatus,
+      religion: row.religion,
       nationality: row.nationality,
       fatherName: row.fatherName,
       fatherPhone: row.fatherPhone,
@@ -1535,42 +1622,155 @@ export async function buildExportBuffer(
   format: "csv" | "xlsx"
 ): Promise<Buffer> {
   const columns = [
-    { header: "Employee Code", key: "employeeCode", width: 15 },
-    { header: "First Name", key: "firstName", width: 20 },
-    { header: "Last Name", key: "lastName", width: 20 },
-    { header: "Email", key: "email", width: 30 },
-    { header: "Phone", key: "phone", width: 15 },
-    { header: "Branch", key: "branch", width: 20 },
-    { header: "Department", key: "department", width: 25 },
-    { header: "Designation", key: "designation", width: 25 },
-    { header: "Reporting Manager", key: "reportingManager", width: 25 },
+    { header: "S.No.", key: "sNo", width: 8 },
+    { header: "Emp Code", key: "employeeCode", width: 18 },
+    { header: "Employee Name", key: "fullName", width: 25 },
+    { header: "First Name", key: "firstName", width: 18 },
+    { header: "Last Name", key: "lastName", width: 18 },
+    { header: "Org Name", key: "orgName", width: 22 },
+    { header: "Employee Status", key: "status", width: 15 },
     { header: "Employee Type", key: "employeeType", width: 15 },
-    { header: "Status", key: "status", width: 15 },
-    { header: "Joining Date", key: "joiningDate", width: 15 },
-    { header: "Date of Birth", key: "dateOfBirth", width: 15 },
+    { header: "Designation", key: "designation", width: 28 },
+    { header: "Department", key: "department", width: 25 },
+    { header: "Sub Department", key: "subDepartment", width: 22 },
+    { header: "Branch", key: "branch", width: 20 },
+    { header: "DOJ", key: "joiningDate", width: 15 },
+    { header: "Reporting Manager", key: "reportingManager", width: 25 },
+    { header: "WFH/Office", key: "workMode", width: 14 },
+    { header: "Official Mail ID", key: "email", width: 32 },
+    { header: "New Mail id", key: "newMailId", width: 32 },
+    { header: "Personal Mail ID", key: "personalEmail", width: 30 },
+    { header: "Skype ID", key: "skypeId", width: 25 },
+    { header: "Contact Number", key: "phone", width: 16 },
+    { header: "Alternate Contact No.", key: "alternatePhone", width: 18 },
     { header: "Gender", key: "gender", width: 12 },
-    { header: "PAN", key: "pan", width: 15 },
-    { header: "Aadhaar", key: "aadhaar", width: 15 },
+    { header: "DOB (OFFICIAL)", key: "dateOfBirth", width: 15 },
+    { header: "DOB(Actual)", key: "dobActual", width: 15 },
+    { header: "Religion", key: "religion", width: 14 },
+    { header: "Marital Status", key: "maritalStatus", width: 15 },
+    { header: "Date of Anniversary", key: "anniversaryDate", width: 18 },
+    { header: "Children", key: "children", width: 10 },
+    { header: "Blood Group", key: "bloodGroup", width: 12 },
+    { header: "Current Address", key: "currentAddress", width: 35 },
+    { header: "Permanent Address", key: "permanentAddress", width: 35 },
+    { header: "Passport Number", key: "passportNo", width: 16 },
+    { header: "Pan Card No.", key: "pan", width: 16 },
+    { header: "Aadhar Card No.", key: "aadhaar", width: 18 },
+    { header: "Bank Name", key: "bankName", width: 22 },
+    { header: "Account Number", key: "accountNumber", width: 20 },
+    { header: "IFSC Code", key: "ifscCode", width: 15 },
+    { header: "ICICI Account Number", key: "secondaryAccountNumber", width: 22 },
+    { header: "Secondary IFSC Code", key: "secondaryIfscCode", width: 18 },
+    { header: "UAN No.", key: "uanNo", width: 18 },
+    { header: "ESIC No.", key: "esicNo", width: 18 },
+    { header: "CTC (PA)", key: "ctcPa", width: 15 },
+    { header: "CTC (PM)", key: "ctcPm", width: 15 },
+    { header: "Highest Education", key: "highestQualification", width: 20 },
+    { header: "Previous Employer Name", key: "previousEmployerName", width: 28 },
+    { header: "Last Working Day (Previous)", key: "previousEmployerLastWorkingDate", width: 22 },
+    { header: "Father's Name", key: "fatherName", width: 22 },
+    { header: "Father's Contact Number", key: "fatherPhone", width: 20 },
+    { header: "Mother Name", key: "motherName", width: 22 },
+    { header: "Mother's Contact Number", key: "motherPhone", width: 20 },
+    { header: "Spouse Name", key: "spouseName", width: 22 },
+    { header: "Spouse Contact Number", key: "spousePhone", width: 20 },
+    { header: "Source/Reference of Hiring", key: "hiringSource", width: 22 },
+    { header: "Source/Reference Name", key: "hiringReferrer", width: 22 },
+    { header: "Documentation Done (Yes/No)", key: "documentationDone", width: 22 },
+    { header: "Date of Resignation", key: "resignationDate", width: 18 },
+    { header: "Resignation Type(Vol/InVol)", key: "resignationType", width: 22 },
+    { header: "LWD(Last Working Day)", key: "exitDate", width: 18 },
+    { header: "Reason of Resignation", key: "exitReason", width: 25 },
+    { header: "Remarks", key: "remarks", width: 30 },
   ];
 
-  const rows = employees.map(emp => ({
-    employeeCode: emp.employeeCode || "",
-    firstName: emp.firstName || "",
-    lastName: emp.lastName || "",
-    email: emp.email || "",
-    phone: emp.phone || "",
-    branch: emp.branchId?.name || "",
-    department: emp.departmentId?.name || "",
-    designation: emp.designationId?.name || "",
-    reportingManager: emp.managerId ? `${emp.managerId.firstName || ""} ${emp.managerId.lastName || ""}`.trim() : "",
-    employeeType: emp.employeeType || "",
-    status: emp.status || "",
-    joiningDate: emp.joiningDate ? new Date(emp.joiningDate).toISOString().split("T")[0] : "",
-    dateOfBirth: emp.dateOfBirth ? new Date(emp.dateOfBirth).toISOString().split("T")[0] : "",
-    gender: emp.gender || "",
-    pan: emp.pan || "",
-    aadhaar: emp.aadhaar || "",
-  }));
+  const formatExportDate = (val: any): string => {
+    if (!val) return "";
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    const day = String(d.getDate()).padStart(2, "0");
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${day}-${monthNames[d.getMonth()]}-${d.getFullYear()}`;
+  };
+
+  const rows = employees.map((emp, idx) => {
+    const cf = emp.customFields || {};
+    const primaryBank = emp.primaryBankAccount || {};
+
+    const currAddr = emp.currentAddress
+      ? [emp.currentAddress.addressLine1, emp.currentAddress.addressLine2, emp.currentAddress.city, emp.currentAddress.state, emp.currentAddress.zip].filter(Boolean).join(", ")
+      : "";
+    const permAddr = emp.permanentAddress
+      ? [emp.permanentAddress.addressLine1, emp.permanentAddress.addressLine2, emp.permanentAddress.city, emp.permanentAddress.state, emp.permanentAddress.zip].filter(Boolean).join(", ")
+      : "";
+
+    const mgr = emp.managerId
+      ? [emp.managerId.firstName, emp.managerId.lastName].filter(Boolean).join(" ")
+      : "";
+
+    return {
+      sNo: idx + 1,
+      employeeCode: emp.employeeCode || "",
+      fullName: [emp.firstName, emp.lastName].filter(Boolean).join(" "),
+      firstName: emp.firstName || "",
+      lastName: emp.lastName || "",
+      orgName: emp.tenantId?.name || "Redvision",
+      status: emp.status || "",
+      employeeType: emp.employeeType || "",
+      designation: emp.designationId?.name || "",
+      department: emp.departmentId?.name || "",
+      subDepartment: cf.subDepartment || emp.teamId?.name || "",
+      branch: emp.branchId?.name || "",
+      joiningDate: formatExportDate(emp.joiningDate),
+      reportingManager: mgr,
+      workMode: cf.workMode || cf.wfhOrOffice || "WFO",
+      email: emp.email || "",
+      newMailId: cf.newMailId || emp.email || "",
+      personalEmail: cf.personalEmail || "",
+      skypeId: cf.skypeId || "",
+      phone: emp.phone || "",
+      alternatePhone: cf.alternatePhone || "",
+      gender: emp.gender || "",
+      dateOfBirth: formatExportDate(emp.dateOfBirth),
+      dobActual: cf.dobActual ? formatExportDate(cf.dobActual) : "",
+      religion: emp.religion || "",
+      maritalStatus: emp.maritalStatus || "",
+      anniversaryDate: cf.anniversaryDate ? formatExportDate(cf.anniversaryDate) : (cf.dateOfAnniversary ? formatExportDate(cf.dateOfAnniversary) : ""),
+      children: cf.children ?? "",
+      bloodGroup: emp.bloodGroup || "",
+      currentAddress: currAddr,
+      permanentAddress: permAddr,
+      passportNo: emp.passportNo || "",
+      pan: emp.pan || "",
+      aadhaar: emp.aadhaar || "",
+      bankName: primaryBank.bankName || "",
+      accountNumber: primaryBank.accountNumber || "",
+      ifscCode: primaryBank.ifscCode || "",
+      secondaryAccountNumber: cf.secondaryAccountNumber || cf.iciciAccountNumber || "",
+      secondaryIfscCode: cf.secondaryIfscCode || "",
+      uanNo: cf.uanNo || "",
+      esicNo: cf.esicNo || "",
+      ctcPa: cf.ctcPa ?? "",
+      ctcPm: cf.ctcPm ?? "",
+      highestQualification: emp.highestQualification || (emp.educationDetails?.[0]?.degree || emp.educationDetails?.[0]?.qualificationLevel || ""),
+      previousEmployerName: emp.previousEmployerName || "",
+      previousEmployerLastWorkingDate: formatExportDate(emp.previousEmployerLastWorkingDate),
+      fatherName: emp.fatherName || "",
+      fatherPhone: emp.fatherPhone || "",
+      motherName: emp.motherName || "",
+      motherPhone: emp.motherPhone || "",
+      spouseName: emp.spouseName || "",
+      spousePhone: emp.spousePhone || "",
+      hiringSource: cf.hiringSource || "",
+      hiringReferrer: cf.hiringReferrer || cf.hiringReferenceName || "",
+      documentationDone: emp.onboardingComplete ? "Yes" : (cf.documentationDone || "No"),
+      resignationDate: cf.resignationDate ? formatExportDate(cf.resignationDate) : "",
+      resignationType: cf.resignationType || "",
+      exitDate: formatExportDate(emp.exitDate),
+      exitReason: emp.exitReason || "",
+      remarks: cf.remarks || "",
+    };
+  });
 
   if (format === "csv") {
     const headerLine = columns.map(c => `"${c.header}"`).join(",");

@@ -142,7 +142,7 @@ export class EmployeeRepository
   }
 
   /**
-   * Fetch employees matching filters for export.
+   * Fetch employees matching filters for export (Complete Master Data).
    */
   async findEmployeesForExport(
     context: RequestContext,
@@ -162,12 +162,29 @@ export class EmployeeRepository
       query.status = filters.status;
     }
 
-    return EmployeeModel.find(query)
-      .select("employeeCode firstName lastName email status departmentId branchId createdAt employeeType phone joiningDate dateOfBirth gender pan aadhaar managerId")
+    const employees = await EmployeeModel.find(query)
       .populate("branchId", "name")
       .populate("departmentId", "name")
       .populate("designationId", "name")
+      .populate("teamId", "name")
       .populate("managerId", "firstName lastName employeeCode")
       .lean();
+
+    const empIds = employees.map((e: any) => e._id);
+    const bankAccounts = await EmployeeBankAccountModel.find({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      employeeId: { $in: empIds },
+      isPrimary: true,
+    }).lean();
+
+    const bankMap = new Map<string, any>();
+    for (const b of bankAccounts) {
+      bankMap.set(b.employeeId.toString(), b);
+    }
+
+    return employees.map((e: any) => ({
+      ...e,
+      primaryBankAccount: bankMap.get(e._id.toString()),
+    }));
   }
 }
