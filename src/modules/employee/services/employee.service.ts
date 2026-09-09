@@ -1522,7 +1522,7 @@ export class EmployeeService {
     await session.save();
 
     // Enqueue the background processing job
-    const { addImportJob } = require("./import-queue");
+    const { addImportJob } = require("../jobs/import-queue");
     await addImportJob({
       sessionId,
       context,

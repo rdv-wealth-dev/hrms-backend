@@ -31,7 +31,7 @@ export async function pollForNextJob() {
   console.log(`[ImportQueue] Worker ${WORKER_ID} claimed job for session: ${session.sessionId}`);
 
   try {
-    const { EmployeeService } = require("./employee.service");
+    const { EmployeeService } = require("../services/employee.service");
     const empService = new EmployeeService();
 
     const buffer = Buffer.from(session.fileBufferBase64 || "", "base64");
