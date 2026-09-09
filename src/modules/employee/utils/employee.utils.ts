@@ -45,6 +45,7 @@ export interface BulkImportRow {
   exitDate?: string;
   exitReason?: string;
   importedStatus?: string;
+  reportingManagerName?: string;
   nationality?: string;
   passportNo?: string;
   // Sub-docs packed in by Layer 3
@@ -171,6 +172,13 @@ const HEADER_SYNONYM_MAP: Record<string, string> = {
   "role": "designationName", "post": "designationName",
   "grade": "designationName", "rank": "designationName",
   "job role": "designationName",
+
+  // ── Reporting Manager
+  "reporting manager": "reportingManagerName", "reporting manager name": "reportingManagerName",
+  "reporting to": "reportingManagerName", "reports to": "reportingManagerName",
+  "manager": "reportingManagerName", "manager name": "reportingManagerName",
+  "rm": "reportingManagerName", "tl": "reportingManagerName",
+  "team leader": "reportingManagerName", "lead": "reportingManagerName",
 
   // ── Employee Type
   "employee type": "employeeType", "employeetype": "employeeType",
@@ -999,6 +1007,7 @@ function normalizeRow(mapped: Record<string, any>): BulkImportRow {
     exitDate: exitDateObj ? exitDateObj.toISOString() : undefined,
     exitReason: String(mapped.exitReason ?? "").trim() || undefined,
     importedStatus: mapped.importedStatus ? String(mapped.importedStatus).trim() : undefined,
+    reportingManagerName: String(mapped.reportingManagerName ?? "").trim() || undefined,
     bankAccount,
     currentAddress,
     permanentAddress,
@@ -1489,9 +1498,10 @@ export async function parseImportFile(
       },
       createdBy: userIdObj,
       updatedBy: userIdObj,
-      // Carry bank account and family members for post-insert processing in service
+      // Carry bank account, family members, and reporting manager for post-insert processing
       __bankAccount: row.bankAccount,
       __isActiveEmployee: isActiveEmployee,
+      __reportingManagerName: row.reportingManagerName,
       __familyMembers: [
         row.fatherName ? { fullName: row.fatherName, relationship: "FATHER", phone: row.fatherPhone } : null,
         row.motherName ? { fullName: row.motherName, relationship: "MOTHER", phone: row.motherPhone } : null,

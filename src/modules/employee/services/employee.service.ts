@@ -1331,7 +1331,7 @@ export class EmployeeService {
 
     // Strip internal-only fields before DB insert
     const cleanRecords = parsedData.validRecords.map(r => {
-      const { __bankAccount, __isActiveEmployee, __familyMembers, ...clean } = r;
+      const { __bankAccount, __isActiveEmployee, __familyMembers, __reportingManagerName, ...clean } = r;
       return clean;
     });
 
@@ -1428,6 +1428,13 @@ export class EmployeeService {
       } catch (famErr: any) {
         console.warn("Some family members could not be bulk inserted:", famErr?.message || famErr);
       }
+    }
+
+    // Automatically link employees to their reporting managers and construct hierarchy tree
+    try {
+      await this.linkReportingManagers(context.tenantId, dbResult.records, parsedData.validRecords);
+    } catch (mgrErr: any) {
+      console.warn("Reporting managers could not be linked during bulk import:", mgrErr?.message || mgrErr);
     }
 
     // Bulk insert user accounts (ordered: false allows inserting non-duplicate users even if some emails exist)
@@ -2173,5 +2180,138 @@ export class EmployeeService {
       totalEligible: managerList.length,
       managers: managerList,
     };
+  }
+
+  /**
+   * Automatically resolves and links each imported employee's managerId and secondaryManagerIds
+   * based on the 'Reporting Manager' column from the import sheet, constructing the hierarchy tree.
+   */
+  async linkReportingManagers(
+    tenantId: string,
+    insertedRecords: any[],
+    originalRecords: any[]
+  ): Promise<number> {
+    const tenantOId = new mongoose.Types.ObjectId(tenantId);
+
+    // 1. Fetch all employees in tenant to resolve names (includes both newly imported and pre-existing)
+    const allEmployees = await EmployeeModel.find({
+      tenantId: tenantOId,
+      isDeleted: false,
+    }).select("_id firstName lastName email employeeCode").lean();
+
+    if (!allEmployees || allEmployees.length === 0) return 0;
+
+    // 2. Build multi-key lookup index
+    const nameMap = new Map<string, mongoose.Types.ObjectId>();
+    const empCodeMap = new Map<string, mongoose.Types.ObjectId>();
+    const emailMap = new Map<string, mongoose.Types.ObjectId>();
+
+    const normalizeStr = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    for (const emp of allEmployees) {
+      const id = emp._id as mongoose.Types.ObjectId;
+      const fn = (emp.firstName || "").trim().toLowerCase();
+      const ln = (emp.lastName || "").trim().toLowerCase();
+      const full1 = `${fn} ${ln}`.trim();
+      const full2 = `${ln} ${fn}`.trim();
+
+      if (full1) {
+        nameMap.set(normalizeStr(full1), id);
+      }
+      if (full2) {
+        nameMap.set(normalizeStr(full2), id);
+      }
+      if (fn && !nameMap.has(normalizeStr(fn))) {
+        nameMap.set(normalizeStr(fn), id);
+      }
+
+      if (emp.employeeCode) {
+        empCodeMap.set(emp.employeeCode.toUpperCase().trim(), id);
+      }
+      if (emp.email) {
+        emailMap.set(emp.email.toLowerCase().trim(), id);
+      }
+    }
+
+    const resolveSingleManager = (rawName: string): mongoose.Types.ObjectId | null => {
+      const clean = rawName.trim();
+      if (!clean || clean.toLowerCase() === "na" || clean.toLowerCase() === "n/a" || clean === "-") return null;
+
+      // Check employeeCode
+      if (empCodeMap.has(clean.toUpperCase())) {
+        return empCodeMap.get(clean.toUpperCase())!;
+      }
+      // Check email
+      if (emailMap.has(clean.toLowerCase())) {
+        return emailMap.get(clean.toLowerCase())!;
+      }
+
+      // Check direct normalized name
+      const norm = normalizeStr(clean);
+      if (nameMap.has(norm)) {
+        return nameMap.get(norm)!;
+      }
+
+      // Check substring or token containment (e.g. "Sufyan" inside "Mohammad Sufyan Shaikh")
+      const tokens = clean.toLowerCase().split(/\s+/).filter(t => t.length >= 3);
+      for (const emp of allEmployees) {
+        const empFull = `${emp.firstName || ""} ${emp.lastName || ""}`.toLowerCase();
+        const empEmail = (emp.email || "").toLowerCase();
+        if (tokens.length > 0 && tokens.every(tok => empFull.includes(tok) || empEmail.includes(tok))) {
+          return emp._id as mongoose.Types.ObjectId;
+        }
+      }
+
+      return null;
+    };
+
+    const bulkOps: any[] = [];
+
+    for (let i = 0; i < insertedRecords.length; i++) {
+      const emp = insertedRecords[i];
+      const orig = originalRecords[i];
+      const rawMgrStr = orig?.__reportingManagerName ? String(orig.__reportingManagerName).trim() : "";
+      if (!rawMgrStr) continue;
+
+      // Handle "Sufyan and Praveen", "Sufyan / Praveen", "Sufyan, Praveen"
+      const managerNames = rawMgrStr
+        .split(/\s+(?:and|&|\/|,)\s+|\s*,\s*|\s*\/\s*/i)
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      if (managerNames.length === 0) continue;
+
+      const primaryMgrId = resolveSingleManager(managerNames[0]);
+      const secondaryMgrIds: mongoose.Types.ObjectId[] = [];
+
+      for (let j = 1; j < managerNames.length; j++) {
+        const secId = resolveSingleManager(managerNames[j]);
+        if (secId && secId.toString() !== emp._id.toString() && (!primaryMgrId || secId.toString() !== primaryMgrId.toString())) {
+          secondaryMgrIds.push(secId);
+        }
+      }
+
+      if (primaryMgrId && primaryMgrId.toString() !== emp._id.toString()) {
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: emp._id },
+            update: {
+              $set: {
+                managerId: primaryMgrId,
+                ...(secondaryMgrIds.length > 0 ? { secondaryManagerIds: secondaryMgrIds } : {}),
+              },
+            },
+          },
+        });
+      }
+    }
+
+    if (bulkOps.length > 0) {
+      const res = await EmployeeModel.bulkWrite(bulkOps, { ordered: false });
+      console.log(`[ReportingManager] Successfully linked ${res.modifiedCount} employees to their reporting managers!`);
+      return res.modifiedCount;
+    }
+
+    return 0;
   }
 }
