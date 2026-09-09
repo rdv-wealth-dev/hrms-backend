@@ -331,22 +331,25 @@ const HEADER_SYNONYM_MAP: Record<string, string> = {
   "source/reference name": "hiringReferrer", "reference name": "hiringReferrer", "referrer name": "hiringReferrer",
   "documentation done (yes/no)": "documentationDone", "documentation done": "documentationDone",
 
-  // ── Remarks
   "remarks": "remarks", "remark": "remarks",
 };
 
 // ─────────────────────────────────────────────────────────────────
-// FUZZY MATCHING ENGINE (existing — preserved)
+// FUZZY MATCHING & NORMALIZATION ENGINE
 // ─────────────────────────────────────────────────────────────────
 
 function normalize(str: string): string {
   return str
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, " ")
-    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+const NORMALIZED_HEADER_SYNONYMS: Record<string, string> = {};
+for (const [k, v] of Object.entries(HEADER_SYNONYM_MAP)) {
+  NORMALIZED_HEADER_SYNONYMS[normalize(k)] = v;
 }
 
 function levenshtein(a: string, b: string): number {
@@ -499,56 +502,34 @@ async function findOrCreateDesignation(
  */
 function mapHeaders(rawHeaders: string[]): Record<string, string> {
   const mapping: Record<string, string> = {};
-  const synonymKeys = Object.keys(HEADER_SYNONYM_MAP);
 
   for (const raw of rawHeaders) {
-    if (!raw) continue;
+    if (!raw || !raw.trim()) continue;
 
-    // 0. Clean parenthetical descriptions e.g. "Emp Code(YYYYMMDDeNNNNN)(DOJ)" -> "Emp Code"
+    const normRaw = normalize(raw);
     const stripped = raw.replace(/\s*\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
-    const norm = normalize(stripped || raw);
-    const rawNorm = normalize(raw);
+    const normStripped = normalize(stripped);
 
-    // 1. Direct synonym lookup (both stripped and raw)
-    if (HEADER_SYNONYM_MAP[norm]) {
-      mapping[raw] = HEADER_SYNONYM_MAP[norm];
-      continue;
-    }
-    if (HEADER_SYNONYM_MAP[rawNorm]) {
-      mapping[raw] = HEADER_SYNONYM_MAP[rawNorm];
+    // 1. Direct exact lookup on original full header first (so "DOB (OFFICIAL)" vs "DOB(Actual)", "CTC (PA)" vs "CTC (PM)" don't collide)
+    if (NORMALIZED_HEADER_SYNONYMS[normRaw]) {
+      mapping[raw] = NORMALIZED_HEADER_SYNONYMS[normRaw];
       continue;
     }
 
-    // 1b. Substring / prefix check for key patterns (e.g. starts with "emp code" or "employee code")
-    let prefixKey: string | null = null;
-    for (const synKey of synonymKeys) {
-      if (norm === synKey || norm.startsWith(synKey + " ") || norm.endsWith(" " + synKey)) {
-        prefixKey = synKey;
-        break;
-      }
-    }
-    if (prefixKey) {
-      mapping[raw] = HEADER_SYNONYM_MAP[prefixKey];
+    // 2. Direct exact lookup on stripped parenthetical header (e.g. "Emp Code(YYYYMMDD...)" -> "emp code")
+    if (NORMALIZED_HEADER_SYNONYMS[normStripped]) {
+      mapping[raw] = NORMALIZED_HEADER_SYNONYMS[normStripped];
       continue;
     }
 
-    // 2. Fuzzy match against synonym dictionary keys
-    let bestKey: string | null = null;
-    let bestDist = Infinity;
-    const threshold = norm.length <= 6 ? 1 : norm.length <= 12 ? 2 : 3;
-    for (const synKey of synonymKeys) {
-      const dist = levenshtein(norm, synKey);
-      if (dist <= threshold && dist < bestDist) {
-        bestDist = dist;
-        bestKey = synKey;
-      }
+    // 3. Safe prefix check for specific known prefixes ONLY (Emp Code / Employee Code)
+    if (normStripped.startsWith("emp code") || normStripped.startsWith("employee code") || normStripped.startsWith("staff code")) {
+      mapping[raw] = "employeeCode";
+      continue;
     }
-    if (bestKey) {
-      mapping[raw] = HEADER_SYNONYM_MAP[bestKey];
-    } else {
-      // Unknown column → treat as custom field, keep normalized key
-      mapping[raw] = `__custom__${norm.replace(/\s+/g, "_")}`;
-    }
+
+    // 4. Fallback: custom field
+    mapping[raw] = `__custom__${normStripped.replace(/\s+/g, "_")}`;
   }
 
   return mapping;
