@@ -1,19 +1,15 @@
 import mongoose from "mongoose";
 import { createBaseSchema, BaseDocument } from "../../../shared/database/base.schema";
 
-// ─────────────────────────────────────────────────────────────────────────────
 // TAX REGIME ENUM
-// ─────────────────────────────────────────────────────────────────────────────
 
 export enum TaxRegime {
   OLD = "OLD",
   NEW = "NEW",
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 // PROFESSIONAL TAX (PT) CONFIG MODEL
 // Slabs configuration for different gross monthly salaries per state
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface PTSlab {
   minSalary: number;
@@ -69,10 +65,8 @@ export const ProfessionalTaxConfigModel = mongoose.model<ProfessionalTaxConfigDo
   ProfessionalTaxConfigSchema
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
 // LABOUR WELFARE FUND (LWF) CONFIG MODEL
 // LWF contribution rules per state
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface LWFConfigDocument extends BaseDocument {
   stateCode: string;
@@ -125,10 +119,8 @@ export const LWFConfigModel = mongoose.model<LWFConfigDocument>(
   LWFConfigSchema
 );
 
-// ─────────────────────────────────────────────────────────────────────────────
 // TAX DECLARATION MODEL
 // Income Tax regime selection and investment declarations under 80C/80D/80CCD
-// ─────────────────────────────────────────────────────────────────────────────
 
 export interface TaxDeclarationDocument extends BaseDocument {
   employeeId: mongoose.Types.ObjectId;
@@ -185,9 +177,7 @@ export const TaxDeclarationModel = mongoose.model<TaxDeclarationDocument>(
   TaxDeclarationSchema
 );
 
-// =============================================================================
 // OVERTIME CONFIG
-// =============================================================================
 
 export interface OvertimeConfigDocument extends BaseDocument {
   standardHoursPerDay: number;
@@ -222,9 +212,7 @@ export const OvertimeConfigModel = mongoose.model<OvertimeConfigDocument>(
   OvertimeConfigSchema
 );
 
-// =============================================================================
 // PF & ESI STATUTORY COMPLIANCE CONFIG
-// =============================================================================
 
 export interface PfEsiConfigDocument extends BaseDocument {
   isPfEnabled: boolean;
