@@ -61,26 +61,74 @@ export class LeaveRequestRepository {
     return { data, totalRecords, pageNumber: page, pageSize: safe };
   }
 
-  // Requests currently awaiting action from a specific role, for the pending queue
+  // Requests currently awaiting action from a specific role/approver, for the pending queue
   async findPendingForApproverRole(
     context: RequestContext,
     approverRole: string,
     page: number,
     pageSize: number
   ) {
+    const isOrgAdmin = context.role === "ORG_ADMIN" || context.role === "SUPER_ADMIN" || (context as any).isOrgAdmin;
+    const userOId = new mongoose.Types.ObjectId(context.userId);
+    const empOId = context.employeeId ? new mongoose.Types.ObjectId(context.employeeId) : null;
+
+    let approverCondition: any;
+
+    if (isOrgAdmin) {
+      // Org Admin has overarching authority over pending requests awaiting action at their current level
+      approverCondition = true;
+    } else {
+      const orList: any[] = [
+        // 1. Logged in user is explicitly assigned as approverId on the active step
+        { $eq: ["$$step.approverId", userOId] },
+      ];
+      if (empOId) {
+        orList.push({ $eq: ["$$step.approverId", empOId] });
+      }
+
+      // 2. Role-based fallback: if approverId is not specified, or matches user's active role
+      orList.push({
+        $and: [
+          {
+            $or: [
+              { $eq: ["$$step.approverId", null] },
+              { $not: ["$$step.approverId"] },
+            ],
+          },
+          { $eq: ["$$step.approverRole", context.role] },
+        ],
+      });
+
+      approverCondition = { $or: orList };
+    }
+
     const query: Record<string, unknown> = {
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
       status: "PENDING",
       isDeleted: false,
-      approvals: {
-        $elemMatch: {
-          status: "PENDING",
-          approverRole,
-        },
+      $expr: {
+        $gt: [
+          {
+            $size: {
+              $filter: {
+                input: "$approvals",
+                as: "step",
+                cond: {
+                  $and: [
+                    { $eq: ["$$step.level", "$currentApprovalLevel"] },
+                    { $eq: ["$$step.status", "PENDING"] },
+                    approverCondition,
+                  ],
+                },
+              },
+            },
+          },
+          0,
+        ],
       },
     };
 
-    if (context.role !== "ORG_ADMIN" && context.role !== "SUPER_ADMIN" && context.branchIds && context.branchIds.length > 0) {
+    if (!isOrgAdmin && context.branchIds && context.branchIds.length > 0) {
       query.branchId = {
         $in: context.branchIds.map((id) => new mongoose.Types.ObjectId(id)),
       };
@@ -94,8 +142,8 @@ export class LeaveRequestRepository {
         .sort({ appliedAt: 1 })
         .skip(skip)
         .limit(safe)
-        .populate("employeeId", "employeeCode firstName lastName avatarUrl profilePicture")
-        .populate("leaveTypeId", "name code")
+        .populate("employeeId", "employeeCode firstName lastName avatarUrl profilePicture branchId departmentId")
+        .populate("leaveTypeId", "name code isPaid")
         .lean(),
       LeaveRequestModel.countDocuments(query),
     ]);

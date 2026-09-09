@@ -8,6 +8,7 @@ import { BranchModel } from "../../../branch/branch.model";
 import { OrganizationModel } from "../../../organization/organization.model";
 import { UserModel } from "../../../user/user.model";
 import { EmployeeModel } from "../../../employee/models/employee.model";
+import { TeamModel } from "../../../team/team.model";
 import { CreateLeaveRequestInput, ReviewLeaveRequestInput, CancelLeaveRequestInput, } from "../../dto/leave.dto";
 import { AppError } from "../../../../shared/errors/app.error";
 import { RequestContext } from "../../../../shared/types/request-context.interface";
@@ -144,7 +145,107 @@ export class LeaveRequestService {
       context, employeeId, input.leaveTypeId, year, totalDays, leaveType.allowNegativeBalance
     );
 
-    const approvals = buildApprovalChain(leaveType.approvalLevels);
+    // Resolve applicant's organizational position & hierarchy
+    const applicantUser = await UserModel.findOne({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      employeeId: employee._id,
+      isDeleted: false,
+    }).select("role isOrgAdmin");
+
+    let applicantRole = (applicantUser?.role || context.role || "EMPLOYEE").toUpperCase();
+    if (applicantUser?.isOrgAdmin || context.role === "ORG_ADMIN" || (context as any).isOrgAdmin) {
+      applicantRole = "ORG_ADMIN";
+    } else if (applicantRole === "EMPLOYEE") {
+      const isTeamLead = await TeamModel.exists({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        leadId: employee._id,
+        isDeleted: false,
+        isActive: true,
+      });
+      const hasReportees = await EmployeeModel.exists({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        managerId: employee._id,
+        isDeleted: false,
+      });
+      if (isTeamLead || hasReportees) {
+        applicantRole = "MANAGER";
+      }
+    }
+
+    // 1. Resolve direct manager's user account
+    let managerUserId: mongoose.Types.ObjectId | undefined;
+    if (employee.managerId) {
+      const managerUser = await UserModel.findOne({
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        employeeId: employee.managerId,
+        isActive: true,
+        isDeleted: false,
+      }).select("_id");
+      if (managerUser) {
+        managerUserId = managerUser._id as mongoose.Types.ObjectId;
+      }
+    }
+
+    // Fallback: check team lead if no direct manager is set on employee
+    if (!managerUserId && employee.teamId) {
+      const team = await TeamModel.findById(employee.teamId).select("leadId");
+      if (team?.leadId && team.leadId.toString() !== employee._id.toString()) {
+        const leadUser = await UserModel.findOne({
+          tenantId: new mongoose.Types.ObjectId(context.tenantId),
+          employeeId: team.leadId,
+          isActive: true,
+          isDeleted: false,
+        }).select("_id");
+        if (leadUser) {
+          managerUserId = leadUser._id as mongoose.Types.ObjectId;
+        }
+      }
+    }
+
+    // 2. Resolve HR Admin's user account
+    let hrAdminUserId: mongoose.Types.ObjectId | undefined;
+    const hrAdminUser = await UserModel.findOne({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      role: "HR_ADMIN",
+      isActive: true,
+      isDeleted: false,
+    }).select("_id");
+    if (hrAdminUser) {
+      hrAdminUserId = hrAdminUser._id as mongoose.Types.ObjectId;
+    }
+
+    // 3. Resolve Org Admin user accounts
+    let orgAdminUserId: mongoose.Types.ObjectId | undefined;
+    let alternateAdminUserId: mongoose.Types.ObjectId | undefined;
+
+    const orgAdmins = await UserModel.find({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      $or: [{ role: "ORG_ADMIN" }, { isOrgAdmin: true }],
+      isActive: true,
+      isDeleted: false,
+    }).select("_id").limit(2);
+
+    const otherAdmins = orgAdmins.filter(
+      (admin) => !applicantUser || admin._id.toString() !== applicantUser._id.toString()
+    );
+
+    if (otherAdmins.length > 0) {
+      orgAdminUserId = otherAdmins[0]._id as mongoose.Types.ObjectId;
+      if (otherAdmins.length > 1) {
+        alternateAdminUserId = otherAdmins[1]._id as mongoose.Types.ObjectId;
+      }
+    } else if (orgAdmins.length > 0) {
+      orgAdminUserId = orgAdmins[0]._id as mongoose.Types.ObjectId;
+    }
+
+    const approvals = buildApprovalChain({
+      approvalLevels: leaveType.approvalLevels,
+      applicantRole,
+      managerUserId,
+      hrAdminUserId,
+      orgAdminUserId,
+      alternateAdminUserId,
+    });
 
     const request = await this.reqRepo.create({
       tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
@@ -250,11 +351,21 @@ export class LeaveRequestService {
     );
     if (!currentStep) throw new AppError("Approval chain misconfigured", 500);
 
-    if (currentStep.approverRole !== context.role && context.role !== "ORG_ADMIN") {
-      throw new AppError(
-        `Only a ${currentStep.approverRole} can act on this approval level`,
-        403
-      );
+    const isOrgAdmin = context.role === "ORG_ADMIN" || context.role === "SUPER_ADMIN" || (context as any).isOrgAdmin;
+    const isAssignedApprover = currentStep.approverId && currentStep.approverId.toString() === context.userId;
+    const matchesRole = currentStep.approverRole === context.role;
+
+    if (!isOrgAdmin) {
+      if (currentStep.approverId) {
+        if (!isAssignedApprover) {
+          throw new AppError("You are not the designated approver for this request", 403);
+        }
+      } else if (!matchesRole) {
+        throw new AppError(
+          `Only a ${currentStep.approverRole} can act on this approval level`,
+          403
+        );
+      }
     }
 
     currentStep.status = input.status === "APPROVED" ? ApprovalLevelStatus.APPROVED : ApprovalLevelStatus.REJECTED;

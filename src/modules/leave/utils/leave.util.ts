@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { LeaveTypeDocument, LeaveAccrualFrequency } from "../sub-modules/leave-types/leave-type.model";
 import { LeaveSessionType } from "../sub-modules/leave-requests/leave-request.model";
 import { isWeeklyOffDay, CustomWeekOffRule } from "../../attendance/services/schedule-engine.service";
@@ -159,28 +160,118 @@ export function applySandwichPolicy(
 }
 
 
-// Builds the approval chain for a leave request based on the leave type's
-// approvalLevels setting.
+export interface ApprovalChainOptions {
+  approvalLevels: number;
+  applicantRole?: string; // "EMPLOYEE" | "MANAGER" | "HR_ADMIN" | "ORG_ADMIN"
+  managerUserId?: mongoose.Types.ObjectId;
+  hrAdminUserId?: mongoose.Types.ObjectId;
+  orgAdminUserId?: mongoose.Types.ObjectId;
+  alternateAdminUserId?: mongoose.Types.ObjectId;
+}
 
-export function buildApprovalChain(approvalLevels: number): Array<{
+// Builds the approval chain for a leave request based on the applicant's
+// position in the organization and the leave type's approvalLevels setting.
+// Hierarchy:
+// - Employee -> Direct Manager -> HR Admin -> Org Admin
+// - Manager / Team Lead -> HR Admin -> Org Admin
+// - HR Admin -> Org Admin -> Designated Authority
+// - Org Admin -> Alternate Org Admin / Designated Authority
+
+export function buildApprovalChain(
+  optionsOrLevels: number | ApprovalChainOptions
+): Array<{
   level: number;
   approverRole: string;
+  approverId?: mongoose.Types.ObjectId;
   status: string;
 }> {
-  const roleByLevel: Record<number, string> = {
-    1: "HR_ADMIN",
-    2: "ORG_ADMIN",
-    3: "ORG_ADMIN",
-  };
+  const opts: ApprovalChainOptions = typeof optionsOrLevels === "number"
+    ? { approvalLevels: optionsOrLevels }
+    : optionsOrLevels;
 
-  const chain = [];
-  for (let level = 1; level <= approvalLevels; level++) {
+  const levels = Math.max(1, opts.approvalLevels || 1);
+  const applicantRole = (opts.applicantRole || "EMPLOYEE").toUpperCase();
+
+  // Define steps according to applicant's organizational position
+  const rawSteps: Array<{ approverRole: string; approverId?: mongoose.Types.ObjectId }> = [];
+
+  if (applicantRole === "ORG_ADMIN") {
+    // Org Admin leave -> another designated authority / Org Admin
+    rawSteps.push({
+      approverRole: "ORG_ADMIN",
+      approverId: opts.alternateAdminUserId,
+    });
+    rawSteps.push({
+      approverRole: "ORG_ADMIN",
+      approverId: opts.alternateAdminUserId,
+    });
+  } else if (applicantRole === "HR_ADMIN") {
+    // HR Admin leave -> Org Admin -> designated authority
+    rawSteps.push({
+      approverRole: "ORG_ADMIN",
+      approverId: opts.orgAdminUserId,
+    });
+    rawSteps.push({
+      approverRole: "ORG_ADMIN",
+      approverId: opts.alternateAdminUserId || opts.orgAdminUserId,
+    });
+  } else if (applicantRole === "MANAGER") {
+    // Manager / Team Leader leave -> HR Admin -> Org Admin
+    rawSteps.push({
+      approverRole: "HR_ADMIN",
+      approverId: opts.hrAdminUserId,
+    });
+    rawSteps.push({
+      approverRole: "ORG_ADMIN",
+      approverId: opts.orgAdminUserId,
+    });
+    rawSteps.push({
+      approverRole: "ORG_ADMIN",
+      approverId: opts.alternateAdminUserId || opts.orgAdminUserId,
+    });
+  } else {
+    // Standard Employee leave -> Direct Manager -> HR Admin -> Org Admin
+    if (opts.managerUserId) {
+      rawSteps.push({
+        approverRole: "MANAGER",
+        approverId: opts.managerUserId,
+      });
+    } else {
+      // If no direct manager is configured for this employee, fallback to HR_ADMIN or MANAGER role
+      rawSteps.push({
+        approverRole: opts.hrAdminUserId ? "HR_ADMIN" : "MANAGER",
+        approverId: opts.hrAdminUserId,
+      });
+    }
+
+    rawSteps.push({
+      approverRole: "HR_ADMIN",
+      approverId: opts.hrAdminUserId,
+    });
+
+    rawSteps.push({
+      approverRole: "ORG_ADMIN",
+      approverId: opts.orgAdminUserId,
+    });
+  }
+
+  const chain: Array<{
+    level: number;
+    approverRole: string;
+    approverId?: mongoose.Types.ObjectId;
+    status: string;
+  }> = [];
+
+  for (let i = 0; i < levels; i++) {
+    const stepDef = rawSteps[i] || rawSteps[rawSteps.length - 1] || { approverRole: "ORG_ADMIN" };
     chain.push({
-      level,
-      approverRole: roleByLevel[level],
+      level: i + 1,
+      approverRole: stepDef.approverRole,
+      approverId: stepDef.approverId,
       status: "PENDING",
     });
   }
+
   return chain;
 }
 

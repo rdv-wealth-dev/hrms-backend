@@ -4,6 +4,7 @@ import { AppError, ForbiddenPermissionError } from "../errors/app.error";
 import { RequestContext } from "../types/request-context.interface";
 import { RoleModel } from "../../modules/role/role.model";
 import { EmployeeModel } from "../../modules/employee/models/employee.model";
+import { LeaveRequestModel } from "../../modules/leave/sub-modules/leave-requests/leave-request.model";
 import { DEFAULT_ROLES } from "../../database/seeds/role.seed";
 
 declare global {
@@ -55,6 +56,29 @@ export const checkPermission = (requiredPermission: string) => {
       }
 
       if (!permissions.includes(requiredPermission)) {
+        // Special case: if permission is "leave.approve", allow if user is an assigned manager or has pending approvals assigned
+        if (requiredPermission === "leave.approve") {
+          let canApprove = false;
+          if (req.context.employeeId) {
+            canApprove = !!(await EmployeeModel.exists({
+              tenantId: new mongoose.Types.ObjectId(tenantId),
+              managerId: new mongoose.Types.ObjectId(req.context.employeeId),
+              isDeleted: false,
+            }));
+          }
+          if (!canApprove) {
+            canApprove = !!(await LeaveRequestModel.exists({
+              tenantId: new mongoose.Types.ObjectId(tenantId),
+              status: "PENDING",
+              "approvals.approverId": new mongoose.Types.ObjectId(req.context.userId),
+            }));
+          }
+          if (canApprove) {
+            next();
+            return;
+          }
+        }
+
         next(
           ForbiddenPermissionError(
             `Access denied. Required permission: ${requiredPermission}`
