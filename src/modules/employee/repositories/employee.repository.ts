@@ -163,10 +163,11 @@ export class EmployeeRepository
     }
 
     return EmployeeModel.find(query)
-      .select("employeeCode firstName lastName email status departmentId branchId createdAt employeeType phone joiningDate")
+      .select("employeeCode firstName lastName email status departmentId branchId createdAt employeeType phone joiningDate dateOfBirth gender pan aadhaar managerId")
       .populate("branchId", "name")
       .populate("departmentId", "name")
       .populate("designationId", "name")
+      .populate("managerId", "firstName lastName employeeCode")
       .lean();
   }
 }
