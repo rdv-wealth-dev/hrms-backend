@@ -22,7 +22,10 @@ export interface BulkImportRow {
   phone?: string;
   branchName: string;
   departmentName: string;
+  subDepartmentName?: string;
   designationName: string;
+  workMode?: string;
+  grade?: string;
   joiningDate: string;
   employeeType?: string;
   gender?: string;
@@ -417,6 +420,15 @@ function generateCode(name: string, existingCodes: Set<string>): string {
   return code;
 }
 
+function normalizeWorkMode(val: any): string {
+  if (!val) return "OFFICE";
+  const s = String(val).trim().toUpperCase();
+  if (["WFO", "OFFICE", "WORK FROM OFFICE", "O"].includes(s)) return "OFFICE";
+  if (["WFH", "REMOTE", "WORK FROM HOME", "HOME", "H"].includes(s)) return "WFH";
+  if (s === "HYBRID") return "HYBRID";
+  return "OFFICE";
+}
+
 async function findOrCreateDepartment(
   tenantId: mongoose.Types.ObjectId,
   branchId: mongoose.Types.ObjectId,
@@ -424,22 +436,25 @@ async function findOrCreateDepartment(
   name: string,
   nameMap: Map<string, { id: any; name: string }>,
   existingCodes: Set<string>,
-  createdNames: string[]
+  createdNames: string[],
+  parentId?: mongoose.Types.ObjectId
 ): Promise<{ id: any; name: string; wasCreated: boolean }> {
-  const match = fuzzyMatch(name, nameMap);
-  if (match) {
-    return { id: match.id, name: match.matchedName, wasCreated: false };
+  const norm = normalize(name);
+  if (nameMap.has(norm)) {
+    return { id: nameMap.get(norm)!.id, name: nameMap.get(norm)!.name, wasCreated: false };
   }
+
   const code = generateCode(name, existingCodes);
   const cleanName = name.trim();
   const newDept = await DepartmentModel.create({
     tenantId, branchId, name: cleanName, code,
     description: `Auto-created during bulk employee import`,
+    parentId: parentId || null,
     isActive: true, createdBy: userId, updatedBy: userId,
   });
   const { invalidateMasterDataCache } = require("./master-data-cache");
   invalidateMasterDataCache(tenantId.toString());
-  nameMap.set(normalize(cleanName), { id: newDept._id, name: cleanName });
+  nameMap.set(norm, { id: newDept._id, name: cleanName });
   createdNames.push(cleanName);
   return { id: newDept._id, name: cleanName, wasCreated: true };
 }
@@ -455,27 +470,22 @@ async function findOrCreateDesignation(
   createdNames: string[]
 ): Promise<{ id: any; name: string; wasCreated: boolean; wrongDept: boolean }> {
   const normalizedInput = normalize(name);
-  const exactEntry = nameMap.get(normalizedInput);
-  if (exactEntry) {
-    const wrongDept = exactEntry.departmentId.toString() !== departmentId.toString();
-    return { id: exactEntry.id, name: exactEntry.name, wasCreated: false, wrongDept };
-  }
-  const deptScopedMap = new Map<string, { id: any; name: string; departmentId: any }>();
+
+  // 1. Exact match within this department
   for (const [key, value] of nameMap.entries()) {
-    if (value.departmentId.toString() === departmentId.toString()) {
-      deptScopedMap.set(key, value);
+    if (value.departmentId?.toString() === departmentId.toString() && key === normalizedInput) {
+      return { id: value.id, name: value.name, wasCreated: false, wrongDept: false };
     }
   }
-  const fuzzyEntry = fuzzyMatch(name, deptScopedMap as any);
-  if (fuzzyEntry) {
-    return { id: fuzzyEntry.id, name: fuzzyEntry.matchedName, wasCreated: false, wrongDept: false };
+
+  // 2. Exact match across tenant
+  const exactEntry = nameMap.get(normalizedInput);
+  if (exactEntry) {
+    return { id: exactEntry.id, name: exactEntry.name, wasCreated: false, wrongDept: false };
   }
-  const globalFuzzy = fuzzyMatch(name, nameMap as any);
-  if (globalFuzzy) {
-    const entry = nameMap.get(normalize(globalFuzzy.matchedName));
-    const wrongDept = entry ? entry.departmentId.toString() !== departmentId.toString() : false;
-    return { id: globalFuzzy.id, name: globalFuzzy.matchedName, wasCreated: false, wrongDept };
-  }
+
+  // 3. Exact matching only — NO cross-department fuzzy guessing!
+  // If not found, CREATE IT exactly as written in the sheet under the employee's department!
   const code = generateCode(name, existingCodes);
   const cleanName = name.trim();
   const newDesig = await DesignationModel.create({
@@ -485,7 +495,7 @@ async function findOrCreateDesignation(
   });
   const { invalidateMasterDataCache } = require("./master-data-cache");
   invalidateMasterDataCache(tenantId.toString());
-  nameMap.set(normalize(cleanName), { id: newDesig._id, name: cleanName, departmentId });
+  nameMap.set(normalizedInput, { id: newDesig._id, name: cleanName, departmentId });
   createdNames.push(cleanName);
   return { id: newDesig._id, name: cleanName, wasCreated: true, wrongDept: false };
 }
@@ -1049,7 +1059,10 @@ function normalizeRow(mapped: Record<string, any>): BulkImportRow {
     phone,
     branchName: String(mapped.branchName ?? "").trim(),
     departmentName: String(mapped.departmentName ?? "").trim(),
+    subDepartmentName: String(mapped.subDepartment ?? "").trim() || undefined,
     designationName: String(mapped.designationName ?? "").trim(),
+    workMode: normalizeWorkMode(mapped.workMode),
+    grade: String(mapped.grade ?? "").trim() || "NA",
     joiningDate: joiningDateObj ? joiningDateObj.toISOString() : String(mapped.joiningDate ?? "").trim(),
     employeeType: mapped.employeeType ? undefined : undefined, // will be normalized in parseImportFile
     gender: normalizeGender(mapped.gender),
@@ -1490,29 +1503,40 @@ export async function parseImportFile(
       warnings.push({ rowNumber, email: emailClean, reason: `No branch specified — auto-assigned to "${(headOfficeBranch as any).name}" (head office)`, severity: "WARNING" });
     }
 
-    // ── Department — fuzzy match or auto-create
-    const deptResult = await findOrCreateDepartment(
+    // ── Department & Sub-Department — Exact Match & Parent-Child Auto-Creation
+    const parentDeptResult = await findOrCreateDepartment(
       tenantIdObj, branchId, userIdObj,
       row.departmentName, departmentMap, existingDeptCodes, createdDepts
     );
-    if (deptResult.wasCreated) {
-      warnings.push({ rowNumber, email: emailClean, reason: `Department "${row.departmentName}" did not exist — auto-created as "${deptResult.name}"`, severity: "WARNING" });
-    } else if (normalize(deptResult.name) !== normalize(row.departmentName)) {
-      warnings.push({ rowNumber, email: emailClean, reason: `Department "${row.departmentName}" matched to existing "${deptResult.name}"`, severity: "WARNING" });
+    if (parentDeptResult.wasCreated) {
+      warnings.push({ rowNumber, email: emailClean, reason: `Department "${row.departmentName}" did not exist — auto-created as "${parentDeptResult.name}"`, severity: "WARNING" });
     }
 
-    // ── Designation — fuzzy match or auto-create
+    let effectiveDeptId = new mongoose.Types.ObjectId(parentDeptResult.id);
+    let effectiveDeptName = parentDeptResult.name;
+
+    // Sub-department: if present and distinct, link to parent department via parentId
+    if (row.subDepartmentName && normalize(row.subDepartmentName) !== normalize(row.departmentName)) {
+      const subDeptResult = await findOrCreateDepartment(
+        tenantIdObj, branchId, userIdObj,
+        row.subDepartmentName, departmentMap, existingDeptCodes, createdDepts,
+        effectiveDeptId
+      );
+      if (subDeptResult.wasCreated) {
+        warnings.push({ rowNumber, email: emailClean, reason: `Sub-department "${row.subDepartmentName}" auto-created under "${parentDeptResult.name}"`, severity: "WARNING" });
+      }
+      effectiveDeptId = new mongoose.Types.ObjectId(subDeptResult.id);
+      effectiveDeptName = subDeptResult.name;
+    }
+
+    // ── Designation — Exact Match within Department or Auto-Create (NO cross-dept fuzzy guessing!)
     const desigResult = await findOrCreateDesignation(
       tenantIdObj, branchId, userIdObj,
-      new mongoose.Types.ObjectId(deptResult.id),
+      effectiveDeptId,
       row.designationName, designationMap, existingDesigCodes, createdDesigs
     );
-    if (desigResult.wrongDept) {
-      warnings.push({ rowNumber, email: emailClean, reason: `Designation "${desigResult.name}" exists but belongs to a different department. Assigned as-is.`, severity: "WARNING" });
-    } else if (desigResult.wasCreated) {
-      warnings.push({ rowNumber, email: emailClean, reason: `Designation "${row.designationName}" did not exist — auto-created as "${desigResult.name}" under "${deptResult.name}"`, severity: "WARNING" });
-    } else if (normalize(desigResult.name) !== normalize(row.designationName)) {
-      warnings.push({ rowNumber, email: emailClean, reason: `Designation "${row.designationName}" matched to existing "${desigResult.name}"`, severity: "WARNING" });
+    if (desigResult.wasCreated) {
+      warnings.push({ rowNumber, email: emailClean, reason: `Designation "${row.designationName}" did not exist — auto-created as "${desigResult.name}" under "${effectiveDeptName}"`, severity: "WARNING" });
     }
 
     // ── Statutory validations via country plugin
@@ -1589,12 +1613,20 @@ export async function parseImportFile(
     const hasBank = !!(row.bankAccount?.accountNumber && row.bankAccount?.ifscCode);
     const hasDocs = !!(row.pan || row.aadhaar);
 
+    // Ensure workMode, grade, and subDepartment are in customFields for backward compatibility
+    resolvedCustomFields.workMode = row.workMode || "OFFICE";
+    resolvedCustomFields.grade = row.grade || "NA";
+    if (row.subDepartmentName) resolvedCustomFields.subDepartment = row.subDepartmentName;
+
     const employeeDoc: any = {
       _id: newEmpId,
       tenantId: tenantIdObj,
       branchId,
-      departmentId: new mongoose.Types.ObjectId(deptResult.id),
+      departmentId: effectiveDeptId,
       designationId: new mongoose.Types.ObjectId(desigResult.id),
+      subDepartment: row.subDepartmentName || undefined,
+      workMode: row.workMode || "OFFICE",
+      grade: row.grade || "NA",
       employeeCode,
       firstName: row.firstName.trim(),
       lastName: (row.lastName || "").trim(),

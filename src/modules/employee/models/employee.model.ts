@@ -151,6 +151,9 @@ export interface EmployeeDocument extends BaseDocument {
   shiftId?: mongoose.Types.ObjectId;  // fixed shift (overridden by rotationPlanId)
   rotationPlanId?: mongoose.Types.ObjectId;  // active rotation plan
   rotationStartDate?: Date;                     // when slot-1 of the plan began
+  workMode?: string;  // OFFICE, WFH, etc. (defaults to OFFICE)
+  grade?: string;     // Grade level from sheet or NA
+  subDepartment?: string; // Sub-department name if present
 
   // Address — embedded
   currentAddress?: EmployeeAddress;
@@ -349,6 +352,21 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
       type: String,
       enum: Object.values(EmployeeStatus),
       default: EmployeeStatus.ACTIVE,
+    },
+    workMode: {
+      type: String,
+      default: "OFFICE",
+      trim: true,
+    },
+    grade: {
+      type: String,
+      default: "NA",
+      trim: true,
+    },
+    subDepartment: {
+      type: String,
+      default: null,
+      trim: true,
     },
     joiningDate: {
       type: Date,

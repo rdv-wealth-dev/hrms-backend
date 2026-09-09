@@ -70,16 +70,23 @@ export class EmployeeRepository
     const skip = (page - 1) * pageSize;
     const safe = Math.min(pageSize, 100);
 
-    const [data, totalRecords] = await Promise.all([
+    const [rawList, totalRecords] = await Promise.all([
       EmployeeModel.find(tenantFilter)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(safe)
-        .populate("departmentId", "name code")
-        .populate("designationId", "name code")
+        .populate("departmentId", "name code parentId")
+        .populate("designationId", "name code level")
         .lean(),
       EmployeeModel.countDocuments(tenantFilter),
     ]);
+
+    const data = rawList.map((emp: any) => ({
+      ...emp,
+      workMode: emp.workMode || emp.customFields?.workMode || "OFFICE",
+      grade: emp.grade || emp.customFields?.grade || "NA",
+      subDepartment: emp.subDepartment || emp.customFields?.subDepartment || null,
+    }));
 
     return { data, totalRecords, pageNumber: page, pageSize: safe };
   }

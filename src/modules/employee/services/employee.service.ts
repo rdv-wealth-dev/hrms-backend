@@ -601,6 +601,9 @@ export class EmployeeService {
     const empObj = employee.toObject ? employee.toObject() : employee;
     empObj.role = userDoc?.role || "EMPLOYEE";
     empObj.isOrgAdmin = userDoc?.isOrgAdmin || false;
+    empObj.workMode = empObj.workMode || empObj.customFields?.workMode || "OFFICE";
+    empObj.grade = empObj.grade || empObj.customFields?.grade || "NA";
+    empObj.subDepartment = empObj.subDepartment || empObj.customFields?.subDepartment || null;
 
     return empObj;
   }
@@ -721,6 +724,9 @@ export class EmployeeService {
         currentAddress: employee.currentAddress,
         permanentAddress: employee.permanentAddress,
         emergencyContacts: employee.emergencyContacts,
+        workMode: employee.workMode || employee.customFields?.workMode || "OFFICE",
+        grade: employee.grade || employee.customFields?.grade || "NA",
+        subDepartment: employee.subDepartment || employee.customFields?.subDepartment || null,
         avatarUrl: employee.avatarUrl,
         pfOnActuals: employee.pfOnActuals,
         createdAt: employee.createdAt,
