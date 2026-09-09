@@ -288,7 +288,9 @@ const HEADER_SYNONYM_MAP: Record<string, string> = {
   "date of leaving": "exitDate",
   "reason for leaving": "exitReason", "exit reason": "exitReason",
   "resignation reason": "exitReason", "reason of leaving": "exitReason",
+  "reason of resignation": "exitReason",
   "termination reason": "exitReason",
+  "resignation type": "resignationType", "resignation type(vol/invol)": "resignationType",
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -1292,14 +1294,20 @@ export async function parseImportFile(
     if (row.customFields) {
       for (const [rawKey, rawVal] of Object.entries(row.customFields)) {
         const normalizedKey = normalize(rawKey);
+        let finalKey: string;
         if (customFieldMap.has(normalizedKey)) {
-          resolvedCustomFields[customFieldMap.get(normalizedKey)!] = rawVal;
+          finalKey = customFieldMap.get(normalizedKey)!;
         } else {
           let matchedKey: string | null = null;
           for (const [normLabel, actualKey] of customFieldMap.entries()) {
             if (levenshtein(normalizedKey, normLabel) <= 2) { matchedKey = actualKey; break; }
           }
-          resolvedCustomFields[matchedKey || rawKey] = rawVal;
+          finalKey = matchedKey || rawKey;
+        }
+        // Sanitize key for Mongo storage: dots and dollar signs are prohibited in keys
+        const safeKey = finalKey.replace(/\./g, "_").replace(/^\$/, "_").trim();
+        if (safeKey) {
+          resolvedCustomFields[safeKey] = rawVal;
         }
       }
     }

@@ -366,10 +366,9 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
 
     avatarUrl: { type: String },
 
-    // Dynamic Custom Fields
+    // Dynamic Custom Fields (allows arbitrary keys from custom Excel columns without dot/Map errors)
     customFields: {
-      type: Map,
-      of: mongoose.Schema.Types.Mixed,
+      type: mongoose.Schema.Types.Mixed,
       default: {},
     },
 
