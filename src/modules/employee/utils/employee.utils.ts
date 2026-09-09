@@ -457,11 +457,32 @@ function mapHeaders(rawHeaders: string[]): Record<string, string> {
 
   for (const raw of rawHeaders) {
     if (!raw) continue;
-    const norm = normalize(raw);
 
-    // 1. Direct synonym lookup
+    // 0. Clean parenthetical descriptions e.g. "Emp Code(YYYYMMDDeNNNNN)(DOJ)" -> "Emp Code"
+    const stripped = raw.replace(/\s*\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
+    const norm = normalize(stripped || raw);
+    const rawNorm = normalize(raw);
+
+    // 1. Direct synonym lookup (both stripped and raw)
     if (HEADER_SYNONYM_MAP[norm]) {
       mapping[raw] = HEADER_SYNONYM_MAP[norm];
+      continue;
+    }
+    if (HEADER_SYNONYM_MAP[rawNorm]) {
+      mapping[raw] = HEADER_SYNONYM_MAP[rawNorm];
+      continue;
+    }
+
+    // 1b. Substring / prefix check for key patterns (e.g. starts with "emp code" or "employee code")
+    let prefixKey: string | null = null;
+    for (const synKey of synonymKeys) {
+      if (norm === synKey || norm.startsWith(synKey + " ") || norm.endsWith(" " + synKey)) {
+        prefixKey = synKey;
+        break;
+      }
+    }
+    if (prefixKey) {
+      mapping[raw] = HEADER_SYNONYM_MAP[prefixKey];
       continue;
     }
 
@@ -1344,36 +1365,24 @@ export async function parseImportFile(
       }
     }
 
-    // ── Employee code: preserve only if matching Org Admin's prefix, else generate sequentially
+    // ── Employee code: preserve exact code from sheet if present, else generate sequentially
     let employeeCode: string;
     const sheetCode = row.preservedEmployeeCode ? String(row.preservedEmployeeCode).trim().toUpperCase() : "";
-    const matchesOrgPrefix = sheetCode && sheetCode.startsWith(orgPrefix);
     const remainingRows = rawRows.length - idx;
 
-    if (sheetCode && matchesOrgPrefix) {
+    if (sheetCode) {
       if (existingEmpCodes.has(sheetCode)) {
         warnings.push({ rowNumber, email: emailClean, reason: `Employee code "${sheetCode}" already exists — a new code will be auto-generated`, severity: "WARNING" });
         employeeCode = await codeAllocator.getCode(isActiveEmployee, remainingRows);
         existingEmpCodes.add(employeeCode);
       } else {
         employeeCode = sheetCode;
-        existingEmpCodes.add(employeeCode); // prevent duplicate within same import
+        existingEmpCodes.add(employeeCode); // preserve exact sheet code (e.g. RVG001, RVG017)
       }
     } else {
-      // Either no code in sheet, or sheet code does NOT match Org Admin's configured prefix (e.g. "jjh0024" vs "RVG")
-      // System auto-generates sequentially one-by-one according to Org Admin's configuration!
+      // No employee code in sheet — auto-generate sequentially according to Org configuration
       employeeCode = await codeAllocator.getCode(isActiveEmployee, remainingRows);
       existingEmpCodes.add(employeeCode);
-
-      if (sheetCode && !matchesOrgPrefix) {
-        warnings.push({
-          rowNumber,
-          email: emailClean,
-          reason: `Sheet code "${sheetCode}" does not match organization prefix "${orgPrefix}" — replaced with official sequence code "${employeeCode}" (legacy code preserved as reference)`,
-          severity: "WARNING"
-        });
-        resolvedCustomFields["legacyEmployeeCode"] = sheetCode;
-      }
     }
 
     if (!finalEmail) {
