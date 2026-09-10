@@ -299,7 +299,7 @@ export class OnboardingWizardService {
 
     // If skipping Step 4: do NOT open Step 5! Redirect to Dashboard so employee can complete later.
     if (current === 4) {
-      employee.onboardingStep = 4;
+      employee.onboardingStep = 1;
       await employee.save();
       await recalculateProfileCompletion(context.tenantId, employee._id.toString());
 
