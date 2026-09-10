@@ -26,7 +26,7 @@ export async function pollForNextJob() {
     { new: true, sort: { createdAt: 1 } }
   );
 
-  if (!session) return; // No jobs found
+  if (!session) return false; // No jobs found — signal worker to stop
 
   console.log(`[ImportQueue] Worker ${WORKER_ID} claimed job for session: ${session.sessionId}`);
 
@@ -70,38 +70,61 @@ export async function pollForNextJob() {
       }
     );
   }
+
+  return true; // Job was processed — caller should check for more
 }
 
-// Start simple polling loop every 2 seconds
-let pollInterval: NodeJS.Timeout | null = null;
+// ─── On-Demand Self-Draining Worker ─────────────────────────────────────────
+// Worker only runs when there are actual jobs in the queue.
+// It drains the queue completely, then stops automatically.
+// Zero idle DB polls when no imports are happening.
 
-export function startWorker() {
-  if (pollInterval) return;
-  console.log(`[ImportQueue] Starting database job worker loop...`);
-  pollInterval = setInterval(() => {
-    pollForNextJob().catch((err) => {
-      console.error("[ImportQueue] Uncaught worker polling error:", err);
-    });
-  }, 2000);
-}
+let isWorkerRunning = false;
 
-export function stopWorker() {
-  if (pollInterval) {
-    clearInterval(pollInterval);
-    pollInterval = null;
+async function drainQueue() {
+  if (isWorkerRunning) return; // Already running — prevent concurrent loops
+  isWorkerRunning = true;
+  console.log(`[ImportQueue] Worker started — draining queue...`);
+
+  try {
+    // Keep processing until the queue is empty
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const hadJob = await pollForNextJob();
+      if (!hadJob) break; // Queue empty — stop
+
+      // Small yield between jobs to avoid CPU spin on rapid successive imports
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  } catch (err: any) {
+    console.error("[ImportQueue] Uncaught worker drain error:", err);
+  } finally {
+    isWorkerRunning = false;
+    console.log(`[ImportQueue] Worker idle — queue is empty.`);
   }
 }
 
+// startWorker is now a no-op kept for backward compat with main.ts.
+// The worker is purely on-demand — triggered by addImportJob().
+export function startWorker() {
+  console.log(`[ImportQueue] On-demand worker registered (PID: ${process.pid}). No background polling.`);
+}
+
+export function stopWorker() {
+  // No interval to clear — nothing to stop
+  console.log(`[ImportQueue] stopWorker called (on-demand mode — no-op).`);
+}
+
+// Called when a new import job is queued.
+// Kicks off the drain loop if not already running.
 export async function addImportJob(jobData: {
   sessionId: string;
   context: RequestContext;
   fileBufferBase64: string;
   fileName: string;
 }) {
-  // In the DB-backed queue, the job is already written in 'queued' state.
-  // We trigger an immediate worker poll check to speed up processing.
-  console.log(`[ImportQueue] Session ${jobData.sessionId} registered. Triggering worker poll check.`);
-  setTimeout(() => {
-    pollForNextJob().catch(console.error);
-  }, 0);
+  console.log(`[ImportQueue] Session ${jobData.sessionId} registered. Starting worker...`);
+  // Fire-and-forget — drainQueue self-terminates when queue is empty
+  drainQueue().catch(console.error);
 }
+
