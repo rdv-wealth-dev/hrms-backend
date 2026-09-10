@@ -76,6 +76,7 @@ export class EmployeeRepository
         .skip(skip)
         .limit(safe)
         .populate("departmentId", "name code parentId")
+        .populate("departmentIds", "name code parentId")
         .populate("designationId", "name code level")
         .lean(),
       EmployeeModel.countDocuments(tenantFilter),
@@ -83,6 +84,7 @@ export class EmployeeRepository
 
     const data = rawList.map((emp: any) => ({
       ...emp,
+      departmentIds: emp.departmentIds?.length ? emp.departmentIds : emp.departmentId ? [emp.departmentId] : [],
       workMode: emp.workMode || emp.customFields?.workMode || "OFFICE",
       grade: emp.grade || emp.customFields?.grade || "NA",
       subDepartment: emp.subDepartment || emp.customFields?.subDepartment || null,

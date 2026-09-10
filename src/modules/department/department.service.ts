@@ -130,10 +130,14 @@ export class DepartmentService {
       throw new AppError("Department not found", 404);
     }
 
+    const deptObjectId = new mongoose.Types.ObjectId(id);
     const activeEmployeesCount = await EmployeeModel.countDocuments({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
-      departmentId: new mongoose.Types.ObjectId(id),
       isDeleted: false,
+      $or: [
+        { departmentId: deptObjectId },
+        { departmentIds: deptObjectId },
+      ],
     });
 
     if (activeEmployeesCount > 0 && !options.force) {
@@ -200,8 +204,11 @@ export class DepartmentService {
 
     const activeEmployeesCount = await EmployeeModel.countDocuments({
       tenantId: new mongoose.Types.ObjectId(context.tenantId),
-      departmentId: { $in: deptIds },
       isDeleted: false,
+      $or: [
+        { departmentId: { $in: deptIds } },
+        { departmentIds: { $in: deptIds } },
+      ],
     });
 
     if (activeEmployeesCount > 0 && !options.force) {
@@ -292,12 +299,18 @@ export class DepartmentService {
     // 1. Find all active employees to get used department and designation IDs
     const employees = await EmployeeModel.find(
       { tenantId: tenantObjectId, isDeleted: false },
-      { departmentId: 1, designationId: 1 }
+      { departmentId: 1, departmentIds: 1, designationId: 1 }
     ).lean();
 
-    const usedDepartmentIds = new Set(
-      employees.map((e) => e.departmentId?.toString()).filter(Boolean)
-    );
+    const usedDepartmentIds = new Set<string>();
+    for (const employee of employees) {
+      if (employee.departmentId) {
+        usedDepartmentIds.add(employee.departmentId.toString());
+      }
+      for (const deptId of employee.departmentIds || []) {
+        usedDepartmentIds.add(deptId.toString());
+      }
+    }
     const usedDesignationIds = new Set(
       employees.map((e) => e.designationId?.toString()).filter(Boolean)
     );

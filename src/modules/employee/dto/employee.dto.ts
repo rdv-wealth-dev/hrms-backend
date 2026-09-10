@@ -73,6 +73,10 @@ export const CreateEmployeeDto = withPhoneValidation(
       (val) => (val === "" || val === null ? undefined : val),
       objectIdSchema.optional()
     ),
+    departmentIds: z.preprocess(
+      (val) => (val === "" || val === null ? undefined : val),
+      z.array(objectIdSchema).optional()
+    ),
     designationId: z.preprocess(
       (val) => (val === "" || val === null ? undefined : val),
       objectIdSchema.optional()
@@ -198,6 +202,10 @@ export const UpdateEmployeeDto = withPhoneValidation(z.object({
   voterId: voterIdSchema.optional(),
   customFields: z.record(z.string(), z.any()).optional(),
   departmentId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),
+  departmentIds: z.preprocess(
+    (val) => (val === "" || val === null ? [] : val),
+    z.array(objectIdSchema).optional()
+  ),
   designationId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),
   branchId: z.preprocess((val) => (val === "" || val === null ? undefined : val), objectIdSchema.optional()),
   teamId: z.preprocess((val) => (val === "" || val === null ? null : val), objectIdSchema.optional().nullable()),

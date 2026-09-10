@@ -136,7 +136,8 @@ export interface EmployeeDocument extends BaseDocument {
 
 
   // Organisation
-  departmentId: mongoose.Types.ObjectId;
+  departmentId: mongoose.Types.ObjectId; // primary department (designation, reporting, etc.)
+  departmentIds?: mongoose.Types.ObjectId[]; // all departments the employee belongs to
   designationId: mongoose.Types.ObjectId;
   teamId?: mongoose.Types.ObjectId;      // assigned operational / functional team
   managerId?: mongoose.Types.ObjectId;   // reports to (Primary Reporting Manager / Approver)
@@ -309,6 +310,10 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
       required: true,
       index: true,
     },
+    departmentIds: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
+    }],
     designationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Designation",

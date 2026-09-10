@@ -64,6 +64,50 @@ function maskAadhaar(aadhaar: string): string {
   return "****" + aadhaar.substring(aadhaar.length - 4);
 }
 
+async function resolveDepartmentAssignments(
+  tenantId: string,
+  input: { departmentId?: string; departmentIds?: string[] }
+): Promise<{ departmentId: mongoose.Types.ObjectId; departmentIds: mongoose.Types.ObjectId[] }> {
+  const uniqueDeptIds = input.departmentIds !== undefined
+    ? [...new Set(input.departmentIds.filter(Boolean))]
+    : input.departmentId
+      ? [input.departmentId]
+      : [];
+
+  if (uniqueDeptIds.length === 0) {
+    throw new AppError("At least one department is required", 400);
+  }
+
+  const deptObjectIds = uniqueDeptIds.map((id) => new mongoose.Types.ObjectId(id));
+  const validDepartments = await DepartmentModel.find({
+    _id: { $in: deptObjectIds },
+    tenantId: new mongoose.Types.ObjectId(tenantId),
+    isActive: true,
+    isDeleted: false,
+  }).select("_id");
+
+  if (validDepartments.length !== uniqueDeptIds.length) {
+    throw new AppError("One or more selected departments do not exist or are inactive", 400);
+  }
+
+  const primaryDeptId = input.departmentId
+    ? new mongoose.Types.ObjectId(input.departmentId)
+    : deptObjectIds[0];
+
+  const departmentIds = deptObjectIds.some((id) => id.equals(primaryDeptId))
+    ? deptObjectIds
+    : [primaryDeptId, ...deptObjectIds];
+
+  return { departmentId: primaryDeptId, departmentIds };
+}
+
+function normalizeEmployeeDepartments(employee: Record<string, any>) {
+  if (!employee.departmentIds || employee.departmentIds.length === 0) {
+    employee.departmentIds = employee.departmentId ? [employee.departmentId] : [];
+  }
+  return employee;
+}
+
 export class EmployeeService {
   private empRepo = new EmployeeRepository();
   private salaryStructureService = new SalaryStructureService();
@@ -263,7 +307,7 @@ export class EmployeeService {
         resolvedDesigId = ceoDesig._id.toString();
       }
     } else {
-      if (!resolvedDeptId) {
+      if (!resolvedDeptId && (!input.departmentIds || input.departmentIds.length === 0)) {
         throw new AppError("Department is required", 400);
       }
       if (!resolvedDesigId) {
@@ -271,10 +315,17 @@ export class EmployeeService {
       }
     }
 
+    const departmentAssignment = await resolveDepartmentAssignments(context.tenantId, {
+      departmentId: resolvedDeptId,
+      departmentIds: input.departmentIds,
+    });
+    resolvedDeptId = departmentAssignment.departmentId.toString();
+
     const employee = await this.empRepo.create(context, {
       tenantId: new mongoose.Types.ObjectId(context.tenantId) as any,
       branchId: new mongoose.Types.ObjectId(branchId) as any,
-      departmentId: new mongoose.Types.ObjectId(resolvedDeptId) as any,
+      departmentId: departmentAssignment.departmentId as any,
+      departmentIds: departmentAssignment.departmentIds as any,
       designationId: new mongoose.Types.ObjectId(resolvedDesigId) as any,
       teamId: resolvedTeamId as any,
       shiftId: resolvedShiftId ? new mongoose.Types.ObjectId(resolvedShiftId) as any : undefined,
@@ -479,7 +530,13 @@ export class EmployeeService {
     const filters: Record<string, unknown> = {};
 
     if (query.status) filters.status = query.status;
-    if (query.departmentId) filters.departmentId = new mongoose.Types.ObjectId(query.departmentId);
+    if (query.departmentId) {
+      const deptObjectId = new mongoose.Types.ObjectId(query.departmentId);
+      filters.$or = [
+        { departmentId: deptObjectId },
+        { departmentIds: deptObjectId },
+      ];
+    }
     if (query.designationId) filters.designationId = new mongoose.Types.ObjectId(query.designationId);
     if (query.branchId) filters.branchId = new mongoose.Types.ObjectId(query.branchId);
 
@@ -580,7 +637,7 @@ export class EmployeeService {
 
     if (mongoose.Types.ObjectId.isValid(id)) {
       employee = await this.empRepo.findById(context, id, {
-        populate: ["departmentId", "designationId", "teamId", "managerId", "secondaryManagerIds", "branchId", "shiftId"],
+        populate: ["departmentId", "departmentIds", "designationId", "teamId", "managerId", "secondaryManagerIds", "branchId", "shiftId"],
       });
     }
 
@@ -589,7 +646,7 @@ export class EmployeeService {
         tenantId: new mongoose.Types.ObjectId(context.tenantId),
         employeeCode: id.trim(),
         isDeleted: false,
-      }).populate(["departmentId", "designationId", "teamId", "managerId", "secondaryManagerIds", "branchId", "shiftId"]);
+      }).populate(["departmentId", "departmentIds", "designationId", "teamId", "managerId", "secondaryManagerIds", "branchId", "shiftId"]);
     }
 
     if (!employee) {
@@ -604,7 +661,7 @@ export class EmployeeService {
       ],
     }).select("role isOrgAdmin");
 
-    const empObj = employee.toObject ? employee.toObject() : employee;
+    const empObj = normalizeEmployeeDepartments(employee.toObject ? employee.toObject() : employee);
     empObj.role = userDoc?.role || "EMPLOYEE";
     empObj.isOrgAdmin = userDoc?.isOrgAdmin || false;
     empObj.workMode = empObj.workMode || empObj.customFields?.workMode || "OFFICE";
@@ -622,7 +679,7 @@ export class EmployeeService {
   ) {
     // Get basic employee data with populated references
     const employee = await this.empRepo.findById(context, id, {
-      populate: ["departmentId", "designationId", "teamId", "managerId", "secondaryManagerIds", "branchId", "shiftId"],
+      populate: ["departmentId", "departmentIds", "designationId", "teamId", "managerId", "secondaryManagerIds", "branchId", "shiftId"],
     });
 
     if (!employee) {
@@ -701,6 +758,11 @@ export class EmployeeService {
         aadhaar: employee.aadhaar ? maskAadhaar(employee.aadhaar) : null,
         passportNo: employee.passportNo,
         departmentId: employee.departmentId,
+        departmentIds: employee.departmentIds?.length
+          ? employee.departmentIds
+          : employee.departmentId
+            ? [employee.departmentId]
+            : [],
         designationId: employee.designationId,
         teamId: employee.teamId,
         managerId: employee.managerId,
@@ -808,7 +870,33 @@ export class EmployeeService {
     if (input.dateOfBirth) updateData.dateOfBirth = new Date(input.dateOfBirth);
     if (input.confirmationDate) updateData.confirmationDate = new Date(input.confirmationDate);
     if (input.probationEndDate) updateData.probationEndDate = new Date(input.probationEndDate);
-    if (input.departmentId) updateData.departmentId = new mongoose.Types.ObjectId(input.departmentId);
+    if (input.departmentIds !== undefined) {
+      if (Array.isArray(input.departmentIds) && input.departmentIds.length > 0) {
+        const resolvedDepartments = await resolveDepartmentAssignments(context.tenantId, {
+          departmentId: input.departmentId,
+          departmentIds: input.departmentIds,
+        });
+        updateData.departmentId = resolvedDepartments.departmentId;
+        updateData.departmentIds = resolvedDepartments.departmentIds;
+      } else {
+        throw new AppError("At least one department is required", 400);
+      }
+    } else if (input.departmentId) {
+      const existingDeptIds = (employee.departmentIds && employee.departmentIds.length > 0)
+        ? employee.departmentIds.map((deptId: mongoose.Types.ObjectId) => deptId.toString())
+        : [employee.departmentId.toString()];
+      const oldPrimaryDeptId = employee.departmentId.toString();
+      const updatedDeptIds = [
+        input.departmentId,
+        ...existingDeptIds.filter((deptId: string) => deptId !== oldPrimaryDeptId && deptId !== input.departmentId),
+      ];
+      const resolvedDepartments = await resolveDepartmentAssignments(context.tenantId, {
+        departmentId: input.departmentId,
+        departmentIds: updatedDeptIds,
+      });
+      updateData.departmentId = resolvedDepartments.departmentId;
+      updateData.departmentIds = resolvedDepartments.departmentIds;
+    }
     if (input.designationId) updateData.designationId = new mongoose.Types.ObjectId(input.designationId);
     if (input.branchId) {
       const targetBranch = await BranchModel.findOne({
@@ -2081,7 +2169,13 @@ export class EmployeeService {
     }
 
     if (query.departmentId) {
-      const deptCondition: any = { departmentId: new mongoose.Types.ObjectId(query.departmentId) };
+      const deptObjectId = new mongoose.Types.ObjectId(query.departmentId);
+      const deptCondition: any = {
+        $or: [
+          { departmentId: deptObjectId },
+          { departmentIds: deptObjectId },
+        ],
+      };
       if (query.branchId) {
         deptCondition.branchId = new mongoose.Types.ObjectId(query.branchId);
       }
