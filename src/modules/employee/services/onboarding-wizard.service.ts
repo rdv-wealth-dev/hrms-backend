@@ -143,10 +143,8 @@ export class OnboardingWizardService {
 
     // ── 2. Step 2 Data (Family Details) ──
     const familyDocs = await this.familyRepo.findAllForEmployee(context, employee._id.toString());
-    const isFamilyStepCompleted = !!refreshed?.onboardingStepsCompleted?.familyDetails;
-    const hasFamilyDocs = (familyDocs || []).length > 0;
     const step2Data = {
-      isNotApplicable: isFamilyStepCompleted && !hasFamilyDocs,
+      isNotApplicable: !!refreshed?.hasNoFamily,
       familyMembers: (familyDocs || []).map((m: any) => ({
         fullName: m.fullName,
         relationship: m.relationship,
@@ -247,7 +245,12 @@ export class OnboardingWizardService {
       canGoPrev: currentStep > 1,
       canGoNext: currentStep < 4 || (currentStep === 4 && allStepsCompleted),
       canSkipCurrentStep: currentStep < 5,
+      canAccessStep1: true,
+      canAccessStep2: true,
+      canAccessStep3: true,
+      canAccessStep4: true,
       canAccessStep5: allStepsCompleted,
+      allowedSteps: allStepsCompleted ? [1, 2, 3, 4, 5] : [1, 2, 3, 4],
       continueToAppUrl: "/dashboard",
     };
 
@@ -294,43 +297,31 @@ export class OnboardingWizardService {
       steps.documents
     );
 
-    // Can skip forward through steps 1-4 (e.g. 1 -> 2 -> 3 -> 4).
-    // CANNOT land on Step 5 unless all steps are completed!
-    let nextStep: number;
-    let message = `Step ${current} skipped. You can complete it later.`;
+    // If skipping Step 4: do NOT open Step 5! Redirect to Dashboard so employee can complete later.
+    if (current === 4) {
+      employee.onboardingStep = 4;
+      await employee.save();
+      await recalculateProfileCompletion(context.tenantId, employee._id.toString());
 
-    if (current < 4) {
-      nextStep = current + 1;
-    } else {
-      // Skipping on Step 4:
-      // Can only land on Step 5 if ALL steps are completed!
-      if (allStepsCompleted) {
-        nextStep = 5;
-      } else {
-        // Cannot land on step 5! Redirect to first incomplete step or keep on 4 with exit option
-        if (!steps.personalDetails) {
-          nextStep = 1;
-          message = `Step ${current} skipped. Please complete Step 1 (Personal Details) before final review.`;
-        } else if (!steps.familyDetails) {
-          nextStep = 2;
-          message = `Step ${current} skipped. Please complete Step 2 (Family Details) before final review.`;
-        } else if (!steps.bankDetails) {
-          nextStep = 3;
-          message = `Step ${current} skipped. Please complete Step 3 (Bank Details) before final review.`;
-        } else {
-          nextStep = 4;
-          message = `Step 4 skipped. You can complete it later from your dashboard. Step 5 (Final Review) will unlock once all steps are filled.`;
-        }
-      }
+      return {
+        message: "Step 4 skipped. You can complete your profile later from the dashboard.",
+        currentStep: 4,
+        nextStep: null,
+        redirectTo: "/dashboard",
+        continueToAppUrl: "/dashboard",
+        shouldRedirectToDashboard: true,
+        canAccessStep5: false,
+      };
     }
 
+    const nextStep = Math.min(current + 1, 4);
     employee.onboardingStep = nextStep;
     await employee.save();
 
     await recalculateProfileCompletion(context.tenantId, employee._id.toString());
 
     return {
-      message,
+      message: `Step ${current} skipped. You can complete it later.`,
       currentStep: nextStep,
       nextStep,
       canAccessStep5: allStepsCompleted,
@@ -515,6 +506,7 @@ export class OnboardingWizardService {
       );
     }
 
+    employee.hasNoFamily = isNa;
     employee.onboardingStepsCompleted.familyDetails = true;
     if (employee.onboardingStep === 2) {
       employee.onboardingStep = 3;

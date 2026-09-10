@@ -94,7 +94,7 @@ export async function recalculateProfileCompletion(
     }
   }
 
-  const familyDetails = !!(employee.onboardingStepsCompleted?.familyDetails || familyCount > 0 || employee.fatherName || employee.motherName);
+  const familyDetails = !!(employee.hasNoFamily || familyCount > 0);
 
   const org = await OrganizationModel.findById(tenantId).select("mandatoryDocumentTypes");
   const required = org?.mandatoryDocumentTypes ?? [];
@@ -150,7 +150,7 @@ export async function recalculateProfileCompletion(
     if (personalDetails || (employee.phone && (employee.dateOfBirth || employee.gender || employee.currentAddress?.addressLine1))) {
       employee.onboardingStepsCompleted.personalDetails = true;
     }
-    if (familyDetails || familyCount > 0) {
+    if (familyCount > 0 || employee.hasNoFamily) {
       employee.onboardingStepsCompleted.familyDetails = true;
     }
     if (bankDetails) {
@@ -159,16 +159,6 @@ export async function recalculateProfileCompletion(
     if (required.length > 0) {
       employee.onboardingStepsCompleted.documents = mandatoryDocs;
     }
-
-    // Advance to the actual step requiring input
-    let nextStep = 1;
-    if (employee.onboardingStepsCompleted.personalDetails) nextStep = 2;
-    if (employee.onboardingStepsCompleted.personalDetails && employee.onboardingStepsCompleted.familyDetails) nextStep = 3;
-    if (employee.onboardingStepsCompleted.personalDetails && employee.onboardingStepsCompleted.familyDetails && employee.onboardingStepsCompleted.bankDetails) nextStep = 4;
-    if (employee.onboardingStepsCompleted.personalDetails && employee.onboardingStepsCompleted.familyDetails && employee.onboardingStepsCompleted.bankDetails && employee.onboardingStepsCompleted.documents) {
-      nextStep = 5;
-    }
-    employee.onboardingStep = Math.max(employee.onboardingStep || 1, nextStep);
   }
 
   await employee.save();

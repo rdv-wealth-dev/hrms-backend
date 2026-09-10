@@ -171,6 +171,7 @@ export interface EmployeeDocument extends BaseDocument {
   // Profile completion tracking — step sequence
   onboardingStep: number;  // 1-5, which step they're currently on
   onboardingComplete: boolean; // true once step 5 is submitted
+  hasNoFamily?: boolean; // explicitly checked 'Not Applicable / No family' in step 2
   onboardingStepsCompleted: {
     personalDetails: boolean;
     familyDetails: boolean;
@@ -407,6 +408,10 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
       min: 1, max: 5,
     },
     onboardingComplete: {
+      type: Boolean,
+      default: false,
+    },
+    hasNoFamily: {
       type: Boolean,
       default: false,
     },
