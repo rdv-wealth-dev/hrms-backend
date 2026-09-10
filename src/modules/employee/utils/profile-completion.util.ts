@@ -107,22 +107,11 @@ export async function recalculateProfileCompletion(
       isDeleted: false,
     }) as unknown as string[];
 
-    // Document is satisfied if either the document file is uploaded OR the text number is provided
-    mandatoryDocs = required.every((t: string) => {
-      if (t === "PAN") {
-        return uploadedTypes.includes("PAN") || !!employee.pan;
-      }
-      if (t === "AADHAAR") {
-        return uploadedTypes.includes("AADHAAR") || !!employee.aadhaar;
-      }
-      if (t === "PASSPORT") {
-        return uploadedTypes.includes("PASSPORT") || !!employee.passportNo;
-      }
-      return uploadedTypes.includes(t);
-    });
+    // File upload in employee_documents is required for all mandatory document types
+    mandatoryDocs = required.every((t: string) => uploadedTypes.includes(t));
   }
 
-  // Preserve existing documents flag if already completed
+  // Preserve existing documents flag if already completed and no mandatory docs defined
   if (employee.onboardingStepsCompleted?.documents && !mandatoryDocs && required.length === 0) {
     mandatoryDocs = true;
   }
@@ -167,8 +156,8 @@ export async function recalculateProfileCompletion(
     if (bankDetails) {
       employee.onboardingStepsCompleted.bankDetails = true;
     }
-    if (mandatoryDocs) {
-      employee.onboardingStepsCompleted.documents = true;
+    if (required.length > 0) {
+      employee.onboardingStepsCompleted.documents = mandatoryDocs;
     }
 
     // Advance to the actual step requiring input
@@ -178,9 +167,6 @@ export async function recalculateProfileCompletion(
     if (employee.onboardingStepsCompleted.personalDetails && employee.onboardingStepsCompleted.familyDetails && employee.onboardingStepsCompleted.bankDetails) nextStep = 4;
     if (employee.onboardingStepsCompleted.personalDetails && employee.onboardingStepsCompleted.familyDetails && employee.onboardingStepsCompleted.bankDetails && employee.onboardingStepsCompleted.documents) {
       nextStep = 5;
-      employee.onboardingStepsCompleted.reviewed = true;
-      employee.onboardingComplete = true;
-      employee.isProfileComplete = true;
     }
     employee.onboardingStep = Math.max(employee.onboardingStep || 1, nextStep);
   }

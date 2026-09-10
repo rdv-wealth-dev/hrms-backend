@@ -42,26 +42,31 @@ export class OnboardingWizardService {
     return employee;
   }
 
-  // Guards every step — you cannot skip ahead without completing prior steps.
-  // Re-doing an already-completed step or navigating backwards is freely allowed.
+  // Guards wizard steps — navigation between steps 1-4 is allowed (so employee can skip and return),
+  // but Step 5 (Final Review & Submit) strictly requires ALL 4 steps to be filled and saved.
   private assertStepAllowed(employee: any, requestedStep: number) {
     if (employee.onboardingComplete) {
       throw new AppError("Onboarding is already complete", 400);
     }
-    if (requestedStep === 1) return;
+    if (requestedStep < 1 || requestedStep > 5) {
+      throw new AppError("Invalid wizard step. Must be between 1 and 5.", 400);
+    }
+    // Steps 1 to 4 are accessible to fill or view
+    if (requestedStep <= 4) return;
 
+    // Step 5 strictly guarded: only unlocked when all prior steps are filled
     const steps = employee.onboardingStepsCompleted || {};
-    if (requestedStep === 2 && !steps.personalDetails) {
-      throw new AppError("You must complete Step 1 (Personal Details) before accessing Step 2", 403);
-    }
-    if (requestedStep === 3 && (!steps.personalDetails || !steps.familyDetails)) {
-      throw new AppError("You must complete Step 1 and Step 2 before accessing Step 3", 403);
-    }
-    if (requestedStep === 4 && (!steps.personalDetails || !steps.familyDetails || !steps.bankDetails)) {
-      throw new AppError("You must complete Steps 1, 2, and 3 before accessing Step 4", 403);
-    }
-    if (requestedStep === 5 && (!steps.personalDetails || !steps.familyDetails || !steps.bankDetails || !steps.documents)) {
-      throw new AppError("You must complete all 4 steps before accessing Step 5 (Final Review)", 403);
+    const allFilled = !!(steps.personalDetails && steps.familyDetails && steps.bankDetails && steps.documents);
+    if (!allFilled) {
+      const missing: string[] = [];
+      if (!steps.personalDetails) missing.push("Personal & Education Details (Step 1)");
+      if (!steps.familyDetails) missing.push("Family Details (Step 2)");
+      if (!steps.bankDetails) missing.push("Bank Details (Step 3)");
+      if (!steps.documents) missing.push("Mandatory Documents (Step 4)");
+      throw new AppError(
+        `Cannot access Step 5 (Final Review). You must fill and complete all steps before landing on Step 5. Incomplete: ${missing.join(", ")}`,
+        403
+      );
     }
   }
 
@@ -238,9 +243,9 @@ export class OnboardingWizardService {
     const navigation = {
       currentStep,
       prevStep: currentStep > 1 ? currentStep - 1 : null,
-      nextStep: currentStep < 5 ? currentStep + 1 : null,
+      nextStep: currentStep < 4 ? currentStep + 1 : (allStepsCompleted ? 5 : null),
       canGoPrev: currentStep > 1,
-      canGoNext: currentStep < (allStepsCompleted ? 5 : 4),
+      canGoNext: currentStep < 4 || (currentStep === 4 && allStepsCompleted),
       canSkipCurrentStep: currentStep < 5,
       canAccessStep5: allStepsCompleted,
       continueToAppUrl: "/dashboard",
@@ -274,41 +279,61 @@ export class OnboardingWizardService {
     const employee = await this.resolveOwnEmployee(context);
     const current = stepToSkip || employee.onboardingStep || 1;
 
-    if (current === 1) {
-      throw new AppError("Step 1 (Personal Details) is required and cannot be skipped.", 400);
-    }
     if (current >= 5) {
       throw new AppError("Step 5 (Final Review) cannot be skipped. Complete all steps to finish onboarding.", 400);
     }
 
-    if (!employee.onboardingStepsCompleted) {
-      employee.onboardingStepsCompleted = {
-        personalDetails: false,
-        familyDetails: false,
-        bankDetails: false,
-        documents: false,
-        reviewed: false,
-      };
+    // Skipping a step allows filling later — it does NOT mark the step as completed.
+    // Progress for step completion only happens when actual data is filled and saved.
+
+    const steps = employee.onboardingStepsCompleted || {};
+    const allStepsCompleted = !!(
+      steps.personalDetails &&
+      steps.familyDetails &&
+      steps.bankDetails &&
+      steps.documents
+    );
+
+    // Can skip forward through steps 1-4 (e.g. 1 -> 2 -> 3 -> 4).
+    // CANNOT land on Step 5 unless all steps are completed!
+    let nextStep: number;
+    let message = `Step ${current} skipped. You can complete it later.`;
+
+    if (current < 4) {
+      nextStep = current + 1;
+    } else {
+      // Skipping on Step 4:
+      // Can only land on Step 5 if ALL steps are completed!
+      if (allStepsCompleted) {
+        nextStep = 5;
+      } else {
+        // Cannot land on step 5! Redirect to first incomplete step or keep on 4 with exit option
+        if (!steps.personalDetails) {
+          nextStep = 1;
+          message = `Step ${current} skipped. Please complete Step 1 (Personal Details) before final review.`;
+        } else if (!steps.familyDetails) {
+          nextStep = 2;
+          message = `Step ${current} skipped. Please complete Step 2 (Family Details) before final review.`;
+        } else if (!steps.bankDetails) {
+          nextStep = 3;
+          message = `Step ${current} skipped. Please complete Step 3 (Bank Details) before final review.`;
+        } else {
+          nextStep = 4;
+          message = `Step 4 skipped. You can complete it later from your dashboard. Step 5 (Final Review) will unlock once all steps are filled.`;
+        }
+      }
     }
 
-    if (current === 2) {
-      employee.onboardingStepsCompleted.familyDetails = true;
-    } else if (current === 3) {
-      employee.onboardingStepsCompleted.bankDetails = true;
-    } else if (current === 4) {
-      employee.onboardingStepsCompleted.documents = true;
-    }
-
-    const nextStep = Math.min(current + 1, 5);
     employee.onboardingStep = nextStep;
     await employee.save();
 
     await recalculateProfileCompletion(context.tenantId, employee._id.toString());
 
     return {
-      message: `Step ${current} skipped. You can complete it later.`,
+      message,
       currentStep: nextStep,
       nextStep,
+      canAccessStep5: allStepsCompleted,
       continueToAppUrl: "/dashboard",
     };
   }
@@ -598,35 +623,17 @@ export class OnboardingWizardService {
         OTHER: "Other Document"
       };
 
-      const isIndia = (refreshed!.countryCode || "IN").toUpperCase() === "IN";
       const missing: string[] = [];
       required.forEach((t: string) => {
         const label = documentLabels[t] || t;
-        if (t === "PAN") {
-          const hasIt = uploadedTypes.includes("PAN") || !!refreshed!.pan;
-          if (!hasIt) {
-            missing.push(isIndia ? `${label} Upload or Valid PAN Number` : `${label} Document`);
-          }
-        } else if (t === "AADHAAR") {
-          const hasIt = uploadedTypes.includes("AADHAAR") || !!refreshed!.aadhaar;
-          if (!hasIt) {
-            missing.push(isIndia ? `${label} Upload or Aadhaar Number` : `${label} Document`);
-          }
-        } else if (t === "PASSPORT") {
-          const hasIt = !!refreshed!.passportNo || uploadedTypes.includes("PASSPORT");
-          if (!hasIt) {
-            missing.push(`${label} Number or Document`);
-          }
-        } else if (t !== "PAN" && t !== "AADHAAR" && t !== "PASSPORT") {
-          if (!uploadedTypes.includes(t)) {
-            missing.push(`${label} Document`);
-          }
+        if (!uploadedTypes.includes(t)) {
+          missing.push(`${label} File Upload`);
         }
       });
 
       if (missing.length > 0) {
         throw new AppError(
-          `Please fill all required document details. Missing: ${missing.join(", ")}`,
+          `Please upload all required mandatory documents before proceeding. Missing: ${missing.join(", ")}`,
           400,
           ErrorCode.VALIDATION_FAILED
         );
@@ -636,10 +643,31 @@ export class OnboardingWizardService {
     }
 
     refreshed!.onboardingStepsCompleted.documents = true;
-    if (refreshed!.onboardingStep === 4) refreshed!.onboardingStep = 5;
+
+    const steps = refreshed!.onboardingStepsCompleted;
+    const allCompleted = !!(
+      steps.personalDetails &&
+      steps.familyDetails &&
+      steps.bankDetails &&
+      steps.documents
+    );
+
+    let nextStep = 5;
+    let message = "Documents confirmed successfully";
+
+    if (allCompleted) {
+      refreshed!.onboardingStep = 5;
+    } else {
+      if (!steps.personalDetails) nextStep = 1;
+      else if (!steps.familyDetails) nextStep = 2;
+      else if (!steps.bankDetails) nextStep = 3;
+      refreshed!.onboardingStep = nextStep;
+      message = "Documents confirmed! Please complete all remaining steps before final review.";
+    }
+
     await refreshed!.save();
 
-    return { message: "Documents confirmed", nextStep: refreshed!.onboardingStep };
+    return { message, nextStep: refreshed!.onboardingStep };
   }
 
   // Step 5 — Review & Submit — final lock 
@@ -654,9 +682,24 @@ export class OnboardingWizardService {
     if (!steps?.bankDetails) missing.push("Bank Details (Step 3)");
     if (!steps?.documents) missing.push("Mandatory Documents (Step 4)");
 
+    const org = await OrganizationModel.findById(context.tenantId).select("mandatoryDocumentTypes");
+    const required = org?.mandatoryDocumentTypes ?? [];
+    if (required.length > 0) {
+      const uploadedTypes = (await EmployeeDocumentModel.distinct("documentType", {
+        tenantId: new mongoose.Types.ObjectId(context.tenantId),
+        employeeId: employee._id,
+        isDeleted: false,
+      })) as unknown as string[];
+
+      const missingDocs = required.filter((t: string) => !uploadedTypes.includes(t));
+      if (missingDocs.length > 0) {
+        missing.push(`Mandatory KYC Document Uploads (${missingDocs.join(", ")})`);
+      }
+    }
+
     if (missing.length > 0) {
       throw new AppError(
-        `Cannot submit final onboarding. The following steps are incomplete: ${missing.join(", ")}. Please complete all 4 steps to submit.`,
+        `Cannot submit final onboarding. The following steps or requirements are incomplete: ${missing.join(", ")}. Please complete all 4 steps before submitting.`,
         400,
         ErrorCode.VALIDATION_FAILED
       );
