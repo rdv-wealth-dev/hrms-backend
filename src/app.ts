@@ -7,8 +7,8 @@ import { requireCompleteProfile } from "./modules/employee/middlewares/profile-c
 import { authenticate } from "./shared/middlewares/auth.middleware";
 import { createTenantRateLimiter } from "./shared/middlewares/rate-limiter.middleware";
 import authRoutes from "./modules/auth";
-import organizationRoutes from "./modules/organization"
-import branchRoutes from "./modules/branch"
+import organizationRoutes from "./modules/organization";
+import branchRoutes from "./modules/branch";
 import departmentRoutes from "./modules/department";
 import designationRoutes from "./modules/designation";
 import employeeRoutes from "./modules/employee/employee.routes";

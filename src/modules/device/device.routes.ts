@@ -32,19 +32,19 @@ router.get(
   logCtrl.listLogs.bind(logCtrl)
 );
 
-// ── Batch Webhook (Reconciliation / Day-dump) ─────────────────────────────────
+// ── Batch Webhook (Reconciliation / Day-dump) 
 // Accepts ALL punch logs for an entire day for ALL employees in one call.
 // 100% idempotent — safe to call multiple times with same data (no duplicates).
 // POST /api/v1/device/batch/:identifier
 // POST /api/v1/device/batch/:identifier/:provider
 router.post("/batch/:identifier/:provider", receiveBatchBiometricWebhook);
-router.post("/batch/:identifier",           receiveBatchBiometricWebhook);
+router.post("/batch/:identifier", receiveBatchBiometricWebhook);
 
-// ── Single Punch Webhook (Real-time live push — 1 punch per HTTP call) ────────
+// ── Single Punch Webhook (Real-time live push — 1 punch per HTTP call) 
 // Called by biometric device in real-time on each punch event.
 // POST /api/v1/device/:identifier/:provider
 // POST /api/v1/device/:identifier
 router.post("/:identifier/:provider", receiveRawBiometricWebhook);
-router.post("/:identifier",           receiveRawBiometricWebhook);
+router.post("/:identifier", receiveRawBiometricWebhook);
 
 export default router;

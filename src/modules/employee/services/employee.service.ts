@@ -152,12 +152,6 @@ export class EmployeeService {
     // Generate atomic employee code
     const employeeCode = await getNextEmployeeCode(context.tenantId);
 
-    let resolvedShiftId = input.shiftId;
-    if (!resolvedShiftId) {
-      const defaultShift = await this.shiftRepository.findDefault(context);
-      if (defaultShift) resolvedShiftId = defaultShift._id.toString();
-    }
-
     let branchId = input.branchId;
     if (branchId) {
       const branchDoc = await BranchModel.findOne({
@@ -179,6 +173,18 @@ export class EmployeeService {
         );
       }
       branchId = headOffice._id.toString();
+    }
+
+    let resolvedShiftId = input.shiftId;
+    if (!resolvedShiftId && branchId) {
+      const branchDoc = await BranchModel.findById(branchId).select("defaultShiftId").lean();
+      if (branchDoc?.defaultShiftId) {
+        resolvedShiftId = branchDoc.defaultShiftId.toString();
+      }
+    }
+    if (!resolvedShiftId) {
+      const defaultShift = await this.shiftRepository.findDefault(context);
+      if (defaultShift) resolvedShiftId = defaultShift._id.toString();
     }
 
     let resolvedTeamId: mongoose.Types.ObjectId | undefined;

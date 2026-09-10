@@ -48,7 +48,18 @@ export const CreateBranchDto = z.object({
     weeklyOffDays: z.array(z.string()).optional(),
     shiftStartTime: z.string().optional(),
     shiftEndTime: z.string().optional(),
-    workingHoursPerDay: z.number().min(1).max(24).optional(),
+    workingHoursPerDay: z.preprocess((val) => {
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        if (/^\d{1,2}:\d{2}$/.test(trimmed)) {
+          const [h, m] = trimmed.split(":").map(Number);
+          return Math.round((h + m / 60) * 100) / 100;
+        }
+        const num = parseFloat(trimmed);
+        if (!isNaN(num)) return num;
+      }
+      return val;
+    }, z.number().min(1).max(24).optional()),
     customWeekOffRules: z.array(
       z.object({
         dayOfWeek: z.enum(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]),
@@ -68,6 +79,8 @@ export const CreateBranchDto = z.object({
     ptApplicable: z.boolean().nullable().optional(),
     ptStateCode: z.string().optional(),
   }).optional(),
+
+  defaultShiftId: z.string().optional(),
 });
 
 export type CreateBranchInput = z.infer<typeof CreateBranchDto>;

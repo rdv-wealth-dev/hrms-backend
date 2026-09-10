@@ -9,6 +9,7 @@ import { UserRepository } from "../user/user.repository";
 import { OrganizationRepository } from "../organization/organization.repository";
 import { parseEmployeeCountRange } from "../organization/utils/team-size.util";
 import { BranchRepository } from "../branch/branch.repository";
+import { BranchModel } from "../branch/branch.model";
 import { UserModel } from "../user/user.model";
 import { seedDefaultRoles } from "../../database/seeds/role.seed";
 import { seedDepartments } from "../../database/seeds/department.seed";
@@ -841,7 +842,13 @@ export class AuthService {
     await seedLeaveTypes(tenantId, headOfficeId, input.leavePolicy, input.selectedLeaves);
     const deptMap = await seedDepartments(tenantId, headOfficeId, input.selectedDepartments, input.industry);
     await seedDesignations(tenantId, headOfficeId, deptMap);
-    await seedShifts(tenantId, headOfficeId, undefined, input.workingStyle);
+    const shiftMap = await seedShifts(tenantId, headOfficeId, undefined, input.workingStyle);
+    const genShiftId = shiftMap.get("GEN");
+    if (genShiftId && mongoose.Types.ObjectId.isValid(genShiftId)) {
+      await BranchModel.findByIdAndUpdate(headOffice._id, {
+        defaultShiftId: new mongoose.Types.ObjectId(genShiftId),
+      });
+    }
     await seedStatutoryNationalHolidays(tenantId, input.countryCode || "IN", "system");
 
     // Save phone and associate the created Head Office branch to the admin user

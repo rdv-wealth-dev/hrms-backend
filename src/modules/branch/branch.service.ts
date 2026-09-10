@@ -13,7 +13,32 @@ import { seedDepartments } from "../../database/seeds/department.seed";
 import { seedDesignations } from "../../database/seeds/designation.seed";
 import { DepartmentService } from "../department/department.service";
 import { DesignationService } from "../designation/designation.service";
+import { ShiftModel, ShiftDocument } from "../attendance/models/shift.model";
 
+
+/** Parse "HH:MM" into total minutes since midnight. */
+function timeToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+/** Add `offset` minutes to an "HH:MM" string and return a new "HH:MM" string (wraps at 24h). */
+function addMinutes(hhmm: string, offset: number): string {
+  const total = (timeToMinutes(hhmm) + offset + 1440) % 1440;
+  const hh = String(Math.floor(total / 60)).padStart(2, "0");
+  const mm = String(total % 60).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+/**
+ * Compute effective working minutes between startTime and endTime.
+ * Handles overnight shifts (e.g. 22:00 → 07:00).
+ */
+function computeShiftMinutes(start: string, end: string): number {
+  const s = timeToMinutes(start);
+  const e = timeToMinutes(end);
+  return e > s ? e - s : 1440 - s + e;
+}
 
 export class BranchService {
   private branchRepo = new BranchRepository();
@@ -111,6 +136,16 @@ export class BranchService {
       workingHoursPerDay: input.workPolicy?.workingHoursPerDay,
     };
     await seedShifts(context.tenantId, branchId, workPolicyOverride);
+
+    // Ensure branch default shift is synchronized and linked
+    const defaultShiftId = await this.syncBranchDefaultShift(
+      context.tenantId,
+      branchId,
+      input.workPolicy
+    );
+    if (defaultShiftId) {
+      branch.defaultShiftId = defaultShiftId;
+    }
 
     return branch;
   }
@@ -235,7 +270,22 @@ export class BranchService {
 
     if (input.geo || input.address) updateData.geo = mergedGeo;
 
+    if (input.defaultShiftId && mongoose.Types.ObjectId.isValid(input.defaultShiftId)) {
+      updateData.defaultShiftId = new mongoose.Types.ObjectId(input.defaultShiftId);
+    }
+
     const updated = await this.branchRepo.updateById(id, updateData);
+
+    // Automatically sync / create / update default shift for this branch when timing changes or defaultShiftId is missing
+    const defaultShiftId = await this.syncBranchDefaultShift(
+      context.tenantId,
+      id,
+      input.workPolicy
+    );
+
+    if (updated && defaultShiftId) {
+      updated.defaultShiftId = defaultShiftId;
+    }
 
     // Auto-seed if the country code was newly added or modified on update
     if (
@@ -303,6 +353,7 @@ export class BranchService {
       workingHoursPerDay: branch.workPolicy?.workingHoursPerDay,
     };
     await seedShifts(context.tenantId, branchId, workPolicyOverride);
+    await this.syncBranchDefaultShift(context.tenantId, branchId, branch.workPolicy);
     const deptMap = await seedDepartments(context.tenantId, branchId);
     await seedDesignations(context.tenantId, branchId, deptMap);
 
@@ -311,6 +362,163 @@ export class BranchService {
       branchId,
       departmentsSeeded: deptMap.size,
     };
+  }
+
+  /**
+   * Syncs the branch-level default shift with the branch's work policy.
+   * - If a default shift exists for this branch (via defaultShiftId or branchId),
+   *   its startTime, endTime, and working hours thresholds are updated.
+   * - If no default shift exists, a new shift is created and assigned as the branch default.
+   * - Ensures branch.defaultShiftId is set in the database.
+   */
+  async syncBranchDefaultShift(
+    tenantId: string,
+    branchId: string,
+    workPolicyOverride?: {
+      shiftStartTime?: string;
+      shiftEndTime?: string;
+      workingHoursPerDay?: number;
+    }
+  ): Promise<mongoose.Types.ObjectId | null> {
+    const branch = await BranchModel.findOne({
+      _id: new mongoose.Types.ObjectId(branchId),
+      tenantId: new mongoose.Types.ObjectId(tenantId),
+      isDeleted: false,
+    });
+    if (!branch) return null;
+
+    const policy = {
+      shiftStartTime: workPolicyOverride?.shiftStartTime ?? branch.workPolicy?.shiftStartTime,
+      shiftEndTime: workPolicyOverride?.shiftEndTime ?? branch.workPolicy?.shiftEndTime,
+      workingHoursPerDay: workPolicyOverride?.workingHoursPerDay ?? branch.workPolicy?.workingHoursPerDay,
+    };
+
+    const startTime = policy.shiftStartTime && /^([01]\d|2[0-3]):([0-5]\d)$/.test(policy.shiftStartTime)
+      ? policy.shiftStartTime
+      : "09:00";
+    const endTime = policy.shiftEndTime && /^([01]\d|2[0-3]):([0-5]\d)$/.test(policy.shiftEndTime)
+      ? policy.shiftEndTime
+      : "18:00";
+
+    let fullDayMinutes = 480;
+    if (policy.workingHoursPerDay && policy.workingHoursPerDay > 0) {
+      fullDayMinutes = Math.round(policy.workingHoursPerDay * 60);
+    } else {
+      const raw = computeShiftMinutes(startTime, endTime);
+      fullDayMinutes = raw > 60 ? raw - 60 : raw;
+    }
+    const halfDayThresholdMinutes = Math.round(fullDayMinutes / 2);
+
+    const allowedCheckInFromTime = addMinutes(startTime, -60);
+    const checkInWindowStart = addMinutes(startTime, -60);
+    const checkInWindowEnd = startTime;
+    const earlyLeaveStartTime = endTime;
+
+    let shift: ShiftDocument | null = null;
+
+    // 1. Try branch.defaultShiftId
+    if (branch.defaultShiftId) {
+      shift = await ShiftModel.findOne({
+        _id: branch.defaultShiftId,
+        tenantId: new mongoose.Types.ObjectId(tenantId),
+        isDeleted: false,
+      });
+    }
+
+    // 2. Try finding existing shift created for this branch
+    if (!shift) {
+      shift = await ShiftModel.findOne({
+        branchId: branch._id,
+        tenantId: new mongoose.Types.ObjectId(tenantId),
+        isDeleted: false,
+      });
+    }
+
+    if (shift) {
+      shift.startTime = startTime;
+      shift.endTime = endTime;
+      shift.allowedCheckInFromTime = allowedCheckInFromTime;
+      shift.checkInWindowStart = checkInWindowStart;
+      shift.checkInWindowEnd = checkInWindowEnd;
+      shift.earlyLeaveStartTime = earlyLeaveStartTime;
+      shift.fullDayMinutes = fullDayMinutes;
+      shift.halfDayThresholdMinutes = halfDayThresholdMinutes;
+      shift.isActive = true;
+      await shift.save();
+
+      if (!branch.defaultShiftId || branch.defaultShiftId.toString() !== shift._id.toString()) {
+        await BranchModel.updateOne(
+          { _id: branch._id },
+          { $set: { defaultShiftId: shift._id } }
+        );
+        branch.defaultShiftId = shift._id;
+      }
+      return shift._id as mongoose.Types.ObjectId;
+    }
+
+    // 3. Create new default shift for this branch
+    const codeConflict = await ShiftModel.findOne({
+      tenantId: new mongoose.Types.ObjectId(tenantId),
+      code: "GEN",
+      isDeleted: false,
+    });
+
+    let shiftCode = "GEN";
+    if (codeConflict) {
+      shiftCode = `GEN_${branch.code.toUpperCase()}`;
+      const branchCodeConflict = await ShiftModel.findOne({
+        tenantId: new mongoose.Types.ObjectId(tenantId),
+        code: shiftCode,
+        isDeleted: false,
+      });
+      if (branchCodeConflict) {
+        shiftCode = `GEN_${branch.code.toUpperCase()}_${Date.now().toString().slice(-4)}`;
+      }
+    }
+
+    const hasTenantDefault = await ShiftModel.exists({
+      tenantId: new mongoose.Types.ObjectId(tenantId),
+      isDefault: true,
+      isDeleted: false,
+    });
+
+    const isDefault = !hasTenantDefault || branch.isHeadOffice;
+    if (isDefault && branch.isHeadOffice) {
+      await ShiftModel.updateMany(
+        { tenantId: new mongoose.Types.ObjectId(tenantId) },
+        { $set: { isDefault: false } }
+      );
+    }
+
+    const newShift = await ShiftModel.create({
+      tenantId: new mongoose.Types.ObjectId(tenantId),
+      branchId: branch._id,
+      name: branch.isHeadOffice ? "General Shift" : `${branch.name} - General Shift`,
+      code: shiftCode,
+      startTime,
+      endTime,
+      allowedCheckInFromTime,
+      checkInWindowStart,
+      checkInWindowEnd,
+      earlyLeaveStartTime,
+      gracePeriodMinutes: 15,
+      graceLimitPerMonth: 3,
+      halfDayThresholdMinutes,
+      fullDayMinutes,
+      breakDurationMinutes: 60,
+      isDefault: isDefault ? true : false,
+      isActive: true,
+      isDeleted: false,
+      version: 1,
+    });
+
+    await BranchModel.updateOne(
+      { _id: branch._id },
+      { $set: { defaultShiftId: newShift._id } }
+    );
+    branch.defaultShiftId = newShift._id;
+
+    return newShift._id as mongoose.Types.ObjectId;
   }
 
   // Delete all departments and child designations of a branch
