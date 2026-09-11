@@ -1,12 +1,23 @@
 import mongoose, { Document } from "mongoose";
 import { createOrgLevelSchema, OrgLevelDocument } from "../../../shared/database/base.schema";
 
+export type ImportRowStatus =
+  | 'valid'
+  | 'warning'
+  | 'error'
+  | 'CLEAN'
+  | 'IMPORTED_INCOMPLETE'
+  | 'POSSIBLE_DUPLICATE'
+  | 'REJECTED';
+
 export interface ImportSessionRow {
   rowNumber: number;
   rawData: any;
   mappedData: any;
-  status: 'valid' | 'warning' | 'error';
+  status: ImportRowStatus;
   action: 'create' | 'update' | 'skip';
+  needsAttentionFields?: string[];
+  rejectionReason?: string;
   messages: string[];
 }
 
@@ -15,6 +26,12 @@ export interface ImportSessionDocument extends OrgLevelDocument {
   status: 'queued' | 'validating' | 'ready' | 'committed' | 'failed';
   fileName: string;
   rows: ImportSessionRow[];
+  totalRows?: number;
+  greenCount?: number;
+  yellowCount?: number;
+  orangeCount?: number;
+  redCount?: number;
+  committedCount?: number;
   fileBufferBase64?: string;
   attempts?: number;
   maxAttempts?: number;
@@ -34,6 +51,12 @@ const ImportSessionSchema = createOrgLevelSchema<ImportSessionDocument>(
       index: true,
     },
     fileName: { type: String, required: true },
+    totalRows: { type: Number, default: 0 },
+    greenCount: { type: Number, default: 0 },
+    yellowCount: { type: Number, default: 0 },
+    orangeCount: { type: Number, default: 0 },
+    redCount: { type: Number, default: 0 },
+    committedCount: { type: Number, default: 0 },
     fileBufferBase64: { type: String },
     attempts: { type: Number, default: 0 },
     maxAttempts: { type: Number, default: 3 },
@@ -47,7 +70,7 @@ const ImportSessionSchema = createOrgLevelSchema<ImportSessionDocument>(
         mappedData: { type: mongoose.Schema.Types.Mixed },
         status: {
           type: String,
-          enum: ['valid', 'warning', 'error'],
+          enum: ['valid', 'warning', 'error', 'CLEAN', 'IMPORTED_INCOMPLETE', 'POSSIBLE_DUPLICATE', 'REJECTED'],
           required: true,
         },
         action: {
@@ -55,6 +78,8 @@ const ImportSessionSchema = createOrgLevelSchema<ImportSessionDocument>(
           enum: ['create', 'update', 'skip'],
           required: true,
         },
+        needsAttentionFields: { type: [String], default: [] },
+        rejectionReason: { type: String, default: null },
         messages: { type: [String], default: [] },
       },
     ],

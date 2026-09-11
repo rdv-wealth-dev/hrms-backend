@@ -1319,133 +1319,149 @@ export async function parseImportFile(
     const employeeType = normalizeEmployeeType(mapped.employeeType);
 
     const emailClean = row.email?.trim().toLowerCase() || "";
-    let finalEmail = emailClean;
 
     // ─────────────────────────────────────────────────────────────
-    // MANDATORY FIELD CHECKS (Must be present for every employee)
+    // ZERO-FAILURE 3-TIER VALIDATION & AUTO-HEALING PIPELINE
     // ─────────────────────────────────────────────────────────────
+    const needsAttentionFields: string[] = [];
+    let rowStatus: 'CLEAN' | 'IMPORTED_INCOMPLETE' | 'POSSIBLE_DUPLICATE' | 'REJECTED' = 'CLEAN';
 
-    // 1. Employee Name (First Name / Full Name)
-    if (!row.firstName?.trim()) {
-      errors.push({
-        rowNumber,
-        email: emailClean,
-        reason: "Employee Name is mandatory and cannot be empty",
-        severity: "ERROR",
-      });
-      continue;
-    }
+    // ── TIER 1: HARD REQUIRED IDENTITY (True Floor)
+    // A row ONLY fails if BOTH firstName & lastName are missing, OR BOTH email & phone are missing.
+    const rawFirstName = row.firstName?.trim() || "";
+    const rawLastName = row.lastName?.trim() || "";
+    const hasName = Boolean(rawFirstName || rawLastName);
 
-    // 2. Email Address
+    const rawEmail = row.email?.trim().toLowerCase() || "";
     const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!finalEmail || !EMAIL_REGEX.test(finalEmail)) {
+    const isValidEmail = Boolean(rawEmail && EMAIL_REGEX.test(rawEmail));
+
+    const rawPhone = (row.phone ? String(row.phone).replace(/\D/g, "") : "");
+    const isValidPhone = rawPhone.length >= 7; // standard minimum length for phone number
+
+    const hasContact = isValidEmail || isValidPhone;
+
+    if (!hasName || !hasContact) {
+      const missingParts: string[] = [];
+      if (!hasName) missingParts.push("Employee Name (First or Last name required)");
+      if (!hasContact) missingParts.push("Contact Info (Valid Email or Phone required)");
+      const reason = `Tier 1 Required: ${missingParts.join(" and ")}`;
       errors.push({
         rowNumber,
-        email: emailClean,
-        reason: `Email ID is mandatory and must be a valid email address (found: "${finalEmail || "missing"}")`,
+        email: rawEmail || rawPhone,
+        reason,
         severity: "ERROR",
       });
       continue;
     }
-    // Smart Duplicate Prevention: If employee already exists in the organization, skip gracefully
-    if (existingEmails.has(finalEmail)) {
+
+    // Resolve Name (Auto-heal single names)
+    const finalFirstName = rawFirstName || rawLastName || "Employee";
+    const finalLastName = rawFirstName ? rawLastName : "";
+    if (!rawLastName) {
+      needsAttentionFields.push("lastName");
+    }
+
+    // Resolve Email & Phone
+    let finalEmail = rawEmail;
+    if (!isValidEmail) {
+      const fallbackDomain = orgDoc?.workspaceSlug ? `${orgDoc.workspaceSlug}.internal` : "company.internal";
+      finalEmail = `emp_${rawPhone || rowNumber}@${fallbackDomain}`;
+      needsAttentionFields.push("email");
       warnings.push({
         rowNumber,
         email: finalEmail,
-        reason: `Employee with email "${finalEmail}" already exists in the organization — skipped`,
+        reason: `Email was missing or invalid — auto-generated placeholder "${finalEmail}" from phone`,
         severity: "WARNING",
       });
-      continue;
     }
 
-    // 3. Contact Number (Phone)
-    if (!row.phone || row.phone.length < 10) {
-      errors.push({
-        rowNumber,
-        email: finalEmail,
-        reason: `Contact Number (Mobile) is mandatory and must be at least 10 digits (found: "${row.phone || "missing"}")`,
-        severity: "ERROR",
-      });
-      continue;
+    const finalPhone = isValidPhone ? rawPhone : (row.phone?.trim() || "0000000000");
+    if (!isValidPhone) {
+      needsAttentionFields.push("phone");
     }
 
-    // 4. Department
-    if (!row.departmentName?.trim()) {
-      errors.push({
-        rowNumber,
-        email: finalEmail,
-        reason: "Department is mandatory and cannot be empty",
-        severity: "ERROR",
-      });
-      continue;
-    }
-
-    // 5. Designation
-    if (!row.designationName?.trim()) {
-      errors.push({
-        rowNumber,
-        email: finalEmail,
-        reason: "Designation is mandatory and cannot be empty",
-        severity: "ERROR",
-      });
-      continue;
-    }
-
-    // 6. Gender
-    if (!row.gender) {
-      errors.push({
-        rowNumber,
-        email: finalEmail,
-        reason: "Gender is mandatory (must be MALE, FEMALE, or OTHER)",
-        severity: "ERROR",
-      });
-      continue;
-    }
-
-    // 7. Date of Birth (DOB)
-    const dobDate = row.dateOfBirth ? new Date(row.dateOfBirth) : null;
-    if (!row.dateOfBirth || !dobDate || isNaN(dobDate.getTime())) {
-      errors.push({
-        rowNumber,
-        email: finalEmail,
-        reason: "Date of Birth (DOB) is mandatory and must be a valid date",
-        severity: "ERROR",
-      });
-      continue;
-    }
-
-    // 8. Date of Joining (DOJ)
-    const joiningDate = parseAnyDate(row.joiningDate) || (row.joiningDate ? new Date(row.joiningDate) : null);
-    if (!row.joiningDate || !joiningDate || isNaN(joiningDate.getTime())) {
-      errors.push({
-        rowNumber,
-        email: finalEmail,
-        reason: `Date of Joining (DOJ) is mandatory and must be a valid date (found: "${row.joiningDate || "missing"}")`,
-        severity: "ERROR",
-      });
-      continue;
-    }
-    const finalJoiningDate = joiningDate;
-
-    // 9. Employee Code Duplicate Check (if provided in sheet)
-    if (row.preservedEmployeeCode && existingEmpCodes.has(row.preservedEmployeeCode.toUpperCase())) {
+    // Check duplicate email across organization (Orange flag)
+    let isPossibleDuplicate = false;
+    if (isValidEmail && existingEmails.has(finalEmail)) {
+      isPossibleDuplicate = true;
       warnings.push({
         rowNumber,
         email: finalEmail,
-        reason: `Employee code "${row.preservedEmployeeCode}" already exists in the organization — skipped`,
+        reason: `Email "${finalEmail}" matches an existing employee or user in the workspace`,
         severity: "WARNING",
       });
-      continue;
     }
 
-    // If no lastName, warn
-    if (!row.lastName?.trim()) {
+    // ── TIER 2: AUTO-HEALABLE FIELDS (Defaults + Needs Attention Flag)
+
+    // 1. Date of Joining (DOJ): default to today if missing/invalid
+    let finalJoiningDate: Date;
+    const parsedDOJ = parseAnyDate(row.joiningDate) || (row.joiningDate ? new Date(row.joiningDate) : null);
+    if (!parsedDOJ || isNaN(parsedDOJ.getTime())) {
+      finalJoiningDate = new Date();
+      needsAttentionFields.push("joiningDate");
       warnings.push({
         rowNumber,
         email: finalEmail,
-        reason: `Last name missing for "${row.firstName}" — will be imported with first name only`,
+        reason: `Joining Date was missing or invalid — defaulted to today (${finalJoiningDate.toISOString().slice(0, 10)})`,
         severity: "WARNING",
       });
+    } else {
+      finalJoiningDate = parsedDOJ;
+    }
+
+    // 2. Department: default to "Unassigned" if missing
+    let targetDeptName = row.departmentName?.trim();
+    if (!targetDeptName) {
+      targetDeptName = "Unassigned";
+      needsAttentionFields.push("department");
+      warnings.push({
+        rowNumber,
+        email: finalEmail,
+        reason: 'Department was missing — auto-assigned to "Unassigned"',
+        severity: "WARNING",
+      });
+    }
+
+    // 3. Designation: default to "Not Set" if missing
+    let targetDesigName = row.designationName?.trim();
+    if (!targetDesigName) {
+      targetDesigName = "Not Set";
+      needsAttentionFields.push("designation");
+      warnings.push({
+        rowNumber,
+        email: finalEmail,
+        reason: 'Designation was missing — auto-assigned to "Not Set"',
+        severity: "WARNING",
+      });
+    }
+
+    // 4. Employment Type: default to FULL_TIME if missing
+    let targetEmployeeType = employeeType || EmployeeType.FULL_TIME;
+    if (!mapped.employeeType) {
+      needsAttentionFields.push("employeeType");
+    }
+
+    // ── TIER 3: OPTIONAL FIELDS (No defaults, strip if invalid)
+    let finalGender = row.gender;
+    if (!finalGender || !Object.values(Gender).includes(finalGender as any)) {
+      finalGender = Gender.OTHER;
+    }
+
+    let finalDOB: Date | undefined;
+    if (row.dateOfBirth) {
+      const parsedDOB = new Date(row.dateOfBirth);
+      if (!isNaN(parsedDOB.getTime())) {
+        finalDOB = parsedDOB;
+      } else {
+        warnings.push({
+          rowNumber,
+          email: finalEmail,
+          reason: `Date of Birth "${row.dateOfBirth}" was invalid — field cleared`,
+          severity: "WARNING",
+        });
+      }
     }
 
     // ── Branch resolution with smart auto-creation and fallback
@@ -1506,17 +1522,17 @@ export async function parseImportFile(
     // ── Department & Sub-Department — Exact Match & Parent-Child Auto-Creation
     const parentDeptResult = await findOrCreateDepartment(
       tenantIdObj, branchId, userIdObj,
-      row.departmentName, departmentMap, existingDeptCodes, createdDepts
+      targetDeptName, departmentMap, existingDeptCodes, createdDepts
     );
     if (parentDeptResult.wasCreated) {
-      warnings.push({ rowNumber, email: emailClean, reason: `Department "${row.departmentName}" did not exist — auto-created as "${parentDeptResult.name}"`, severity: "WARNING" });
+      warnings.push({ rowNumber, email: emailClean, reason: `Department "${targetDeptName}" did not exist — auto-created as "${parentDeptResult.name}"`, severity: "WARNING" });
     }
 
     let effectiveDeptId = new mongoose.Types.ObjectId(parentDeptResult.id);
     let effectiveDeptName = parentDeptResult.name;
 
     // Sub-department: if present and distinct, link to parent department via parentId
-    if (row.subDepartmentName && normalize(row.subDepartmentName) !== normalize(row.departmentName)) {
+    if (row.subDepartmentName && normalize(row.subDepartmentName) !== normalize(targetDeptName)) {
       const subDeptResult = await findOrCreateDepartment(
         tenantIdObj, branchId, userIdObj,
         row.subDepartmentName, departmentMap, existingDeptCodes, createdDepts,
@@ -1533,10 +1549,10 @@ export async function parseImportFile(
     const desigResult = await findOrCreateDesignation(
       tenantIdObj, branchId, userIdObj,
       effectiveDeptId,
-      row.designationName, designationMap, existingDesigCodes, createdDesigs
+      targetDesigName, designationMap, existingDesigCodes, createdDesigs
     );
     if (desigResult.wasCreated) {
-      warnings.push({ rowNumber, email: emailClean, reason: `Designation "${row.designationName}" did not exist — auto-created as "${desigResult.name}" under "${effectiveDeptName}"`, severity: "WARNING" });
+      warnings.push({ rowNumber, email: emailClean, reason: `Designation "${targetDesigName}" did not exist — auto-created as "${desigResult.name}" under "${effectiveDeptName}"`, severity: "WARNING" });
     }
 
     // ── Statutory validations via country plugin
@@ -1618,6 +1634,17 @@ export async function parseImportFile(
     resolvedCustomFields.grade = row.grade || "NA";
     if (row.subDepartmentName) resolvedCustomFields.subDepartment = row.subDepartmentName;
 
+    // Determine 4-tier row status:
+    if (isPossibleDuplicate) {
+      rowStatus = 'POSSIBLE_DUPLICATE';
+    } else if (needsAttentionFields.length > 0) {
+      rowStatus = 'IMPORTED_INCOMPLETE';
+    } else {
+      rowStatus = 'CLEAN';
+    }
+
+    const importStatus = needsAttentionFields.length > 0 ? 'IMPORTED_INCOMPLETE' : 'CLEAN';
+
     const employeeDoc: any = {
       _id: newEmpId,
       tenantId: tenantIdObj,
@@ -1628,15 +1655,20 @@ export async function parseImportFile(
       workMode: row.workMode || "OFFICE",
       grade: row.grade || "NA",
       employeeCode,
-      firstName: row.firstName.trim(),
-      lastName: (row.lastName || "").trim(),
+      firstName: finalFirstName,
+      lastName: finalLastName,
       email: finalEmail,
-      phone: row.phone,
+      phone: finalPhone,
       joiningDate: finalJoiningDate,
-      employeeType,
+      employeeType: targetEmployeeType,
       status: importedStatus,
-      gender: row.gender,
-      dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : undefined,
+      gender: finalGender,
+      dateOfBirth: finalDOB,
+      importStatus,
+      needsAttentionFields,
+      __rowStatus: rowStatus,
+      __isPossibleDuplicate: isPossibleDuplicate,
+      __rowNumber: rowNumber,
       pan: row.pan,
       aadhaar: row.aadhaar,
       passportNo: row.passportNo,

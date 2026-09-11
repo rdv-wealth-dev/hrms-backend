@@ -37,7 +37,7 @@ import { ShiftRepository } from "../../attendance/repositories/shift.repository"
 import { parseImportFile, buildExportBuffer } from "../utils/employee.utils";
 import { v4 as uuidv4 } from "uuid";
 import { validatePAN, validateAadhaar } from "../../../domain/localization/IN/validators";
-import { ImportSessionModel } from "../models/import-session.model";
+import { ImportSessionModel, ImportSessionRow, ImportRowStatus } from "../models/import-session.model";
 import { ExportSessionModel } from "../models/export-session.model";
 import { EmployeeBankAccountModel } from "../models/employee-bank-account.model";
 import { EmployeeFamilyModel } from "../models/employee-family.model";
@@ -1430,10 +1430,25 @@ export class EmployeeService {
       };
     }
 
+    const batchId = `import_batch_${Date.now()}`;
     // Strip internal-only fields before DB insert
     const cleanRecords = parsedData.validRecords.map(r => {
-      const { __bankAccount, __isActiveEmployee, __familyMembers, __reportingManagerName, ...clean } = r;
-      return clean;
+      const {
+        __bankAccount,
+        __isActiveEmployee,
+        __familyMembers,
+        __reportingManagerName,
+        __rowStatus,
+        __isPossibleDuplicate,
+        __rowNumber,
+        ...clean
+      } = r;
+      return {
+        ...clean,
+        importBatchId: batchId,
+        importStatus: r.importStatus || (r.needsAttentionFields?.length > 0 ? 'IMPORTED_INCOMPLETE' : 'CLEAN'),
+        needsAttentionFields: r.needsAttentionFields || [],
+      };
     });
 
     // Bulk insert employee records
@@ -1578,6 +1593,7 @@ export class EmployeeService {
     })().catch(() => {});
 
     return {
+      batchId,
       totalProcessed: parsedData.totalRows,
       insertedCount: dbResult.insertedCount,
       failedCount: parsedData.errors.length,
@@ -1677,72 +1693,85 @@ export class EmployeeService {
     const parsedData = await parseImportFile(context, buffer, fileType);
 
     // Determine row statuses and actions
-    const sessionRows = parsedData.validRecords.map((rec, i) => {
-      const rowNumber = i + 2; // row 1 is header
-      const rowErrors = parsedData.errors.filter(e => e.rowNumber === rowNumber);
-      const rowWarnings = parsedData.warnings.filter(e => e.rowNumber === rowNumber);
+    const sessionRows: ImportSessionRow[] = [];
 
-      let status: 'valid' | 'warning' | 'error' = 'valid';
+    // 1. Map valid and auto-healed records (Green, Yellow, Orange)
+    for (let i = 0; i < parsedData.validRecords.length; i++) {
+      const rec = parsedData.validRecords[i];
+      const rowNumber = rec.__rowNumber || (i + 2);
+      const rowWarnings = parsedData.warnings.filter(w => w.rowNumber === rowNumber);
+      const messages = rowWarnings.map(w => w.reason);
+
+      let status: ImportRowStatus = rec.__rowStatus || 'CLEAN';
       let action: 'create' | 'update' | 'skip' = 'create';
-      const messages: string[] = [];
 
-      if (rowErrors.length > 0) {
-        status = 'error';
+      if (status === 'POSSIBLE_DUPLICATE') {
         action = 'skip';
-        messages.push(...rowErrors.map(e => e.reason));
-      } else if (rowWarnings.length > 0) {
-        status = 'warning';
-        action = 'create';
-        messages.push(...rowWarnings.map(e => e.reason));
       }
 
-      return {
+      sessionRows.push({
         rowNumber,
         rawData: rec,
         mappedData: rec,
         status,
         action,
+        needsAttentionFields: rec.needsAttentionFields || [],
         messages,
-      };
-    });
-
-    // Handle rows that had errors during initial parsing
-    const invalidRowErrors = parsedData.errors.filter(e => !parsedData.validRecords.some((_, i) => (i + 2) === e.rowNumber));
-    for (const err of invalidRowErrors) {
-      sessionRows.push({
-        rowNumber: err.rowNumber,
-        rawData: {},
-        mappedData: {},
-        status: 'error',
-        action: 'skip',
-        messages: [err.reason],
       });
     }
 
-    // Handle rows that were skipped because they already exist in the organization
+    // 2. Map Tier 1 Hard Rejections (Red rows)
+    for (const err of parsedData.errors) {
+      if (!sessionRows.some(r => r.rowNumber === err.rowNumber)) {
+        sessionRows.push({
+          rowNumber: err.rowNumber,
+          rawData: { email: err.email },
+          mappedData: {},
+          status: 'REJECTED',
+          action: 'skip',
+          rejectionReason: err.reason,
+          messages: [err.reason],
+          needsAttentionFields: [],
+        });
+      }
+    }
+
+    // 3. Handle rows skipped because they already exist in the organization
     const skippedExistingWarnings = parsedData.warnings.filter(
       w => w.reason.includes("already exists in the organization") && !sessionRows.some(r => r.rowNumber === w.rowNumber)
     );
     for (const warn of skippedExistingWarnings) {
       sessionRows.push({
         rowNumber: warn.rowNumber,
-        rawData: {},
+        rawData: { email: warn.email },
         mappedData: {},
-        status: 'warning',
+        status: 'POSSIBLE_DUPLICATE',
         action: 'skip',
         messages: [warn.reason],
+        needsAttentionFields: [],
       });
     }
 
     sessionRows.sort((a, b) => a.rowNumber - b.rowNumber);
 
-    const hasErrors = sessionRows.some(r => r.status === 'error');
+    const greenCount = sessionRows.filter(r => r.status === 'CLEAN' || r.status === 'valid').length;
+    const yellowCount = sessionRows.filter(r => r.status === 'IMPORTED_INCOMPLETE' || r.status === 'warning').length;
+    const orangeCount = sessionRows.filter(r => r.status === 'POSSIBLE_DUPLICATE').length;
+    const redCount = sessionRows.filter(r => r.status === 'REJECTED' || r.status === 'error').length;
+
+    // Zero-failure import strategy: session is ready as long as there is at least one committable row
+    const hasCommittableRows = (greenCount + yellowCount) > 0;
 
     await ImportSessionModel.updateOne(
       { sessionId },
       {
         $set: {
-          status: hasErrors ? 'failed' : 'ready',
+          status: hasCommittableRows ? 'ready' : 'failed',
+          totalRows: sessionRows.length,
+          greenCount,
+          yellowCount,
+          orangeCount,
+          redCount,
           rows: sessionRows,
         }
       }
@@ -1766,10 +1795,91 @@ export class EmployeeService {
       sessionId: session.sessionId,
       fileName: session.fileName,
       status: session.status,
-      totalRows: session.rows.length,
+      totalRows: session.totalRows || session.rows.length,
+      greenCount: session.greenCount ?? session.rows.filter(r => r.status === 'CLEAN' || r.status === 'valid').length,
+      yellowCount: session.yellowCount ?? session.rows.filter(r => r.status === 'IMPORTED_INCOMPLETE' || r.status === 'warning').length,
+      orangeCount: session.orangeCount ?? session.rows.filter(r => r.status === 'POSSIBLE_DUPLICATE').length,
+      redCount: session.redCount ?? session.rows.filter(r => r.status === 'REJECTED' || r.status === 'error').length,
       pageNumber,
       pageSize,
       rows: paginatedRows,
+    };
+  }
+
+  async updatePreviewRow(
+    context: RequestContext,
+    sessionId: string,
+    rowNumber: number,
+    updatedFields: Record<string, any>
+  ) {
+    const session = await ImportSessionModel.findOne({
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      sessionId,
+    });
+
+    if (!session) {
+      throw new AppError("Import session not found", 404);
+    }
+
+    if (session.status === 'committed') {
+      throw new AppError("Cannot edit rows in a committed session", 400);
+    }
+
+    const rowIndex = session.rows.findIndex(r => r.rowNumber === rowNumber);
+    if (rowIndex === -1) {
+      throw new AppError(`Row number ${rowNumber} not found in this session`, 404);
+    }
+
+    const row = session.rows[rowIndex];
+    row.rawData = { ...row.rawData, ...updatedFields };
+    row.mappedData = { ...row.mappedData, ...updatedFields };
+
+    // Check if Tier 1 identity is fulfilled now
+    const firstName = row.rawData.firstName?.trim() || "";
+    const lastName = row.rawData.lastName?.trim() || "";
+    const email = row.rawData.email?.trim() || "";
+    const phone = row.rawData.phone?.trim() || "";
+
+    const hasName = Boolean(firstName || lastName);
+    const hasContact = Boolean(email || phone);
+
+    if (hasName && hasContact) {
+      const remainingAttention: string[] = [];
+      if (!row.rawData.joiningDate) remainingAttention.push("joiningDate");
+      if (!row.rawData.department && !row.rawData.departmentId) remainingAttention.push("department");
+      if (!row.rawData.designation && !row.rawData.designationId) remainingAttention.push("designation");
+      if (!row.rawData.employeeType) remainingAttention.push("employeeType");
+
+      row.needsAttentionFields = remainingAttention;
+      row.status = remainingAttention.length > 0 ? 'IMPORTED_INCOMPLETE' : 'CLEAN';
+      row.action = 'create';
+      row.rejectionReason = undefined;
+      row.messages = [];
+    } else {
+      row.status = 'REJECTED';
+      row.action = 'skip';
+      row.rejectionReason = 'Missing Name or Contact info (Tier 1 requirement)';
+    }
+
+    // Recompute counts
+    session.greenCount = session.rows.filter(r => r.status === 'CLEAN' || r.status === 'valid').length;
+    session.yellowCount = session.rows.filter(r => r.status === 'IMPORTED_INCOMPLETE' || r.status === 'warning').length;
+    session.orangeCount = session.rows.filter(r => r.status === 'POSSIBLE_DUPLICATE').length;
+    session.redCount = session.rows.filter(r => r.status === 'REJECTED' || r.status === 'error').length;
+    session.status = (session.greenCount + session.yellowCount) > 0 ? 'ready' : 'failed';
+
+    await session.save();
+
+    return {
+      message: "Row updated successfully",
+      row,
+      summary: {
+        totalRows: session.totalRows,
+        greenCount: session.greenCount,
+        yellowCount: session.yellowCount,
+        orangeCount: session.orangeCount,
+        redCount: session.redCount,
+      },
     };
   }
 
@@ -1787,11 +1897,8 @@ export class EmployeeService {
       throw new AppError("Import session has already been committed", 400);
     }
 
-    if (session.status === 'failed') {
-      throw new AppError("Cannot commit an import session that has validation errors", 400);
-    }
-
-    const validRows = session.rows.filter(r => r.status !== 'error' && r.action === 'create');
+    const committableStatuses = ['CLEAN', 'IMPORTED_INCOMPLETE', 'valid', 'warning'];
+    const validRows = session.rows.filter(r => committableStatuses.includes(r.status) && r.action === 'create');
     const validRecords = validRows.map(r => r.rawData);
 
     if (!validRecords.length) {
@@ -1818,9 +1925,25 @@ export class EmployeeService {
         403
       );
     }
+
     const cleanValidRecords = validRecords.map((r: any) => {
-      const { __bankAccount, __isActiveEmployee, ...clean } = r;
-      return clean;
+      const {
+        __bankAccount,
+        __isActiveEmployee,
+        __familyMembers,
+        __reportingManagerName,
+        __rowStatus,
+        __isPossibleDuplicate,
+        __rowNumber,
+        ...clean
+      } = r;
+
+      return {
+        ...clean,
+        importBatchId: session.sessionId,
+        importStatus: r.importStatus || (r.needsAttentionFields?.length > 0 ? 'IMPORTED_INCOMPLETE' : 'CLEAN'),
+        needsAttentionFields: r.needsAttentionFields || [],
+      };
     });
 
     const dbResult = await this.empRepo.bulkCreate(context, cleanValidRecords);
@@ -1829,7 +1952,7 @@ export class EmployeeService {
     const importedCodes = dbResult.records.map((e: any) => e.employeeCode).filter(Boolean);
     await syncEmployeeCodeCounter(context.tenantId, importedCodes);
 
-    // Post-insert: create user accounts (silent — no emails) + save bank accounts
+    // Post-insert: create user accounts + save bank accounts
     const passwordHash = await bcrypt.hash(defaultPassword, BCRYPT_SALT_ROUNDS);
 
     for (let i = 0; i < dbResult.records.length; i++) {
@@ -1897,14 +2020,125 @@ export class EmployeeService {
     }
 
     session.status = 'committed';
+    session.committedCount = dbResult.insertedCount;
     await session.save();
+
+    const rejectedRows = session.rows.filter(r => r.status === 'REJECTED' || r.status === 'error');
+    const incompleteRows = session.rows.filter(r => r.status === 'IMPORTED_INCOMPLETE');
 
     return {
       sessionId: session.sessionId,
+      batchId: session.sessionId,
       status: session.status,
       totalRows: session.rows.length,
       insertedCount: dbResult.insertedCount,
+      rejectedCount: rejectedRows.length,
+      rejectedRows: rejectedRows.map(r => ({
+        rowNumber: r.rowNumber,
+        email: r.rawData?.email || "",
+        reason: r.rejectionReason || r.messages?.join("; ") || "Validation failed",
+      })),
+      incompleteProfilesCount: incompleteRows.length,
       defaultPassword: sendWelcomeEmail ? undefined : defaultPassword,
+    };
+  }
+
+  async rollbackBatch(context: RequestContext, batchId: string) {
+    const tenantIdObj = new mongoose.Types.ObjectId(context.tenantId);
+
+    const employees = await EmployeeModel.find({
+      tenantId: tenantIdObj,
+      importBatchId: batchId,
+      isDeleted: false,
+    }).select("_id email employeeCode");
+
+    if (!employees.length) {
+      throw new AppError(`No active imported employees found for batch ID "${batchId}"`, 404);
+    }
+
+    const employeeIds = employees.map(e => e._id);
+
+    // Soft delete employees
+    await EmployeeModel.updateMany(
+      { _id: { $in: employeeIds } },
+      {
+        $set: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: new mongoose.Types.ObjectId(context.userId),
+        },
+      }
+    );
+
+    // Deactivate associated user accounts
+    await UserModel.updateMany(
+      { tenantId: tenantIdObj, employeeId: { $in: employeeIds } },
+      { $set: { isActive: false } }
+    );
+
+    return {
+      batchId,
+      rolledBackCount: employees.length,
+      message: `Successfully rolled back ${employees.length} employees from batch ${batchId}`,
+    };
+  }
+
+  async getIncompleteProfiles(
+    context: RequestContext,
+    options: { page?: number; limit?: number; search?: string }
+  ) {
+    const page = Math.max(1, Number(options.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(options.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const filter: any = {
+      tenantId: new mongoose.Types.ObjectId(context.tenantId),
+      isDeleted: false,
+      importStatus: "IMPORTED_INCOMPLETE",
+    };
+
+    if (options.search) {
+      const regex = new RegExp(options.search.trim(), "i");
+      filter.$or = [
+        { firstName: regex },
+        { lastName: regex },
+        { email: regex },
+        { employeeCode: regex },
+      ];
+    }
+
+    const [records, totalCount] = await Promise.all([
+      EmployeeModel.find(filter)
+        .populate("departmentId", "name code")
+        .populate("designationId", "name code")
+        .populate("branchId", "name code")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      EmployeeModel.countDocuments(filter),
+    ]);
+
+    return {
+      totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit),
+      employees: records.map((emp: any) => ({
+        _id: emp._id,
+        employeeCode: emp.employeeCode,
+        fullName: `${emp.firstName} ${emp.lastName}`.trim(),
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        email: emp.email,
+        phone: emp.phone,
+        department: emp.departmentId?.name || "Unassigned",
+        designation: emp.designationId?.name || "Not Set",
+        branch: emp.branchId?.name || "Head Office",
+        joiningDate: emp.joiningDate,
+        needsAttentionFields: emp.needsAttentionFields || [],
+        importBatchId: emp.importBatchId,
+      })),
     };
   }
 

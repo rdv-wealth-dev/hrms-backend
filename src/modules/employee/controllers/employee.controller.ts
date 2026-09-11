@@ -464,6 +464,64 @@ export class EmployeeController {
       );
     } catch (e) { next(e); }
   }
+
+  // PATCH /api/v1/employees/import/:sessionId/row
+  async updatePreviewRow(
+    req: Request<{ sessionId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const rowNumber = parseInt(req.body.rowNumber, 10);
+      if (isNaN(rowNumber)) {
+        throw new AppError("rowNumber is required and must be an integer", 400);
+      }
+      const updatedFields = req.body.updatedFields || { ...req.body };
+      delete updatedFields.rowNumber;
+
+      const result = await empService.updatePreviewRow(
+        req.context,
+        req.params.sessionId,
+        rowNumber,
+        updatedFields
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, "Preview row updated successfully")
+      );
+    } catch (e) { next(e); }
+  }
+
+  // POST /api/v1/employees/import/batch/:batchId/rollback
+  async rollbackBatch(
+    req: Request<{ batchId: string }>,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await empService.rollbackBatch(req.context, req.params.batchId);
+      res.status(200).json(
+        buildSuccessResponse(result, "Batch rollback completed successfully")
+      );
+    } catch (e) { next(e); }
+  }
+
+  // GET /api/v1/employees/incomplete-profiles
+  async getIncompleteProfiles(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+      const search = req.query.search as string | undefined;
+
+      const result = await empService.getIncompleteProfiles(req.context, { page, limit, search });
+      res.status(200).json(
+        buildSuccessResponse(result, "Incomplete employee profiles fetched successfully")
+      );
+    } catch (e) { next(e); }
+  }
 }
 
 

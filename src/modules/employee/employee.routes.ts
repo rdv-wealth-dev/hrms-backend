@@ -155,6 +155,24 @@ router.post(
   controller.commitImport.bind(controller)
 );
 
+router.patch(
+  "/import/:sessionId/row",
+  checkPermission("employee.create"),
+  controller.updatePreviewRow.bind(controller)
+);
+
+router.post(
+  "/import/batch/:batchId/rollback",
+  checkPermission("employee.delete"),
+  controller.rollbackBatch.bind(controller)
+);
+
+router.get(
+  "/incomplete-profiles",
+  checkPermission("employee.read"),
+  controller.getIncompleteProfiles.bind(controller)
+);
+
 router.get(
   "/audit/import-export-history",
   checkPermission("employee.read"),

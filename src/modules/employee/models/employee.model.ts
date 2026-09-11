@@ -191,6 +191,11 @@ export interface EmployeeDocument extends BaseDocument {
     mandatoryDocs: boolean;
   };
 
+  // Zero-Failure Import & Needs Attention Tracking
+  importBatchId?: string;
+  importStatus?: "CLEAN" | "IMPORTED_INCOMPLETE";
+  needsAttentionFields?: string[];
+
   isActive: boolean;
 }
 
@@ -440,6 +445,22 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
       bankDetails: { type: Boolean, default: false },
       mandatoryDocs: { type: Boolean, default: false },
     },
+
+    // Zero-Failure Import & Needs Attention Tracking
+    importBatchId: {
+      type: String,
+      index: true,
+      default: null,
+    },
+    importStatus: {
+      type: String,
+      enum: ["CLEAN", "IMPORTED_INCOMPLETE"],
+      default: null,
+    },
+    needsAttentionFields: {
+      type: [String],
+      default: [],
+    },
   },
   { collection: "employees" }
 );
@@ -448,6 +469,7 @@ const EmployeeSchema = createBaseSchema<EmployeeDocument>(
 //Indexes
 EmployeeSchema.index({ tenantId: 1, employeeCode: 1 }, { unique: true });
 EmployeeSchema.index({ tenantId: 1, email: 1 }, { unique: true });
+EmployeeSchema.index({ tenantId: 1, importBatchId: 1 });
 EmployeeSchema.index({ tenantId: 1, branchId: 1 });
 EmployeeSchema.index({ tenantId: 1, departmentId: 1 });
 EmployeeSchema.index({ tenantId: 1, designationId: 1 });
