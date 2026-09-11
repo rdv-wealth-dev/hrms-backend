@@ -819,7 +819,6 @@ export class AuthService {
 
     const headOffice = await this.branchRepo.create({
       tenantId: tenantObjectId as any,
-      branchId: tenantObjectId as any,
       name: resolvedBranchName,
       code: resolvedBranchCode,
       isHeadOffice: true,

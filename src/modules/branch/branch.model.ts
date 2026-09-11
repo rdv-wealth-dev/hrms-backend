@@ -1,11 +1,11 @@
 import mongoose from "mongoose";
-import { createBaseSchema, BaseDocument } from "../../shared/database/base.schema";
+import { createOrgLevelSchema, OrgLevelDocument } from "../../shared/database/base.schema";
 import { CustomWeekOffRule } from "../attendance/services/schedule-engine.service";
 
 export { CustomWeekOffRule };
 // BRANCH DOCUMENT INTERFACE
 
-export interface BranchDocument extends BaseDocument {
+export interface BranchDocument extends OrgLevelDocument {
   name: string;
   code: string;
   legalEntityName?: string;
@@ -55,11 +55,10 @@ export interface BranchDocument extends BaseDocument {
   defaultShiftId?: mongoose.Types.ObjectId; // Branch-level default shift (overrides org default)
 }
 // BRANCH SCHEMA
-// Uses createBaseSchema — inherits tenantId + branchId + base fields
-// branchId overridden to optional — branch does not reference itself
+// Uses createOrgLevelSchema — inherits tenantId and base audit fields (no branchId needed on branch itself)
 // parentBranchId handles branch hierarchy separately
 
-const BranchSchema = createBaseSchema<BranchDocument>(
+const BranchSchema = createOrgLevelSchema<BranchDocument>(
   {
     name: {
       type: String,
@@ -166,11 +165,6 @@ const BranchSchema = createBaseSchema<BranchDocument>(
     collection: "branches",
   }
 );
-// OVERRIDE — branchId not required on Branch collection
-// Branch IS a branch — branchId self-reference not needed
-// parentBranchId handles hierarchy
-
-BranchSchema.path("branchId").required(false);
 
 // INDEXES
 // tenantId always first in every compound index
