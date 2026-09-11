@@ -111,7 +111,26 @@ export class OrganizationController {
         req.body
       );
       res.status(200).json(
-        buildSuccessResponse(result?.employeeCodeConfig, "Employee code prefix and configuration updated successfully")
+        buildSuccessResponse(result, "Employee code prefix and configuration updated successfully")
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // POST /api/v1/organizations/me/resequence-employee-codes
+  async resequenceEmployeeCodes(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const result = await orgService.resequenceEmployeeCodes(
+        req.context,
+        req.body
+      );
+      res.status(200).json(
+        buildSuccessResponse(result, `Successfully re-sequenced ${result.resequencedCount} employees in series starting with Org Admin`)
       );
     } catch (error) {
       next(error);

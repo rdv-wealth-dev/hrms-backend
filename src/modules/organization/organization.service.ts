@@ -5,10 +5,13 @@ import {
   UpdateStatutoryInput,
   UpdateMandatoryDocsInput,
   UpdateEmployeeCodeConfigInput,
+  ResequenceEmployeeCodesInput,
 } from "./organization.dto";
 import { RequestContext } from "../../shared/types/request-context.interface";
 import { AppError } from "../../shared/errors/app.error";
 import { parseEmployeeCountRange } from "./utils/team-size.util";
+import { resequenceExistingEmployeeCodes } from "../employee/utils/employee-counter.util";
+import { EmployeeService } from "../employee/services/employee.service";
 
 export class OrganizationService {
   private orgRepo = new OrganizationRepository();
@@ -80,10 +83,21 @@ export class OrganizationService {
     }
 
     if (input.employeeCodeConfig) {
-      updateData.employeeCodeConfig = {
-        ...(org.employeeCodeConfig ?? { prefix: "EMP", digits: 2, separator: "", startSequenceNumber: 1 }),
-        ...input.employeeCodeConfig,
+      const newConfig = {
+        prefix: input.employeeCodeConfig.prefix.trim().toUpperCase(),
+        digits: input.employeeCodeConfig.digits ?? org.employeeCodeConfig?.digits ?? 2,
+        separator: input.employeeCodeConfig.separator ?? org.employeeCodeConfig?.separator ?? "",
+        startSequenceNumber: input.employeeCodeConfig.startSequenceNumber ?? org.employeeCodeConfig?.startSequenceNumber ?? 1,
       };
+      updateData.employeeCodeConfig = newConfig;
+
+      // Resequence existing employees according to new series if enabled
+      if (input.employeeCodeConfig.resequenceExisting !== false) {
+        try {
+          await new EmployeeService().ensureOrgAdminEmployee({ tenantId: context.tenantId });
+        } catch {}
+        await resequenceExistingEmployeeCodes(context.tenantId, newConfig);
+      }
     }
 
     const updated = await this.orgRepo.updateById(
@@ -115,7 +129,56 @@ export class OrganizationService {
       employeeCodeConfig: newConfig,
     });
 
-    return updated;
+    let resequenceResult = null;
+    if (input.resequenceExisting !== false) {
+      try {
+        await new EmployeeService().ensureOrgAdminEmployee({ tenantId: context.tenantId });
+      } catch {}
+      resequenceResult = await resequenceExistingEmployeeCodes(context.tenantId, newConfig);
+    }
+
+    return {
+      employeeCodeConfig: newConfig,
+      resequencedCount: resequenceResult?.updatedCount ?? 0,
+      resequencedEmployees: resequenceResult?.employees ?? [],
+      organization: updated,
+    };
+  }
+
+  // Explicitly re-sequence all existing employees to current (or provided) employee code format
+  async resequenceEmployeeCodes(
+    context: RequestContext,
+    input?: ResequenceEmployeeCodesInput
+  ) {
+    const org = await this.orgRepo.findById(context.tenantId);
+    if (!org) {
+      throw new AppError("Organization not found", 404);
+    }
+
+    const effectiveConfig = {
+      prefix: input?.prefix?.trim().toUpperCase() || org.employeeCodeConfig?.prefix || "EMP",
+      digits: input?.digits ?? org.employeeCodeConfig?.digits ?? 2,
+      separator: input?.separator ?? org.employeeCodeConfig?.separator ?? "",
+      startSequenceNumber: input?.startSequenceNumber ?? org.employeeCodeConfig?.startSequenceNumber ?? 1,
+    };
+
+    if (input?.prefix) {
+      await this.orgRepo.updateById(context.tenantId, {
+        employeeCodeConfig: effectiveConfig,
+      });
+    }
+
+    try {
+      await new EmployeeService().ensureOrgAdminEmployee({ tenantId: context.tenantId });
+    } catch {}
+
+    const resequenceResult = await resequenceExistingEmployeeCodes(context.tenantId, effectiveConfig);
+
+    return {
+      employeeCodeConfig: effectiveConfig,
+      resequencedCount: resequenceResult.updatedCount,
+      resequencedEmployees: resequenceResult.employees,
+    };
   }
 
   // Update modules

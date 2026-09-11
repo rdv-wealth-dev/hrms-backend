@@ -58,6 +58,7 @@ export const UpdateOrganizationDto = z.object({
     digits: z.number().int().min(1).max(8).optional().default(2),
     separator: z.string().max(3).optional().default(""),
     startSequenceNumber: z.number().int().min(1).optional(),
+    resequenceExisting: z.boolean().optional().default(true),
   }).optional(),
 });
 
@@ -68,8 +69,17 @@ export const UpdateEmployeeCodeConfigDto = z.object({
   digits: z.number().int().min(1).max(8).optional().default(2),
   separator: z.string().max(3).optional().default(""),
   startSequenceNumber: z.number().int().min(1).optional().default(1),
+  resequenceExisting: z.boolean().optional().default(true),
 });
 export type UpdateEmployeeCodeConfigInput = z.infer<typeof UpdateEmployeeCodeConfigDto>;
+
+export const ResequenceEmployeeCodesDto = z.object({
+  prefix: z.string().trim().min(1).max(15).toUpperCase().optional(),
+  digits: z.number().int().min(1).max(8).optional(),
+  separator: z.string().max(3).optional(),
+  startSequenceNumber: z.number().int().min(1).optional(),
+});
+export type ResequenceEmployeeCodesInput = z.infer<typeof ResequenceEmployeeCodesDto>;
 
 //Update Modules
 export const UpdateModulesDto = z.object({

@@ -9,6 +9,7 @@ import {
   UpdateStatutoryDto,
   UpdateMandatoryDocsDto,
   UpdateEmployeeCodeConfigDto,
+  ResequenceEmployeeCodesDto,
 } from "./organization.dto";
 
 const router = Router();
@@ -62,6 +63,14 @@ router.patch(
   checkPermission("settings.update"),
   validateBody(UpdateEmployeeCodeConfigDto),
   controller.updateEmployeeCodeConfig.bind(controller)
+);
+
+// POST /api/v1/organizations/me/resequence-employee-codes
+router.post(
+  "/me/resequence-employee-codes",
+  checkPermission("settings.update"),
+  validateBody(ResequenceEmployeeCodesDto),
+  controller.resequenceEmployeeCodes.bind(controller)
 );
 
 export default router;
